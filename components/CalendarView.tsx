@@ -1,4 +1,7 @@
+'use client';
+
 import React, { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   format, 
   startOfMonth, 
@@ -15,7 +18,8 @@ import {
   setMonth,
   setYear,
   getYear,
-  getMonth
+  getMonth,
+  isValid
 } from 'date-fns';
 import { 
   DndContext, 
@@ -66,7 +70,21 @@ import {
   FileText
 } from 'lucide-react';
 
-import { trackActivity } from './lib/activity';
+import { trackActivity } from '@/lib/activity';
+
+const safeCopyToClipboard = async (text: string) => {
+  if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+    return false;
+  }
+
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (error) {
+    console.error('Clipboard write failed:', error);
+    return false;
+  }
+};
 
 interface ContentItem {
   no: number;
@@ -81,9 +99,13 @@ interface ContentItem {
   referensi: string;
   visual: string;
   keterangan: string;
+  primaryAssetType?: string;
+  recommendedAssetTypes?: string[];
+  assetTypeReason?: string;
+  carousel_plan?: any;
 }
 
-import { extractJSON } from './lib/geminiUtils';
+import { extractJSON } from '@/lib/geminiUtils';
 
 interface CalendarViewProps {
   items: ContentItem[];
@@ -146,15 +168,19 @@ const CalecoAIRecommendation = ({
   if (!recommendation && !isLoading) return null;
 
   const isObject = typeof recommendation === 'object' && recommendation !== null;
+  const isError = isObject ? !!(recommendation as Record<string, string>).error : (typeof recommendation === 'string' && recommendation.includes('⚠️'));
+  const errorMessage = isObject && (recommendation as Record<string, string>).error 
+    ? (recommendation as Record<string, string>).error 
+    : (typeof recommendation === 'string' && recommendation.includes('⚠️') ? recommendation : null);
 
   return (
-    <div className="relative p-4 bg-brand/5 border border-brand/20 rounded-2xl text-[10px] text-zinc-400 italic leading-relaxed group mt-2">
+    <div className={`relative p-4 ${isError ? 'bg-red-500/10 border-red-500/30' : 'bg-brand/5 border-brand/20'} border rounded-2xl text-[10px] ${isError ? 'text-red-400' : 'text-zinc-400'} italic leading-relaxed group mt-2`}>
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2 text-brand font-bold uppercase tracking-widest text-[8px]">
+        <div className={`flex items-center gap-2 ${isError ? 'text-red-500' : 'text-brand'} font-bold uppercase tracking-widest text-[8px]`}>
           <Sparkles size={10} />
-          Caleco AI Recommendation
+          {isError ? 'AI SYSTEM ALERT' : 'Caleco AI Recommendation'}
         </div>
-        {isObject && !isLoading && onApplyAll && (
+        {isObject && !isLoading && onApplyAll && !isError && (
           <button 
             onClick={() => onApplyAll(recommendation as Record<string, string>)}
             className="flex items-center gap-1 px-2 py-1 bg-brand/10 hover:bg-brand/20 text-brand rounded-md transition-all text-[8px] font-bold uppercase tracking-widest"
@@ -169,6 +195,10 @@ const CalecoAIRecommendation = ({
         <div className="flex items-center gap-2">
           <Loader2 size={10} className="animate-spin text-brand" />
           <span>Caleco AI sedang berpikir...</span>
+        </div>
+      ) : isError ? (
+        <div className="space-y-3">
+           <p className="text-red-400 font-medium not-italic">{String(errorMessage)}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -260,7 +290,33 @@ const SortableItem: React.FC<{ item: ContentItem; onClick?: () => void; isGrowth
       <div className="flex items-center gap-1 text-[8px] text-zinc-500">
         <Layers size={8} />
         {item.format}
+        {item.primaryAssetType && (
+          <>
+            <span className="mx-0.5">•</span>
+            <span className="uppercase text-brand font-bold tracking-wider">{item.primaryAssetType}</span>
+          </>
+        )}
       </div>
+
+      {item.carousel_plan && (
+        <div className="mt-1.5 p-1.5 bg-purple-950/40 border border-purple-800/40 rounded-md text-[8px] space-y-1">
+          <div className="flex items-center justify-between text-purple-300 font-bold">
+            <span className="flex items-center gap-1">
+              📷 {item.carousel_plan.slide_count || item.carousel_plan.slides?.length || 0} Slides
+            </span>
+            {item.carousel_plan.primary_cta_text && (
+              <span className="text-emerald-400 font-extrabold truncate max-w-[85px]" title={item.carousel_plan.primary_cta_text}>
+                CTA: {item.carousel_plan.primary_cta_text}
+              </span>
+            )}
+          </div>
+          {item.carousel_plan.belief_journey_summary && (
+            <p className="text-zinc-300 line-clamp-2 italic leading-tight font-sans">
+              &quot;{item.carousel_plan.belief_journey_summary}&quot;
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -276,11 +332,13 @@ const CalendarDay: React.FC<{
   loadingColor?: string,
   showStartPrompt?: boolean,
   resumePrompt?: boolean,
-  showConfigButton?: boolean
-}> = ({ day, items, growthItems = [], isCurrentMonth, onClick, onEdit, onSendToCalcer, loadingColor, showStartPrompt, resumePrompt, showConfigButton }) => {
+  showConfigButton?: boolean,
+  todayDate?: Date | null
+}> = ({ day, items, growthItems = [], isCurrentMonth, onClick, onEdit, onSendToCalcer, loadingColor, showStartPrompt, resumePrompt, showConfigButton, todayDate }) => {
   const { setNodeRef } = useSortable({ id: format(day, 'yyyy-MM-dd') });
 
   const totalItems = items.length + growthItems.length;
+  const isToday = todayDate ? isSameDay(day, todayDate) : false;
 
   const handleSendToCalcer = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -288,12 +346,21 @@ const CalendarDay: React.FC<{
     if (allItems.length === 0) return;
 
     const briefText = allItems.map(item => {
-      return `[${item.jenis}] ${item.headline}\n\nBody:\n${item.body}\n\nCaption:\n${item.caption}\n\nFormat: ${item.format}\nVisual: ${item.visual}\nKeterangan: ${item.keterangan}`;
+      let formatInfo = `Format: ${item.format}`;
+      if (item.primaryAssetType) {
+        formatInfo += `\nPrimary Asset: ${item.primaryAssetType}`;
+        if (item.assetTypeReason) formatInfo += `\nAsset Reason: ${item.assetTypeReason}`;
+      }
+      return `[${item.jenis}] ${item.headline}\n\nBody:\n${item.body}\n\nCaption:\n${item.caption}\n\n${formatInfo}\nVisual: ${item.visual}\nKeterangan: ${item.keterangan}`;
     }).join('\n\n---\n\n');
 
-    navigator.clipboard.writeText(briefText);
-    trackActivity('Copy Data', `Copied ${allItems.length} items to clipboard via Calcer`);
-    onSendToCalcer?.(briefText);
+    void (async () => {
+      const copied = await safeCopyToClipboard(briefText);
+      if (copied) {
+        trackActivity('Copy Data', `Copied ${allItems.length} items to clipboard via Calcer`);
+      }
+      onSendToCalcer?.(briefText);
+    })();
   };
 
   return (
@@ -308,14 +375,14 @@ const CalendarDay: React.FC<{
       }}
       className={`min-h-[80px] md:min-h-[120px] p-1 md:p-2 border-r border-b border-zinc-800/50 transition-all relative ${
         !isCurrentMonth ? 'bg-zinc-900/10 opacity-30' : 'bg-zinc-900/20'
-      } ${isSameDay(day, new Date()) ? 'ring-1 ring-inset ring-brand/30 bg-brand/5' : ''} ${
+      } ${isToday ? 'ring-1 ring-inset ring-brand/30 bg-brand/5' : ''} ${
         (onClick || totalItems > 0) ? 'cursor-pointer hover:bg-zinc-800/40' : ''
       } ${(showStartPrompt || resumePrompt || showConfigButton) ? 'animate-glow ring-2 ring-brand/30 z-10' : ''}`}
       style={loadingColor ? { backgroundColor: loadingColor } : {}}
     >
       <div className="flex justify-between items-center mb-1 md:mb-2">
         <div className="flex items-center gap-1.5">
-          <span className={`text-[8px] md:text-[10px] font-mono ${isSameDay(day, new Date()) ? 'text-brand font-bold' : 'text-zinc-500'}`}>
+          <span className={`text-[8px] md:text-[10px] font-mono ${isToday ? 'text-brand font-bold' : 'text-zinc-500'}`}>
             {format(day, 'd')}
           </span>
         </div>
@@ -372,7 +439,7 @@ const CalendarDay: React.FC<{
   );
 };
 
-export const CalendarView: React.FC<CalendarViewProps> = ({ 
+export default function CalendarView({ 
   items, 
   growthItems = [],
   onReschedule, 
@@ -407,7 +474,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   onLoadHistory,
   onSendToCalcer,
   configData
-}) => {
+}: CalendarViewProps) {
+  const router = useRouter();
   const [loadingColors, setLoadingColors] = React.useState<string[]>([]);
   const [editingItem, setEditingItem] = React.useState<ContentItem | null>(null);
   const [editingPosition, setEditingPosition] = React.useState({ x: 0, y: 0 });
@@ -415,42 +483,88 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const [showHistoryModal, setShowHistoryModal] = React.useState(false);
   const [showDatePicker, setShowDatePicker] = React.useState(false);
   const [showRawOutput, setShowRawOutput] = React.useState(false);
+  const [productionAsset, setProductionAsset] = React.useState<{ type: string; title: string; content: string } | null>(null);
+  const [isGeneratingAsset, setIsGeneratingAsset] = React.useState(false);
+  const [copiedAsset, setCopiedAsset] = React.useState(false);
+
+  const handleGenerateProductionAsset = async (assetType: 'brief' | 'caption' | 'image' | 'carousel' | 'video') => {
+    if (!editingItem || isGeneratingAsset) return;
+    setIsGeneratingAsset(true);
+    setCopiedAsset(false);
+    try {
+      let promptTitle = '';
+      if (assetType === 'brief') promptTitle = 'Brief';
+      else if (assetType === 'caption') promptTitle = 'Caption';
+      else if (assetType === 'image') promptTitle = 'Image Ad Prompt (Midjourney)';
+      else if (assetType === 'carousel') promptTitle = 'Carousel Blueprint';
+      else if (assetType === 'video') promptTitle = 'Video Script';
+
+      const prompt = `Buatkan ${promptTitle} (Bahasa Indonesia, rapi, siap pakai) untuk post konten ini:
+No: ${editingItem.no} | Tgl: ${editingItem.tanggal} | Funnel: ${editingItem.jenis} | Objective: ${editingItem.tujuan} | Hook: ${editingItem.hookType} | Format: ${editingItem.format}
+Headline: ${editingItem.headline}
+Body: ${editingItem.body}
+Keterangan: ${editingItem.keterangan}`;
+
+      const response = await fetch('/api/gemini/recommendation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
+
+      if (!response.ok) {
+        let errText = 'API server returned error.';
+        try {
+          const errData = await response.json();
+          if (errData && errData.error) {
+            errText = errData.error;
+          }
+        } catch (_) {}
+        throw new Error(errText);
+      }
+
+      const resData = await response.json();
+      setProductionAsset({
+        type: assetType,
+        title: promptTitle,
+        content: resData.text || 'Gagal menghasilkan asset.'
+      });
+    } catch (err: any) {
+      console.error('Production Asset Generation Error:', err);
+      const errMsg = err.message || '';
+      const isRateLimited = /dibatasi/i.test(errMsg) || /rate.*limit/i.test(errMsg) || /quota/i.test(errMsg) || /429/i.test(errMsg);
+
+      setProductionAsset({
+        type: assetType,
+        title: isRateLimited ? 'Permintaan AI Sedang Dibatasi' : `${assetType.toUpperCase()} Production Asset`,
+        content: isRateLimited 
+          ? `### ⚠️ PERMINTAAN AI SEDANG DIBATASI\n\nPermintaan AI sedang dibatasi (Rate Limit / Quota Exceeded). Coba lagi beberapa saat.\n\nSilakan gunakan draf cadangan berikut untuk sementara:\n\n---\n\n### RENCANA PRODUKSI: ${editingItem.headline}\n\n- **Funnel Stage:** ${editingItem.jenis}\n- **Objective:** ${editingItem.tujuan}\n- **Format:** ${editingItem.format}\n- **Hook:** ${editingItem.hookType}\n\n**Deskripsi & Naskah:**\n${editingItem.body}`
+          : `### RENCANA PRODUKSI: ${editingItem.headline}\n\n- **Funnel Stage:** ${editingItem.jenis}\n- **Objective:** ${editingItem.tujuan}\n- **Format:** ${editingItem.format}\n- **Hook:** ${editingItem.hookType}\n\n**Deskripsi & Naskah:**\n${editingItem.body}\n\n*(Catatan: Dibuat sebagai aset operasional konten untuk eksekusi langsung).*`
+      });
+    } finally {
+      setIsGeneratingAsset(false);
+    }
+  };
 
   // Generate Raw Output strings
   const [isRecommending, setIsRecommending] = React.useState(false);
   const [recommendations, setRecommendations] = React.useState<Record<number, any>>({});
 
   const getAIRecommendation = async (step: number) => {
+    if (isRecommending) return;
     setIsRecommending(true);
     try {
       let prompt = '';
       
       if (step === 0) {
-        prompt = `Anda adalah Lead Expert Advertiser Dunia. Berdasarkan data sebelumnya, berikan rekomendasi untuk:
-        1. Core Topic: Apa ide atau masalah utama yang ingin dibahas dalam konten?
-        Berikan jawaban dalam format JSON: {"coreTopic": "..."}`;
+        prompt = `Rekomendasikan Core Topic (masalah utama/ide) untuk konten. HANYA return JSON: {"coreTopic": "..."}`;
       } else if (step === 2) {
-        prompt = `Anda adalah Lead Expert Advertiser Dunia. Berdasarkan Core Topic: ${configData.coreTopic}, berikan rekomendasi untuk:
-        1. Gender: Siapa gender target yang paling cocok? (Male/Female/Both)
-        2. Min Age: Berapa umur minimal? (number)
-        3. Max Age: Berapa umur maksimal? (number)
-        Berikan jawaban dalam format JSON: {"gender": "...", "minAge": 20, "maxAge": 50}`;
+        prompt = `Topik: ${configData.coreTopic}. Rekomendasikan target audience. HANYA return JSON: {"gender": "Male/Female/Both", "minAge": 20, "maxAge": 50}`;
       } else if (step === 3) {
-        prompt = `Anda adalah Lead Expert Advertiser Dunia. Berdasarkan Core Topic: ${configData.coreTopic}, berikan rekomendasi untuk:
-        1. Tofu Count: Jumlah konten TOFU? (number)
-        2. Mofu Count: Jumlah konten MOFU? (number)
-        3. Bofu Count: Jumlah konten BOFU? (number)
-        Berikan jawaban dalam format JSON: {"tofu": 6, "mofu": 5, "bofu": 3}`;
+        prompt = `Topik: ${configData.coreTopic}. Rekomendasikan komposisi konten. HANYA return JSON: {"tofu": 6, "mofu": 5, "bofu": 3}`;
       } else if (step === 5) {
-        prompt = `Anda adalah Lead Expert Advertiser Dunia. Berdasarkan Core Topic: ${configData.coreTopic}, berikan rekomendasi untuk:
-        1. Hook Type 1: Jenis hook pertama? (Call-Out, Curiosity Gap, Social Proof, Negativity Bias, Authority, Relatability)
-        2. Hook Type 2: Jenis hook kedua?
-        3. Hook Type 3: Jenis hook ketiga?
-        Berikan jawaban dalam format JSON: {"hook1": "...", "hook2": "...", "hook3": "..."}`;
+        prompt = `Topik: ${configData.coreTopic}. Rekomendasikan 3 jenis hook konten (pilih dari: Call-Out, Curiosity Gap, Social Proof, Negativity Bias, Authority, Relatability). HANYA return JSON: {"hook1": "...", "hook2": "...", "hook3": "..."}`;
       } else if (step === 6) {
-        prompt = `Anda adalah Lead Expert Advertiser Dunia. Berdasarkan Core Topic: ${configData.coreTopic}, berikan rekomendasi untuk:
-        1. Formula: Formula apa yang paling cocok (Penjualan, Awareness & Soft Selling, Mencari Follower, Publikasi untuk Brand-produk baru)?
-        Berikan jawaban dalam format JSON: {"selectedFormula": "..."}`;
+        prompt = `Topik: ${configData.coreTopic}. Rekomendasikan formula kampanye konten (Penjualan, Awareness & Soft Selling, Mencari Follower, atau Publikasi untuk Brand). HANYA return JSON: {"selectedFormula": "..."}`;
       }
 
       if (!prompt) return;
@@ -462,7 +576,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error('API server returned error description.');
+        let errText = 'API server returned error description.';
+        try {
+          const errData = await response.json();
+          if (errData && errData.error) {
+            errText = errData.error;
+          }
+        } catch (_) {}
+        throw new Error(errText);
       }
 
       const resData = await response.json();
@@ -474,8 +595,16 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         console.error('Failed to parse AI recommendation:', e);
         setRecommendations(prev => ({ ...prev, [step]: resData.text || '' }));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('AI Recommendation Error:', err);
+      const errMsg = err.message || '';
+      const isRateLimited = /dibatasi/i.test(errMsg) || /rate.*limit/i.test(errMsg) || /quota/i.test(errMsg) || /429/i.test(errMsg);
+      
+      const fallbackMsg = isRateLimited 
+        ? "⚠️ PERMINTAAN AI DIBATASI (Rate Limit / Quota Exceeded). Coba lagi beberapa saat." 
+        : "⚠️ Gagal memuat rekomendasi. Anda dapat mengedit secara manual.";
+      
+      setRecommendations(prev => ({ ...prev, [step]: { error: fallbackMsg } }));
     } finally {
       setIsRecommending(false);
     }
@@ -519,7 +648,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     const data = growthItems.length > 0 ? growthItems : items;
     if (!data || data.length === 0) return { markdown: '', tab: '' };
 
-    const headers = ["No", "Tanggal", "Jenis", "Tujuan", "Hook Type", "Headline", "Body", "Caption", "Format", "Referensi", "Visual", "Keterangan"];
+    const headers = ["No", "Tanggal", "Jenis", "Tujuan", "Hook Type", "Headline", "Body", "Caption", "Format", "Primary Asset", "Asset Reason", "Referensi", "Visual", "Keterangan"];
     
     // Markdown Table
     let md = `| ${headers.join(' | ')} |\n`;
@@ -527,7 +656,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     data.forEach(item => {
       const row = [
         item.no, item.tanggal, item.jenis, item.tujuan, item.hookType, 
-        item.headline, item.body, item.caption, item.format, 
+        item.headline, item.body, item.caption, item.format, item.primaryAssetType || '', item.assetTypeReason || '',
         item.referensi, item.visual, item.keterangan
       ].map(v => String(v).replace(/\|/g, '\\|').replace(/\n/g, ' '));
       md += `| ${row.join(' | ')} |\n`;
@@ -538,7 +667,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     data.forEach(item => {
       const row = [
         item.no, item.tanggal, item.jenis, item.tujuan, item.hookType, 
-        item.headline, item.body, item.caption, item.format, 
+        item.headline, item.body, item.caption, item.format, item.primaryAssetType || '', item.assetTypeReason || '',
         item.referensi, item.visual, item.keterangan
       ].map(v => String(v).replace(/\t/g, ' ').replace(/\n/g, ' '));
       tab += row.join('\t') + '\n';
@@ -553,8 +682,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       const interval = setInterval(() => {
         step++;
         const colors = Array.from({ length: 42 }).map((_, i) => {
-          // Create a rhythmic pulse with individual offsets for a "wave" effect
-          // Mimics the glow animation by cycling opacity between ~0.05 and 0.25
           const pulse = Math.sin((step * 0.2) + (i * 0.15));
           const opacity = 0.05 + ((pulse + 1) / 2) * 0.2; 
           return `rgba(177, 153, 249, ${opacity})`;
@@ -578,6 +705,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const calendarConstraintsRef = React.useRef<HTMLDivElement>(null);
   const calendarContentRef = React.useRef<HTMLDivElement>(null);
   const [dragConstraints, setDragConstraints] = React.useState({ left: 0, right: 0 });
+  const [todayDate, setTodayDate] = React.useState<Date | null>(null);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setTodayDate(new Date());
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   React.useEffect(() => {
     const updateConstraints = () => {
@@ -645,14 +780,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
   const handleCheckStep = (idx: number) => {
     setClosedSteps(prev => [...prev, idx]);
-    
-    // If it's the last step (index 7), close the configuration mode
     if (idx === 7) {
       setIsConfiguring(false);
       return;
     }
-
-    // Automatically move the next step to the top to make it "mencolok"
     const nextStep = idx + 1;
     if (nextStep < 8) {
       handleMoveToTop(nextStep);
@@ -710,21 +841,24 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     return growthItems.filter(item => (item.jenis || '').toUpperCase().includes(normFilter));
   }, [growthItems, filterType]);
 
-  // Determine the month to show based on the first item's date, the config start date, or current date
+  const safeParseISO = (dateStr?: string): Date | null => {
+    if (!dateStr) return null;
+    try {
+      const parsed = parseISO(dateStr);
+      return isValid(parsed) ? parsed : null;
+    } catch (e) {
+      return null;
+    }
+  };
+
   const referenceDate = useMemo(() => {
-    if (items.length > 0) {
-      try {
-        return parseISO(items[0].tanggal);
-      } catch (e) {
-        return new Date();
-      }
+    if (items.length > 0 && items[0]?.tanggal) {
+      const d = safeParseISO(items[0].tanggal);
+      if (d) return d;
     }
     if (configData.startDate) {
-      try {
-        return parseISO(configData.startDate);
-      } catch (e) {
-        return new Date();
-      }
+      const d = safeParseISO(configData.startDate);
+      if (d) return d;
     }
     return new Date();
   }, [items, configData.startDate]);
@@ -733,11 +867,17 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
   React.useEffect(() => {
     setTimeout(() => {
-      setCurrentViewDate(referenceDate);
+      if (isValid(referenceDate)) {
+        setCurrentViewDate(referenceDate);
+      }
     }, 0);
   }, [referenceDate]);
 
-  const monthStart = startOfMonth(currentViewDate);
+  const validViewDate = useMemo(() => {
+    return isValid(currentViewDate) ? currentViewDate : new Date();
+  }, [currentViewDate]);
+
+  const monthStart = startOfMonth(validViewDate);
   const monthEnd = endOfMonth(monthStart);
   const calendarStart = startOfWeek(monthStart);
   const calendarEnd = endOfWeek(monthEnd);
@@ -748,11 +888,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   });
 
   const preStartDate = useMemo(() => {
-    try {
-      return addDays(parseISO(configData.startDate), -1);
-    } catch (e) {
-      return null;
-    }
+    const d = safeParseISO(configData.startDate);
+    return d ? addDays(d, -1) : null;
   }, [configData.startDate]);
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -763,18 +900,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     const activeId = active.id;
     const overId = over.id;
 
-    // Find the item being dragged
     const activeItem = items.find(i => i.no === activeId);
     if (!activeItem) return;
 
     let targetDate: string | null = null;
 
-    // Case 1: Dropped directly over a day (ID is string like '2026-03-10')
     if (typeof overId === 'string' && overId.includes('-')) {
       targetDate = overId;
-    } 
-    // Case 2: Dropped over another item (ID is number like 1, 2, 3)
-    else {
+    } else {
       const overItem = items.find(i => i.no === overId);
       if (overItem) {
         targetDate = overItem.tanggal;
@@ -939,6 +1072,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     items={dayItems} 
                     growthItems={dayGrowthItems}
                     isCurrentMonth={isSameMonth(day, monthStart)}
+                    todayDate={todayDate}
                     onClick={() => {
                       if (items.length === 0 || (preStartDate && isSameDay(day, preStartDate))) {
                         setIsConfiguring(true);
@@ -950,8 +1084,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     }}
                     onSendToCalcer={onSendToCalcer}
                     loadingColor={loadingColors[idx]}
-                    showStartPrompt={items.length === 0 && isSameDay(day, new Date()) && !isConfiguring && !configData.coreTopic}
-                    resumePrompt={items.length === 0 && isSameDay(day, new Date()) && !isConfiguring && !!configData.coreTopic}
+                    showStartPrompt={items.length === 0 && !!todayDate && isSameDay(day, todayDate) && !isConfiguring && !configData.coreTopic}
+                    resumePrompt={items.length === 0 && !!todayDate && isSameDay(day, todayDate) && !isConfiguring && !!configData.coreTopic}
                     showConfigButton={items.length > 0 && !!preStartDate && isSameDay(day, preStartDate)}
                   />
                 );
@@ -1097,15 +1231,17 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 </div>
 
                 <div className="flex-grow overflow-y-auto p-6 space-y-8 custom-scrollbar">
-                  {/* Markdown Table Section */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Markdown Table</h4>
                       <button 
                         onClick={() => {
-                          navigator.clipboard.writeText(rawOutputData.markdown);
-                          // alert('Markdown Table copied!');
-                          console.log('Markdown Table copied!');
+                          void (async () => {
+                            const copied = await safeCopyToClipboard(rawOutputData.markdown);
+                            if (copied) {
+                              console.log('Markdown Table copied!');
+                            }
+                          })();
                         }}
                         className="text-[10px] font-bold text-brand hover:underline uppercase tracking-widest"
                       >
@@ -1119,15 +1255,17 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     </div>
                   </div>
 
-                  {/* TAB Separated Section */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">TAB Separated (For Spreadsheet)</h4>
                       <button 
                         onClick={() => {
-                          navigator.clipboard.writeText(rawOutputData.tab);
-                          // alert('TAB data copied!');
-                          console.log('TAB data copied!');
+                          void (async () => {
+                            const copied = await safeCopyToClipboard(rawOutputData.tab);
+                            if (copied) {
+                              console.log('TAB data copied!');
+                            }
+                          })();
                         }}
                         className="text-[10px] font-bold text-brand hover:underline uppercase tracking-widest"
                       >
@@ -1183,25 +1321,23 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   </button>
                 </div>
 
-                <div className="p-4 space-y-4">
-                  {/* Year Selector */}
-                  <div className="flex items-center justify-between bg-zinc-800/50 rounded-xl p-1">
-                    <button 
-                      onClick={() => setCurrentViewDate(prev => setYear(prev, getYear(prev) - 1))}
-                      className="p-2 hover:bg-zinc-700 rounded-lg text-zinc-400 hover:text-white transition-all"
+                <div className="p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <button
+                      onClick={() => setCurrentViewDate(prev => subMonths(prev, 12))}
+                      className="p-2 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl transition-all"
                     >
                       <ChevronLeft size={16} />
                     </button>
-                    <span className="text-sm font-bold text-white font-mono">{getYear(currentViewDate)}</span>
-                    <button 
-                      onClick={() => setCurrentViewDate(prev => setYear(prev, getYear(prev) + 1))}
-                      className="p-2 hover:bg-zinc-700 rounded-lg text-zinc-400 hover:text-white transition-all"
+                    <span className="text-sm font-bold text-white font-mono">{format(currentViewDate, 'yyyy')}</span>
+                    <button
+                      onClick={() => setCurrentViewDate(prev => addMonths(prev, 12))}
+                      className="p-2 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl transition-all"
                     >
                       <ChevronRight size={16} />
                     </button>
                   </div>
 
-                  {/* Month Grid */}
                   <div className="grid grid-cols-3 gap-2">
                     {Array.from({ length: 12 }).map((_, i) => {
                       const monthDate = setMonth(currentViewDate, i);
@@ -1407,7 +1543,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                         type="date"
                         value={configData.startDate || ''}
                         onChange={(e) => configData.setStartDate(e.target.value)}
-                        className="w-full bg-zinc-900 border border-zinc-805 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand text-white font-mono"
+                        className="w-full bg-zinc-900 border border-zinc-850 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-brand text-white font-mono"
                       />
                     </InputField>
                     <InputField label="Exclusions / Skip Days" icon={Calendar}>
@@ -1615,7 +1751,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                         {[0, 1, 2].map(i => (
                           <div key={i} className="flex gap-2 bg-zinc-900/35 p-2 rounded-xl">
                             <select
-                              value={configData.hookMix[i].type || ''}
+                              value={configData.hookMix?.[i]?.type || ''}
                               onChange={(e) => configData.updateHookMix(i, 'type', e.target.value)}
                               className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg p-1.5 text-xs text-white"
                             >
@@ -1626,7 +1762,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                             </select>
                             <input
                               type="number"
-                              value={configData.hookMix[i].percentage || 0}
+                              value={configData.hookMix?.[i]?.percentage || 0}
                               onChange={(e) => configData.updateHookMix(i, 'percentage', parseInt(e.target.value) || 0)}
                               className="w-16 bg-zinc-900 border border-zinc-800 rounded-lg text-center text-xs text-white"
                             />
@@ -1679,7 +1815,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           <span className="block text-[8px] font-mono text-zinc-500 uppercase tracking-widest font-bold">📋 APP 1 SYNC CTAS:</span>
                           <div className="flex flex-wrap gap-1">
                             {configData.editableContext.offers.map((off: any, i: number) => {
-                              const active = configData.selectedCTAs.includes(off.ctaText);
+                              const active = configData.selectedCTAs?.includes(off.ctaText);
                               return (
                                 <button
                                   key={i}
@@ -1698,7 +1834,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                         <label className="text-[8px] text-zinc-650 uppercase font-black">CTAs (Click-to-actions)</label>
                         <div className="flex flex-wrap gap-1.5">
                           {['Link Bio', 'DM', 'WhatsApp'].map(cta => {
-                            const isSel = configData.selectedCTAs.includes(cta);
+                            const isSel = configData.selectedCTAs?.includes(cta);
                             return (
                               <button
                                 key={cta}
@@ -1723,7 +1859,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                       </div>
                       <div>
                         <h3 className="text-xs font-extrabold uppercase text-white tracking-wider">Campaign Ready To Dispatch</h3>
-                        <p className="text-[9px] text-zinc-400 mt-1">Sistem kalender akan men-generate <strong className="text-brand font-bold">${configData.ratio.tofu + configData.ratio.mofu + configData.ratio.bofu} postingan strategis</strong> untuk Anda.</p>
+                        <p className="text-[9px] text-zinc-400 mt-1">Sistem kalender akan men-generate <strong className="text-brand font-bold">{configData.ratio.tofu + configData.ratio.mofu + configData.ratio.bofu} postingan strategis</strong> untuk Anda.</p>
                       </div>
                     </div>
 
@@ -1803,185 +1939,312 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         </motion.div>
       )}
     </AnimatePresence>
-          {/* Content Detail Popup (Draggable) */}
-          <AnimatePresence>
-            {editingItem && (
-              <>
-                {/* Backdrop */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-[400] bg-black/60 backdrop-blur-sm"
-                  onClick={() => setEditingItem(null)}
-                />
-                
-                {/* Draggable Popup */}
-                <div className="fixed inset-0 z-[500] flex items-center justify-center pointer-events-none p-4">
-                  <motion.div
-                    drag
-                    dragMomentum={false}
-                    onDragEnd={(_, info) => {
-                      setEditingPosition(prev => ({
-                        x: prev.x + info.offset.x,
-                        y: prev.y + info.offset.y
-                      }));
-                    }}
-                    initial={{ opacity: 0, scale: 0.9, x: editingPosition.x, y: editingPosition.y }}
-                    animate={{ 
-                      opacity: 1, 
-                      scale: 1, 
-                      x: editingPosition.x, 
-                      y: editingPosition.y 
-                    }}
-                    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.2 } }}
-                    className="w-full max-w-[450px] cursor-grab active:cursor-grabbing pointer-events-auto"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="bg-zinc-900/90 border border-zinc-800/50 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col backdrop-blur-3xl relative overflow-hidden">
-                      {/* Header */}
-                      <div className="p-5 border-b border-zinc-800/50 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold border ${
-                            (editingItem?.jenis || '').includes('TOFU') ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                            (editingItem?.jenis || '').includes('MOFU') ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
-                            'bg-brand/10 text-brand border-brand/20'
-                          }`}>
-                            #{editingItem.no}
-                          </div>
-                          <div>
-                            <div className="text-[8px] font-mono text-zinc-500 uppercase tracking-widest">{editingItem.tanggal}</div>
-                            <div className="text-xs font-bold text-white uppercase tracking-tight">{editingItem.jenis}</div>
-                          </div>
+
+    {/* Content Detail Popup (Draggable) */}
+    <AnimatePresence>
+      {editingItem && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[400] bg-black/60 backdrop-blur-sm"
+            onClick={() => setEditingItem(null)}
+          />
+          
+          <div className="fixed inset-0 z-[500] flex items-center justify-center pointer-events-none p-4">
+            <motion.div
+              drag
+              dragMomentum={false}
+              onDragEnd={(_, info) => {
+                setEditingPosition(prev => ({
+                  x: prev.x + info.offset.x,
+                  y: prev.y + info.offset.y
+                }));
+              }}
+              initial={{ opacity: 0, scale: 0.9, x: editingPosition.x, y: editingPosition.y }}
+              animate={{ 
+                opacity: 1, 
+                scale: 1, 
+                x: editingPosition.x, 
+                y: editingPosition.y 
+              }}
+              exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.2 } }}
+              className="w-full max-w-[450px] cursor-grab active:cursor-grabbing pointer-events-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="bg-zinc-900/90 border border-zinc-800/50 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col backdrop-blur-3xl relative overflow-hidden">
+                <div className="p-5 border-b border-zinc-800/50 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold border ${
+                      (editingItem?.jenis || '').includes('TOFU') ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                      (editingItem?.jenis || '').includes('MOFU') ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                      'bg-brand/10 text-brand border-brand/20'
+                    }`}>
+                      #{editingItem.no}
+                    </div>
+                    <div>
+                      <div className="text-[8px] font-mono text-zinc-500 uppercase tracking-widest">{editingItem.tanggal}</div>
+                      <div className="text-xs font-bold text-white uppercase tracking-tight">{editingItem.jenis}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button 
+                      onClick={() => {
+                        const idx = items.findIndex(i => i.no === editingItem.no);
+                        if (idx > 0) setEditingItem(items[idx - 1]);
+                      }}
+                      disabled={items.findIndex(i => i.no === editingItem.no) === 0}
+                      className="p-1.5 hover:bg-zinc-800 text-zinc-500 hover:text-white rounded-lg transition-all disabled:opacity-20"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button 
+                      onClick={() => {
+                        const idx = items.findIndex(i => i.no === editingItem.no);
+                        if (idx < items.length - 1) setEditingItem(items[idx + 1]);
+                      }}
+                      disabled={items.findIndex(i => i.no === editingItem.no) === items.length - 1}
+                      className="p-1.5 hover:bg-zinc-800 text-zinc-500 hover:text-white rounded-lg transition-all disabled:opacity-20"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                    <div className="w-px h-4 bg-zinc-800 mx-1" />
+                    <button 
+                      onClick={() => setEditingItem(null)}
+                      className="p-1.5 hover:bg-zinc-800 text-zinc-500 hover:text-white rounded-lg transition-all"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                  <InputField label="Headline" icon={Zap}>
+                    <input 
+                      type="text"
+                      value={editingItem.headline || ''}
+                      onChange={(e) => onUpdateItem({ ...editingItem, headline: e.target.value })}
+                      className="w-full bg-black/40 border border-zinc-800/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand/50 transition-colors"
+                    />
+                  </InputField>
+
+                  <InputField label="Body Content" icon={Layers}>
+                    <textarea 
+                      value={editingItem.body || ''}
+                      onChange={(e) => onUpdateItem({ ...editingItem, body: e.target.value })}
+                      className="w-full bg-black/40 border border-zinc-800/50 rounded-xl px-3 py-3 text-xs text-zinc-300 focus:outline-none focus:border-brand/50 transition-colors h-32 resize-none leading-relaxed custom-scrollbar"
+                    />
+                  </InputField>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-black/20 border border-zinc-800/50 rounded-xl">
+                      <div className="text-[7px] font-bold text-zinc-600 uppercase tracking-widest mb-1">Hook Type</div>
+                      <p className="text-[10px] text-zinc-300">{editingItem.hookType}</p>
+                    </div>
+                    <div className="p-3 bg-black/20 border border-zinc-800/50 rounded-xl">
+                      <div className="text-[7px] font-bold text-zinc-600 uppercase tracking-widest mb-1">Format</div>
+                      <p className="text-[10px] text-zinc-300">{editingItem.format}</p>
+                    </div>
+                  </div>
+
+                  {/* CAROUSEL PLAN SUMMARY IF AVAILABLE */}
+                  {editingItem.carousel_plan && (
+                    <div className="p-3.5 bg-purple-950/30 border border-purple-800/40 rounded-2xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-black text-purple-400 uppercase tracking-wider flex items-center gap-1">
+                          <Sparkles size={11} /> Carousel Strategy Plan
+                        </span>
+                        <span className="text-[9px] font-mono text-purple-300 font-bold px-2 py-0.5 bg-purple-500/10 border border-purple-500/20 rounded-full">
+                          {editingItem.carousel_plan.slide_count || editingItem.carousel_plan.slides?.length || 0} Slides
+                        </span>
+                      </div>
+                      {editingItem.carousel_plan.belief_journey_summary && (
+                        <div>
+                          <span className="text-[8px] text-zinc-500 uppercase font-bold block">Belief Journey Summary</span>
+                          <p className="text-[10.5px] text-zinc-200 leading-snug italic mt-0.5 bg-purple-950/20 p-2 rounded-lg border border-purple-900/30">
+                            &quot;{editingItem.carousel_plan.belief_journey_summary}&quot;
+                          </p>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <button 
+                      )}
+                      {(editingItem.carousel_plan.primary_cta_text || editingItem.carousel_plan.primary_cta_type) && (
+                        <div className="flex items-center gap-2 text-[10px] pt-1">
+                          <span className="text-[8px] text-zinc-500 uppercase font-bold">CTA Utama:</span>
+                          <span className="text-emerald-400 font-bold">{editingItem.carousel_plan.primary_cta_text}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* NEW PRODUCTION STEPS SECTION */}
+                  <div className="p-4 bg-brand/5 border border-brand/20 rounded-2xl space-y-3 mt-4">
+                    <div className="flex items-center gap-2 text-[9px] font-bold text-brand uppercase tracking-widest mb-1">
+                      <Sparkles size={12} /> Langkah Produksi Hari Ini
+                    </div>
+                    {editingItem.primaryAssetType ? (
+                      <div className="space-y-3">
+                        <div className="p-3 bg-brand/10 border border-brand/30 rounded-xl">
+                          <p className="text-[10px] text-zinc-300 mb-1">
+                            <strong>Prioritas Utama:</strong> <span className="uppercase font-black text-white">{editingItem.primaryAssetType}</span>
+                            {editingItem.recommendedAssetTypes && editingItem.recommendedAssetTypes.length > 1 && (
+                              <span className="text-zinc-500 ml-2 block mt-1">(Opsi tambahan: {editingItem.recommendedAssetTypes.filter(t => t !== editingItem.primaryAssetType).join(', ')})</span>
+                            )}
+                          </p>
+                          {editingItem.assetTypeReason && (
+                            <p className="text-[9.5px] text-zinc-400 italic mt-2 leading-relaxed">{editingItem.assetTypeReason}</p>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <button
                             onClick={() => {
-                              const idx = items.findIndex(i => i.no === editingItem.no);
-                              if (idx > 0) setEditingItem(items[idx - 1]);
+                              localStorage.setItem('alco_selected_item', JSON.stringify(editingItem));
+                              localStorage.setItem('alco_shared_context', JSON.stringify(configData?.sharedContentContext || null));
+                              router.push('/production-studio?tab=image');
                             }}
-                            disabled={items.findIndex(i => i.no === editingItem.no) === 0}
-                            className="p-1.5 hover:bg-zinc-800 text-zinc-500 hover:text-white rounded-lg transition-all disabled:opacity-20"
+                            className={`w-full py-2 ${editingItem.primaryAssetType === 'image' ? 'bg-brand text-black font-extrabold' : 'bg-zinc-800 text-zinc-300 font-bold hover:bg-zinc-700'} rounded-xl text-[9px] uppercase tracking-wider flex items-center justify-center transition-all text-center leading-tight`}
                           >
-                            <ChevronLeft size={16} />
+                            Buka Image Workshop
                           </button>
-                          <button 
+                          <button
                             onClick={() => {
-                              const idx = items.findIndex(i => i.no === editingItem.no);
-                              if (idx < items.length - 1) setEditingItem(items[idx + 1]);
+                              localStorage.setItem('alco_selected_item', JSON.stringify(editingItem));
+                              localStorage.setItem('alco_shared_context', JSON.stringify(configData?.sharedContentContext || null));
+                              router.push('/production-studio?tab=carousel');
                             }}
-                            disabled={items.findIndex(i => i.no === editingItem.no) === items.length - 1}
-                            className="p-1.5 hover:bg-zinc-800 text-zinc-500 hover:text-white rounded-lg transition-all disabled:opacity-20"
+                            className={`w-full py-2 ${editingItem.primaryAssetType === 'carousel' ? 'bg-brand text-black font-extrabold' : 'bg-zinc-800 text-zinc-300 font-bold hover:bg-zinc-700'} rounded-xl text-[9px] uppercase tracking-wider flex items-center justify-center transition-all text-center leading-tight`}
                           >
-                            <ChevronRight size={16} />
+                            Buka Carousel Workshop
                           </button>
-                          <div className="w-px h-4 bg-zinc-800 mx-1" />
-                          <button 
-                            onClick={() => setEditingItem(null)}
-                            className="p-1.5 hover:bg-zinc-800 text-zinc-500 hover:text-white rounded-lg transition-all"
+                          <button
+                            onClick={() => {
+                              localStorage.setItem('alco_selected_item', JSON.stringify(editingItem));
+                              localStorage.setItem('alco_shared_context', JSON.stringify(configData?.sharedContentContext || null));
+                              router.push('/production-studio?tab=video');
+                            }}
+                            className={`w-full py-2 ${editingItem.primaryAssetType === 'video' ? 'bg-brand text-black font-extrabold' : 'bg-zinc-800 text-zinc-300 font-bold hover:bg-zinc-700'} rounded-xl text-[9px] uppercase tracking-wider flex items-center justify-center transition-all text-center leading-tight`}
                           >
-                            <X size={16} />
+                            Buka Video Workshop
                           </button>
                         </div>
                       </div>
-
-                      {/* Content */}
-                      <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                        <InputField label="Headline" icon={Zap}>
-                          <input 
-                            type="text"
-                            value={editingItem.headline || ''}
-                            onChange={(e) => onUpdateItem({ ...editingItem, headline: e.target.value })}
-                            className="w-full bg-black/40 border border-zinc-800/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand/50 transition-colors"
-                          />
-                        </InputField>
-
-                        <InputField label="Body Content" icon={Layers}>
-                          <textarea 
-                            value={editingItem.body || ''}
-                            onChange={(e) => onUpdateItem({ ...editingItem, body: e.target.value })}
-                            className="w-full bg-black/40 border border-zinc-800/50 rounded-xl px-3 py-3 text-xs text-zinc-300 focus:outline-none focus:border-brand/50 transition-colors h-32 resize-none leading-relaxed custom-scrollbar"
-                          />
-                        </InputField>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="p-3 bg-black/20 border border-zinc-800/50 rounded-xl">
-                            <div className="text-[7px] font-bold text-zinc-600 uppercase tracking-widest mb-1">Hook Type</div>
-                            <p className="text-[10px] text-zinc-300">{editingItem.hookType}</p>
-                          </div>
-                          <div className="p-3 bg-black/20 border border-zinc-800/50 rounded-xl">
-                            <div className="text-[7px] font-bold text-zinc-600 uppercase tracking-widest mb-1">Format</div>
-                            <p className="text-[10px] text-zinc-300">{editingItem.format}</p>
-                          </div>
-                        </div>
-
-                        <div className="p-4 bg-brand/5 border border-brand/20 rounded-2xl space-y-3">
-                          <div className="flex items-center gap-2 text-[9px] font-bold text-brand uppercase tracking-widest">
-                            <Sparkles size={12} /> AI Revision
-                          </div>
-                          <textarea 
-                            value={revisions[editingItem.no] || ''}
-                            onChange={(e) => setRevisions(prev => ({ ...prev, [editingItem.no]: e.target.value }))}
-                            placeholder="Instruksi revisi..."
-                            className="w-full bg-black/40 border border-zinc-800/50 rounded-xl px-3 py-2 text-[10px] text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-brand/50 transition-colors h-16 resize-none custom-scrollbar"
-                          />
-                          <button 
-                            disabled={isLoading || !revisions[editingItem.no]}
-                            onClick={async () => {
-                              await onRegenerateItem(editingItem.no, revisions[editingItem.no]);
-                              setEditingItem(null);
-                            }}
-                            className="w-full h-8 bg-brand hover:bg-brand-dark text-black text-[9px] font-bold uppercase tracking-widest rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                          >
-                            {isLoading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                            Regenerate
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Footer */}
-                      <div className="p-5 border-t border-zinc-800/50 flex items-center gap-2">
-                        <button 
-                          onClick={() => setEditingItem(null)}
-                          className="flex-1 h-10 bg-brand hover:bg-brand-dark text-black font-bold rounded-xl text-[9px] uppercase tracking-widest transition-all"
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <button
+                          onClick={() => {
+                            localStorage.setItem('alco_selected_item', JSON.stringify(editingItem));
+                            localStorage.setItem('alco_shared_context', JSON.stringify(configData?.sharedContentContext || null));
+                            router.push('/production-studio?tab=image');
+                          }}
+                          className="w-full py-2 bg-zinc-800 text-zinc-300 font-bold hover:bg-zinc-700 rounded-xl text-[9px] uppercase tracking-wider flex items-center justify-center transition-all text-center leading-tight"
                         >
-                          Done
+                          Buka Image Workshop
+                        </button>
+                        <button
+                          onClick={() => {
+                            localStorage.setItem('alco_selected_item', JSON.stringify(editingItem));
+                            localStorage.setItem('alco_shared_context', JSON.stringify(configData?.sharedContentContext || null));
+                            router.push('/production-studio?tab=carousel');
+                          }}
+                          className="w-full py-2 bg-zinc-800 text-zinc-300 font-bold hover:bg-zinc-700 rounded-xl text-[9px] uppercase tracking-wider flex items-center justify-center transition-all text-center leading-tight"
+                        >
+                          Buka Carousel Workshop
+                        </button>
+                        <button
+                          onClick={() => {
+                            localStorage.setItem('alco_selected_item', JSON.stringify(editingItem));
+                            localStorage.setItem('alco_shared_context', JSON.stringify(configData?.sharedContentContext || null));
+                            router.push('/production-studio?tab=video');
+                          }}
+                          className="w-full py-2 bg-zinc-800 text-zinc-300 font-bold hover:bg-zinc-700 rounded-xl text-[9px] uppercase tracking-wider flex items-center justify-center transition-all text-center leading-tight"
+                        >
+                          Buka Video Workshop
                         </button>
                       </div>
+                    )}
+                  </div>
+
+                  <div className="p-4 bg-zinc-900/40 border border-zinc-800/50 rounded-2xl space-y-3">
+                    <div className="flex items-center gap-2 text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
+                      <Sparkles size={12} /> AI Revision
                     </div>
-                  </motion.div>
+                    <textarea 
+                      value={revisions[editingItem.no] || ''}
+                      onChange={(e) => setRevisions(prev => ({ ...prev, [editingItem.no]: e.target.value }))}
+                      placeholder="Instruksi revisi manual..."
+                      className="w-full bg-black/40 border border-zinc-800/50 rounded-xl px-3 py-2 text-[10px] text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-brand/50 transition-colors h-16 resize-none custom-scrollbar"
+                    />
+                    <button 
+                      onClick={() => {
+                        const instruction = revisions[editingItem.no];
+                        if (instruction) {
+                          onRegenerateItem(editingItem.no, instruction);
+                        }
+                      }}
+                      className="w-full py-2 bg-zinc-800 text-zinc-300 font-extrabold rounded-xl text-[9px] uppercase tracking-widest hover:bg-zinc-700 transition-all shadow-md"
+                    >
+                      Regenerate dengan AI
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-zinc-800/50">
+                    <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Production Generator</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { type: 'brief', label: 'Brief' },
+                        { type: 'caption', label: 'Caption' },
+                        { type: 'image', label: 'Image Prompt' },
+                        { type: 'carousel', label: 'Carousel' },
+                      ].map((asset) => (
+                        <button
+                          key={asset.type}
+                          onClick={() => handleGenerateProductionAsset(asset.type as any)}
+                          className="py-2 px-3 bg-zinc-800/40 hover:bg-zinc-800 text-zinc-300 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all border border-zinc-700/50 flex items-center justify-center gap-1.5"
+                        >
+                          <FileText size={12} className="text-brand" />
+                          {asset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {productionAsset && (
+                    <div className="p-4 bg-black/40 border border-brand/30 rounded-2xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-bold text-brand uppercase tracking-widest">{productionAsset.title}</span>
+                        <button
+                          onClick={() => {
+                            void (async () => {
+                              const copied = await safeCopyToClipboard(productionAsset.content);
+                              if (copied) {
+                                setCopiedAsset(true);
+                                setTimeout(() => setCopiedAsset(false), 2000);
+                              }
+                            })();
+                          }}
+                          className="px-2.5 py-1 bg-brand hover:brightness-105 text-black rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 transition-all"
+                        >
+                          {copiedAsset ? <Check size={10} /> : <Copy size={10} />}
+                          {copiedAsset ? 'Copied' : 'Copy'}
+                        </button>
+                      </div>
+                      <div className="max-h-40 overflow-y-auto custom-scrollbar p-3 bg-zinc-950 rounded-xl border border-zinc-800/80">
+                        {isGeneratingAsset ? (
+                          <div className="flex items-center justify-center py-4 gap-2 text-brand text-[10px]">
+                            <Loader2 size={14} className="animate-spin" /> Menghasilkan asset...
+                          </div>
+                        ) : (
+                          <pre className="text-[10px] font-mono text-zinc-300 whitespace-pre-wrap">{productionAsset.content}</pre>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </>
-            )}
-          </AnimatePresence>
-
-      <div className="flex flex-col md:flex-row items-center justify-between gap-6 pt-4 border-t border-zinc-800/30">
-        <div className="flex gap-6 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]" /> TOFU
+              </div>
+            </motion.div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.4)]" /> MOFU
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-brand shadow-[0_0_8px_rgba(177,153,249,0.4)]" /> BOFU
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 bg-zinc-900/40 p-1.5 rounded-xl border border-zinc-800/50">
-          <Filter size={14} className="text-zinc-500 ml-2" />
-          <select 
-            value={filterType || 'All'}
-            onChange={(e) => onFilterChange(e.target.value)}
-            className="bg-transparent border-none text-[10px] font-bold uppercase tracking-widest text-zinc-300 focus:outline-none cursor-pointer pr-4"
-          >
-            <option value="ALL" className="bg-zinc-900">All Types</option>
-            <option value="TOFU" className="bg-zinc-900">TOFU</option>
-            <option value="MOFU" className="bg-zinc-900">MOFU</option>
-            <option value="BOFU" className="bg-zinc-900">BOFU</option>
-          </select>
-        </div>
-      </div>
+        </>
+      )}
+    </AnimatePresence>
     </div>
   );
-};
+}
