@@ -117,64 +117,64 @@ export function StrategyIntakeModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
+          className="bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-xl overflow-hidden text-[#1f2933]"
         >
           {/* Modal Header */}
-          <div className="p-5 border-b border-zinc-800 flex items-center justify-between bg-zinc-950/60">
+          <div className="p-5 border-b border-[#e7e0d4] flex items-center justify-between bg-[#f6f3ee]">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/30 flex items-center justify-center text-brand">
+              <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0f766e]">
                 <Sparkles size={20} />
               </div>
               <div>
-                <h2 className="text-base font-black text-white uppercase tracking-tight">
+                <h2 className="text-base font-bold text-[#1f2933] tracking-tight">
                   ALCO Strategy Intake
                 </h2>
-                <p className="text-xs text-zinc-400">
+                <p className="text-xs text-[#627d98]">
                   Sinkronisasi Strategy Blueprint dari ALCO Creative System
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition"
+              className="p-2 text-[#627d98] hover:text-[#1f2933] rounded-lg hover:bg-black/5 transition"
             >
               <X size={18} />
             </button>
           </div>
 
           {/* Mode Switcher Tabs */}
-          <div className="px-6 pt-4 border-b border-zinc-800/80 bg-zinc-900 flex items-center gap-2 text-xs">
+          <div className="px-6 pt-4 border-b border-[#e7e0d4] bg-[#fffdf8] flex items-center gap-2 text-xs">
             <button
               onClick={() => setActiveTab('upload')}
-              className={`pb-3 px-3 font-bold border-b-2 flex items-center gap-1.5 transition ${
+              className={`pb-3 px-3 font-semibold border-b-2 flex items-center gap-1.5 transition ${
                 activeTab === 'upload'
-                  ? 'border-brand text-brand'
-                  : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                  ? 'border-[#0f766e] text-[#0f766e] font-bold'
+                  : 'border-transparent text-[#627d98] hover:text-[#1f2933]'
               }`}
             >
               <Upload size={14} /> Upload JSON
             </button>
             <button
               onClick={() => setActiveTab('paste')}
-              className={`pb-3 px-3 font-bold border-b-2 flex items-center gap-1.5 transition ${
+              className={`pb-3 px-3 font-semibold border-b-2 flex items-center gap-1.5 transition ${
                 activeTab === 'paste'
-                  ? 'border-brand text-brand'
-                  : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                  ? 'border-[#0f766e] text-[#0f766e] font-bold'
+                  : 'border-transparent text-[#627d98] hover:text-[#1f2933]'
               }`}
             >
               <Code2 size={14} /> Paste Blueprint
             </button>
             <button
               onClick={() => setActiveTab('form')}
-              className={`pb-3 px-3 font-bold border-b-2 flex items-center gap-1.5 transition ${
+              className={`pb-3 px-3 font-semibold border-b-2 flex items-center gap-1.5 transition ${
                 activeTab === 'form'
-                  ? 'border-brand text-brand'
-                  : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                  ? 'border-[#0f766e] text-[#0f766e] font-bold'
+                  : 'border-transparent text-[#627d98] hover:text-[#1f2933]'
               }`}
             >
               <FileText size={14} /> Review & Edit Blueprint
@@ -183,9 +183,9 @@ export function StrategyIntakeModal({
             <div className="ml-auto">
               <button
                 onClick={handleLoadSample}
-                className="mb-2 px-3 py-1 bg-brand/10 hover:bg-brand/20 border border-brand/30 text-brand text-[11px] font-bold rounded-lg transition flex items-center gap-1"
+                className="mb-2 px-3 py-1.5 bg-teal-50 hover:bg-teal-100 border border-teal-200 text-[#0f766e] text-xs font-semibold rounded-lg transition flex items-center gap-1.5"
               >
-                <Sparkles size={12} /> Load Demo Blueprint
+                <Sparkles size={13} /> Load Demo Blueprint
               </button>
             </div>
           </div>
@@ -193,8 +193,8 @@ export function StrategyIntakeModal({
           {/* Modal Body */}
           <div className="flex-1 p-6 overflow-y-auto space-y-6">
             {parseError && (
-              <div className="p-3 bg-red-950/40 border border-red-800/60 rounded-xl text-red-300 text-xs flex items-center gap-2">
-                <AlertTriangle size={16} className="shrink-0" />
+              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs flex items-center gap-2">
+                <AlertTriangle size={16} className="shrink-0 text-rose-600" />
                 {parseError}
               </div>
             )}
@@ -202,19 +202,19 @@ export function StrategyIntakeModal({
             {/* TAB 1: UPLOAD JSON */}
             {activeTab === 'upload' && (
               <div className="space-y-4">
-                <div className="border-2 border-dashed border-zinc-700 hover:border-brand/60 bg-zinc-950/40 rounded-2xl p-8 text-center transition flex flex-col items-center justify-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400">
-                    <Upload size={24} />
+                <div className="border-2 border-dashed border-[#e7e0d4] hover:border-[#0f766e] bg-[#f6f3ee]/50 rounded-2xl p-10 text-center transition flex flex-col items-center justify-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0f766e]">
+                    <Upload size={22} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-white">
+                    <p className="text-sm font-bold text-[#1f2933]">
                       Upload File Strategy Blueprint (.json)
                     </p>
-                    <p className="text-xs text-zinc-500 mt-1">
+                    <p className="text-xs text-[#627d98] mt-1">
                       Export file JSON dari ALCO Creative System Anda di sini
                     </p>
                   </div>
-                  <label className="mt-2 px-4 py-2 bg-brand text-black font-extrabold text-xs rounded-xl cursor-pointer hover:bg-brand/90 transition">
+                  <label className="mt-2 px-5 py-2.5 bg-[#0f766e] text-white font-bold text-xs rounded-xl cursor-pointer hover:bg-[#115e59] shadow-xs transition">
                     Pilih File JSON
                     <input
                       type="file"
@@ -230,7 +230,7 @@ export function StrategyIntakeModal({
             {/* TAB 2: PASTE JSON */}
             {activeTab === 'paste' && (
               <div className="space-y-3">
-                <label className="text-xs font-bold text-zinc-300 block">
+                <label className="text-xs font-semibold text-[#1f2933] block">
                   Paste JSON Blueprint
                 </label>
                 <textarea
@@ -238,11 +238,11 @@ export function StrategyIntakeModal({
                   onChange={(e) => setPastedJson(e.target.value)}
                   placeholder={`{\n  "project_name": "Course Launch 2026",\n  "brand_identity": {\n    "brand_name": "ALCO Academy"\n  }\n}`}
                   rows={10}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs font-mono text-zinc-200 focus:outline-none focus:border-brand"
+                  className="w-full bg-white border border-[#e7e0d4] rounded-xl p-3.5 text-xs font-mono text-[#1f2933] focus:outline-none focus:border-[#0f766e]"
                 />
                 <button
                   onClick={handleParsePastedJson}
-                  className="px-4 py-2 bg-brand text-black font-extrabold text-xs rounded-xl hover:bg-brand/90 transition flex items-center gap-2"
+                  className="px-5 py-2.5 bg-[#0f766e] text-white font-bold text-xs rounded-xl hover:bg-[#115e59] shadow-xs transition flex items-center gap-2"
                 >
                   Proses & Impor JSON
                   <ArrowRight size={14} />
@@ -255,22 +255,22 @@ export function StrategyIntakeModal({
               <div className="space-y-6">
                 {/* Campaign Pack Conversion Honest Status Banner */}
                 {importStatus?.isConverted && (
-                  <div className="p-3.5 bg-sky-950/40 border border-sky-800/60 rounded-xl text-sky-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-inner">
-                    <div className="flex items-center gap-2.5">
-                      <Sparkles size={16} className="text-sky-400 shrink-0" />
+                  <div className="p-4 bg-sky-50 border border-sky-200 rounded-xl text-sky-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <Sparkles size={18} className="text-sky-600 shrink-0" />
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold uppercase bg-sky-900/80 text-sky-200 px-2 py-0.5 rounded text-[10px]">
+                          <span className="font-semibold uppercase bg-sky-100 text-sky-800 px-2 py-0.5 rounded text-[10px]">
                             Imported as Campaign Pack
                           </span>
-                          <span className="font-bold text-xs text-white">Automated Strategic Mapping</span>
+                          <span className="font-bold text-xs text-sky-950">Automated Strategic Mapping</span>
                         </div>
-                        <p className="text-[11px] text-sky-300/80 mt-0.5">
+                        <p className="text-xs text-sky-700 mt-1">
                           JSON terdeteksi sebagai Campaign Pack Meta Ads. Data telah secara otomatis dipetakan ke Strategy Blueprint. Anda dapat mereview atau menyesuaikan field di bawah.
                         </p>
                       </div>
                     </div>
-                    <span className="text-[10px] text-sky-300 font-mono font-bold bg-sky-900/60 border border-sky-700/50 px-2 py-1 rounded-lg shrink-0 self-start sm:self-center">
+                    <span className="text-[10px] text-sky-800 font-semibold bg-sky-100 border border-sky-200 px-2.5 py-1 rounded-lg shrink-0 self-start sm:self-center">
                       Mapped into Content Context
                     </span>
                   </div>
@@ -280,14 +280,14 @@ export function StrategyIntakeModal({
                 <div
                   className={`p-4 rounded-xl border flex items-start gap-3 ${
                     validation.isComplete
-                      ? 'bg-emerald-950/20 border-emerald-800/50 text-emerald-300'
-                      : 'bg-amber-950/20 border-amber-800/50 text-amber-300'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                      : 'bg-amber-50 border-amber-200 text-amber-900'
                   }`}
                 >
                   {validation.isComplete ? (
-                    <CheckCircle2 size={20} className="shrink-0 mt-0.5 text-emerald-400" />
+                    <CheckCircle2 size={20} className="shrink-0 mt-0.5 text-emerald-600" />
                   ) : (
-                    <AlertTriangle size={20} className="shrink-0 mt-0.5 text-amber-400" />
+                    <AlertTriangle size={20} className="shrink-0 mt-0.5 text-amber-600" />
                   )}
                   <div className="text-xs">
                     <p className="font-bold text-sm">
@@ -296,15 +296,15 @@ export function StrategyIntakeModal({
                         : 'Field Wajib Belum Lengkap'}
                     </p>
                     {validation.isComplete ? (
-                      <p className="mt-1 text-emerald-400/80">
+                      <p className="mt-1 text-emerald-700">
                         Seluruh field wajib strategy intake telah terpenuhi. Kalender konten akan dibuat berlandaskan positioning & funnel ini.
                       </p>
                     ) : (
                       <div className="mt-1">
-                        <p className="text-amber-400/80">
+                        <p className="text-amber-800">
                           Beberapa data strategi penting belum diisi. Lengkapi di bawah agar AI tidak membuat konten generik:
                         </p>
-                        <ul className="list-disc list-inside mt-1 font-mono text-[11px] text-amber-300/90">
+                        <ul className="list-disc list-inside mt-1 font-medium text-xs text-amber-700">
                           {validation.missingFields.map((f, i) => (
                             <li key={i}>{f}</li>
                           ))}
@@ -317,13 +317,13 @@ export function StrategyIntakeModal({
                 {/* Editable Fields Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Brand Identity */}
-                  <div className="bg-zinc-950/60 p-4 border border-zinc-800 rounded-xl space-y-3">
-                    <div className="flex items-center gap-2 text-brand font-bold text-xs uppercase tracking-wider">
+                  <div className="bg-[#f6f3ee]/60 p-4 border border-[#e7e0d4] rounded-xl space-y-3">
+                    <div className="flex items-center gap-2 text-[#0f766e] font-bold text-xs uppercase tracking-wider">
                       <Building2 size={14} /> Brand Identity
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-semibold text-zinc-400 block mb-1">
+                      <label className="text-xs font-semibold text-[#627d98] block mb-1">
                         Brand Name *
                       </label>
                       <input
@@ -335,12 +335,12 @@ export function StrategyIntakeModal({
                             brand_identity: { ...blueprint.brand_identity, brand_name: e.target.value }
                           })
                         }
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-xs text-white focus:border-brand focus:outline-none"
+                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-[#0f766e] focus:outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-semibold text-zinc-400 block mb-1">
+                      <label className="text-xs font-semibold text-[#627d98] block mb-1">
                         Industry / Category
                       </label>
                       <input
@@ -352,19 +352,19 @@ export function StrategyIntakeModal({
                             brand_identity: { ...blueprint.brand_identity, category: e.target.value }
                           })
                         }
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-xs text-white focus:border-brand focus:outline-none"
+                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-[#0f766e] focus:outline-none"
                       />
                     </div>
                   </div>
 
                   {/* Target Audience */}
-                  <div className="bg-zinc-950/60 p-4 border border-zinc-800 rounded-xl space-y-3">
-                    <div className="flex items-center gap-2 text-brand font-bold text-xs uppercase tracking-wider">
+                  <div className="bg-[#f6f3ee]/60 p-4 border border-[#e7e0d4] rounded-xl space-y-3">
+                    <div className="flex items-center gap-2 text-[#0f766e] font-bold text-xs uppercase tracking-wider">
                       <Target size={14} /> Target Audience
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-semibold text-zinc-400 block mb-1">
+                      <label className="text-xs font-semibold text-[#627d98] block mb-1">
                         Primary Audience Segment *
                       </label>
                       <input
@@ -379,12 +379,12 @@ export function StrategyIntakeModal({
                             }
                           })
                         }
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-xs text-white focus:border-brand focus:outline-none"
+                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-[#0f766e] focus:outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-semibold text-zinc-400 block mb-1">
+                      <label className="text-xs font-semibold text-[#627d98] block mb-1">
                         Pain Points (Pisahkan Koma) *
                       </label>
                       <input
@@ -399,19 +399,19 @@ export function StrategyIntakeModal({
                             }
                           })
                         }
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-xs text-white focus:border-brand focus:outline-none"
+                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-[#0f766e] focus:outline-none"
                       />
                     </div>
                   </div>
 
                   {/* Positioning & Offer */}
-                  <div className="bg-zinc-950/60 p-4 border border-zinc-800 rounded-xl space-y-3">
-                    <div className="flex items-center gap-2 text-brand font-bold text-xs uppercase tracking-wider">
+                  <div className="bg-[#f6f3ee]/60 p-4 border border-[#e7e0d4] rounded-xl space-y-3">
+                    <div className="flex items-center gap-2 text-[#0f766e] font-bold text-xs uppercase tracking-wider">
                       <Briefcase size={14} /> Positioning & Offer
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-semibold text-zinc-400 block mb-1">
+                      <label className="text-xs font-semibold text-[#627d98] block mb-1">
                         Core Positioning *
                       </label>
                       <textarea
@@ -423,12 +423,12 @@ export function StrategyIntakeModal({
                             positioning: { ...blueprint.positioning, core_positioning: e.target.value }
                           })
                         }
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-xs text-white focus:border-brand focus:outline-none"
+                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-[#0f766e] focus:outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-semibold text-zinc-400 block mb-1">
+                      <label className="text-xs font-semibold text-[#627d98] block mb-1">
                         Main Offer *
                       </label>
                       <input
@@ -440,19 +440,19 @@ export function StrategyIntakeModal({
                             offer: { ...blueprint.offer, main_offer: e.target.value }
                           })
                         }
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-xs text-white focus:border-brand focus:outline-none"
+                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-[#0f766e] focus:outline-none"
                       />
                     </div>
                   </div>
 
                   {/* Messaging & Copy Direction */}
-                  <div className="bg-zinc-950/60 p-4 border border-zinc-800 rounded-xl space-y-3">
-                    <div className="flex items-center gap-2 text-brand font-bold text-xs uppercase tracking-wider">
+                  <div className="bg-[#f6f3ee]/60 p-4 border border-[#e7e0d4] rounded-xl space-y-3">
+                    <div className="flex items-center gap-2 text-[#0f766e] font-bold text-xs uppercase tracking-wider">
                       <Megaphone size={14} /> Core Message & Messaging
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-semibold text-zinc-400 block mb-1">
+                      <label className="text-xs font-semibold text-[#627d98] block mb-1">
                         Core Message *
                       </label>
                       <textarea
@@ -464,12 +464,12 @@ export function StrategyIntakeModal({
                             messaging: { ...blueprint.messaging, core_message: e.target.value }
                           })
                         }
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-xs text-white focus:border-brand focus:outline-none"
+                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-[#0f766e] focus:outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-semibold text-zinc-400 block mb-1">
+                      <label className="text-xs font-semibold text-[#627d98] block mb-1">
                         Brand Voice & Tone
                       </label>
                       <input
@@ -481,7 +481,7 @@ export function StrategyIntakeModal({
                             messaging: { ...blueprint.messaging, brand_voice: e.target.value }
                           })
                         }
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-xs text-white focus:border-brand focus:outline-none"
+                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-[#0f766e] focus:outline-none"
                       />
                     </div>
                   </div>
@@ -491,17 +491,17 @@ export function StrategyIntakeModal({
           </div>
 
           {/* Modal Footer Actions */}
-          <div className="p-4 border-t border-zinc-800 bg-zinc-950/80 flex items-center justify-between">
+          <div className="p-4 border-t border-[#e7e0d4] bg-[#f6f3ee]/80 flex items-center justify-between">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-xs text-zinc-400 hover:text-white font-semibold transition"
+              className="px-4 py-2 text-xs text-[#627d98] hover:text-[#1f2933] font-semibold transition"
             >
               Batal
             </button>
 
             <button
               onClick={handleSaveAndApply}
-              className="px-6 py-2.5 bg-brand hover:bg-brand/90 text-black font-extrabold text-xs rounded-xl transition flex items-center gap-2 shadow-lg"
+              className="px-6 py-2.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold text-xs rounded-xl transition flex items-center gap-2 shadow-xs"
             >
               <Sparkles size={16} />
               Terapkan Strategy Blueprint

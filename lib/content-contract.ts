@@ -114,6 +114,7 @@ export interface ContentItem {
   cta?: string;
   isManualEdited?: boolean;
   carousel_plan?: CarouselPlan;
+  projectId?: string;
 }
 
 export interface CarouselSlidePlan {
@@ -127,16 +128,19 @@ export interface CarouselSlidePlan {
     | 'framework'
     | 'proof'
     | 'cta'
-    | 'custom';
+    | 'custom'
+    | string;
   communication_job: string;
   headline: string;
   body: string;
   swipe_bridge?: string;
   emotional_state?: string;
   visual_intent: string;
-  visual_type?: 'scene' | 'diagram' | 'comparison' | 'checklist' | 'quote' | 'stat' | 'ui-mock' | 'custom';
+  visual_type?: 'scene' | 'diagram' | 'comparison' | 'checklist' | 'quote' | 'stat' | 'ui-mock' | 'custom' | string;
   text_zone?: string;
   negative_space_plan?: string;
+  production_prompt?: string;
+  slide_image_prompt?: string;
 }
 
 export interface CarouselPlan {

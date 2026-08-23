@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { resolveGeminiApiKey, missingGeminiApiKeyMessage } from "@/lib/gemini-api-key";
 
 export const dynamic = 'force-dynamic';
 
@@ -19,11 +20,11 @@ function getPromptHash(prompt: string): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = resolveGeminiApiKey(req);
     if (!apiKey) {
       return NextResponse.json(
-        { error: "GEMINI_API_KEY environment variable is missing" },
-        { status: 500 }
+        { error: missingGeminiApiKeyMessage },
+        { status: 403 }
       );
     }
 

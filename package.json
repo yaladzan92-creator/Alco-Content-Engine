@@ -4,12 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "cross-env ALCO_NEXT_DIST_DIR=.next-build NODE_ENV=production next build",
-    "start": "cross-env ALCO_NEXT_DIST_DIR=.next-build next start",
+    "build": "next build",
+    "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "verify": "npm run typecheck && npm run lint",
-    "verify:build": "npm run typecheck && npm run lint && npm run build"
+    "verify:build": "npm run typecheck && npm run lint && cross-env NODE_ENV=production next build",
+    "verify:stability": "node scripts/validate-stability.mjs",
+    "verify:full": "npm run verify:stability && npm run typecheck && npm run lint && cross-env NODE_ENV=production next build"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

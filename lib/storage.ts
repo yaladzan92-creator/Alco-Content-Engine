@@ -6,6 +6,7 @@ export interface ProjectMeta {
 
 export const STORAGE_KEYS = {
   ACTIVE_PROJECT_ID: 'alco_active_project_id',
+  SELECTED_PROJECT_ID: 'alco_selected_project_id',
   PROJECT_LIST: 'alco_project_list',
 };
 
@@ -43,6 +44,20 @@ export const setActiveProjectId = (projectId: string | null) => {
     localStorage.setItem(STORAGE_KEYS.ACTIVE_PROJECT_ID, projectId);
   } else {
     localStorage.removeItem(STORAGE_KEYS.ACTIVE_PROJECT_ID);
+  }
+};
+
+export const getSelectedProjectId = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(STORAGE_KEYS.SELECTED_PROJECT_ID);
+};
+
+export const setSelectedProjectId = (projectId: string | null) => {
+  if (typeof window === 'undefined') return;
+  if (projectId) {
+    localStorage.setItem(STORAGE_KEYS.SELECTED_PROJECT_ID, projectId);
+  } else {
+    localStorage.removeItem(STORAGE_KEYS.SELECTED_PROJECT_ID);
   }
 };
 

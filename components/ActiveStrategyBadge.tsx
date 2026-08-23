@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { SharedContentContext } from '@/lib/content-contract';
-import { Sparkles, Target, Layers, FileCode2, Edit3, CheckCircle, AlertCircle } from 'lucide-react';
+import { Sparkles, Target, Layers, FileCode2, Edit3, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface ActiveStrategyBadgeProps {
   context: SharedContentContext | null;
@@ -12,23 +12,23 @@ interface ActiveStrategyBadgeProps {
 export function ActiveStrategyBadge({ context, onOpenIntakeModal }: ActiveStrategyBadgeProps) {
   if (!context) {
     return (
-      <div className="bg-amber-950/20 border border-amber-800/40 rounded-2xl p-4 flex items-center justify-between gap-3 text-xs mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-            <AlertCircle size={16} />
+      <div className="bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl p-5 md:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs mb-6 shadow-sm">
+        <div className="flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-[#b7791f] shrink-0">
+            <AlertCircle size={20} />
           </div>
           <div>
-            <p className="font-bold text-amber-300 text-xs">Belum Ada Strategy Blueprint</p>
-            <p className="text-[11px] text-amber-400/70">
+            <p className="font-bold text-[#1f2933] text-sm">Belum Ada Strategy Blueprint</p>
+            <p className="text-xs text-[#627d98] mt-0.5">
               Impor JSON dari ALCO Creative System agar kalender dikomposisikan secara Strategy-First.
             </p>
           </div>
         </div>
         <button
           onClick={onOpenIntakeModal}
-          className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-[11px] rounded-xl transition shadow-md shrink-0 flex items-center gap-1.5"
+          className="px-4 py-2 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold text-xs rounded-xl transition shadow-sm shrink-0 flex items-center gap-2"
         >
-          <Sparkles size={12} />
+          <Sparkles size={14} />
           Impor Blueprint
         </button>
       </div>
@@ -38,61 +38,58 @@ export function ActiveStrategyBadge({ context, onOpenIntakeModal }: ActiveStrate
   const { brand_context, audience_context, strategy_context, system_flags } = context;
 
   return (
-    <div className="bg-zinc-900/80 border border-brand/20 rounded-2xl p-4 mb-4 backdrop-blur-md relative overflow-hidden">
-      {/* Decorative background glow */}
-      <div className="absolute top-0 right-0 w-64 h-full bg-brand/5 blur-2xl pointer-events-none" />
-
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2 flex-wrap">
+    <div className="bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl p-5 md:p-6 mb-6 shadow-sm relative overflow-hidden">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
             {context.source.origin === 'campaign_pack_converted' ? (
-              <span className="px-2 py-0.5 rounded-md bg-sky-950/80 border border-sky-700/60 text-sky-300 text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1">
-                <FileCode2 size={10} /> Imported as Campaign Pack → Mapped into Content Context
+              <span className="px-2.5 py-1 rounded-md bg-teal-50 border border-teal-200 text-[#0f766e] text-xs font-semibold flex items-center gap-1.5">
+                <FileCode2 size={12} /> Campaign Pack Import
               </span>
             ) : (
-              <span className="px-2 py-0.5 rounded-md bg-brand/10 border border-brand/30 text-brand text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1">
-                <FileCode2 size={10} /> ALCO Creative System Blueprint
+              <span className="px-2.5 py-1 rounded-md bg-teal-50 border border-teal-200 text-[#0f766e] text-xs font-semibold flex items-center gap-1.5">
+                <FileCode2 size={12} /> ALCO Strategy Blueprint
               </span>
             )}
-            <span className="text-xs font-black text-white uppercase tracking-tight">
+            <span className="text-sm font-black text-[#1f2933] tracking-tight">
               {brand_context.brand_name}
             </span>
             {system_flags.is_complete_for_planning ? (
-              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-950/40 border border-emerald-800/50 px-2 py-0.5 rounded-md">
-                <CheckCircle size={10} /> Strategy Complete
+              <span className="inline-flex items-center gap-1 text-xs text-[#0f766e] font-semibold bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-md">
+                <CheckCircle2 size={12} /> Strategy Complete
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-[10px] text-amber-400 font-bold bg-amber-950/40 border border-amber-800/50 px-2 py-0.5 rounded-md">
+              <span className="inline-flex items-center gap-1 text-xs text-[#b7791f] font-semibold bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-md">
                 Partial Strategy
               </span>
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-zinc-300 pt-1">
-            <div className="flex items-center gap-1.5 truncate">
-              <Target size={12} className="text-brand shrink-0" />
-              <span className="text-zinc-500">Audience:</span>
-              <span className="font-medium text-zinc-200 truncate">{audience_context.primary_audience}</span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-[#1f2933] pt-0.5">
+            <div className="flex items-center gap-2 truncate bg-[#f6f3ee] px-3 py-1.5 rounded-lg border border-[#e7e0d4]">
+              <Target size={13} className="text-[#0f766e] shrink-0" />
+              <span className="text-[#627d98] font-medium">Audience:</span>
+              <span className="font-semibold text-[#1f2933] truncate">{audience_context.primary_audience}</span>
             </div>
-            <div className="flex items-center gap-1.5 truncate">
-              <Layers size={12} className="text-brand shrink-0" />
-              <span className="text-zinc-500">Offer:</span>
-              <span className="font-medium text-zinc-200 truncate">{strategy_context.main_offer}</span>
+            <div className="flex items-center gap-2 truncate bg-[#f6f3ee] px-3 py-1.5 rounded-lg border border-[#e7e0d4]">
+              <Layers size={13} className="text-[#0f766e] shrink-0" />
+              <span className="text-[#627d98] font-medium">Offer:</span>
+              <span className="font-semibold text-[#1f2933] truncate">{strategy_context.main_offer}</span>
             </div>
-            <div className="flex items-center gap-1.5 truncate">
-              <Sparkles size={12} className="text-brand shrink-0" />
-              <span className="text-zinc-500">Message:</span>
-              <span className="font-medium text-zinc-200 truncate">{strategy_context.core_message}</span>
+            <div className="flex items-center gap-2 truncate bg-[#f6f3ee] px-3 py-1.5 rounded-lg border border-[#e7e0d4]">
+              <Sparkles size={13} className="text-[#b7791f] shrink-0" />
+              <span className="text-[#627d98] font-medium">Message:</span>
+              <span className="font-semibold text-[#1f2933] truncate">{strategy_context.core_message}</span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 pt-2 md:pt-0">
           <button
             onClick={onOpenIntakeModal}
-            className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white font-bold text-xs rounded-xl border border-zinc-700 transition flex items-center gap-1.5"
+            className="px-3.5 py-2 bg-white hover:bg-[#f6f3ee] text-[#1f2933] font-semibold text-xs rounded-xl border border-[#e7e0d4] transition shadow-xs flex items-center gap-1.5"
           >
-            <Edit3 size={13} />
+            <Edit3 size={13} className="text-[#0f766e]" />
             Ubah Blueprint Strategy
           </button>
         </div>

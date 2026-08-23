@@ -1,15 +1,16 @@
 import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
+import { resolveGeminiApiKey, missingGeminiApiKeyMessage } from "@/lib/gemini-api-key";
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+    const apiKey = resolveGeminiApiKey(req);
     if (!apiKey) {
       return NextResponse.json(
-        { error: "API key Gemini belum diatur." },
-        { status: 400 }
+        { error: missingGeminiApiKeyMessage },
+        { status: 403 }
       );
     }
 

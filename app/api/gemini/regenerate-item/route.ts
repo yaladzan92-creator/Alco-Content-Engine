@@ -1,15 +1,17 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
+import { buildFunnelPromptBlock, sanitizeCtaForFunnel } from "@/lib/funnel-rules";
+import { resolveGeminiApiKey, missingGeminiApiKeyMessage } from "@/lib/gemini-api-key";
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = resolveGeminiApiKey(req);
     if (!apiKey) {
       return NextResponse.json(
-        { error: "GEMINI_API_KEY environment variable is missing" },
-        { status: 500 }
+        { error: missingGeminiApiKeyMessage },
+        { status: 403 }
       );
     }
 
@@ -31,6 +33,7 @@ export async function POST(req: NextRequest) {
     const brandName = sharedContentContext?.brand_context?.brand_name || "ALCO Client";
     const mainOffer = sharedContentContext?.strategy_context?.main_offer || "Product/Service";
     const coreMessage = sharedContentContext?.strategy_context?.core_message || coreTopic || "General Campaign";
+    const itemStage = item.jenis || "TOFU";
 
     const prompt = `Rewrite and selectively improve the following content calendar item based on the user's specific revision instruction.
 
@@ -38,6 +41,9 @@ export async function POST(req: NextRequest) {
 - Brand: ${brandName}
 - Main Offer: ${mainOffer}
 - Core Campaign Topic / Message: ${coreMessage}
+
+### FUNNEL RULES CONTRACT (MANDATORY COMPLIANCE):
+${buildFunnelPromptBlock(itemStage)}
 
 ### CURRENT ITEM DETAILS:
 - Item No: #${item.no}
@@ -57,11 +63,12 @@ export async function POST(req: NextRequest) {
 "${instruction}"
 
 ### REVISION RULES:
-1. Preserve date ("tanggal"), format ("format"), and funnel stage ("jenis") UNLESS the user explicitly requests to change them.
-2. Ensure the revised headline, body, caption, and visual direction directly fulfill the user's revision instruction.
-3. Keep the content in natural, engaging Bahasa Indonesia aligned with the brand voice.
-4. Update "keterangan" to explain why this revised version fulfills both the funnel stage objective and the user's instruction.
-5. Do NOT output generic placeholder text. Produce ready-to-use marketing copy.`;
+1. Preserve date ("tanggal"), format ("format"), and funnel stage ("jenis") UNLESS the user explicitly requests to change them. Do NOT change a MOFU or TOFU item into BOFU style unless requested.
+2. Ensure the revised headline, body, caption, CTA, and visual direction strictly adhere to the funnel stage rules above. Avoid forbidden phrases and hard-selling on TOFU/MOFU.
+3. Ensure the revised headline, body, caption, and visual direction directly fulfill the user's revision instruction.
+4. Keep the content in natural, engaging Bahasa Indonesia aligned with the brand voice.
+5. Update "keterangan" to explain why this revised version fulfills both the funnel stage objective and the user's instruction.
+6. Do NOT output generic placeholder text. Produce ready-to-use marketing copy.`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3.5-flash",
@@ -93,10 +100,15 @@ export async function POST(req: NextRequest) {
     });
 
     const parsed = JSON.parse(response.text || '{}');
+    const finalStage = parsed.jenis || item.jenis || "TOFU";
+    const rawCta = parsed.cta || item.cta || "";
+    const sanitizedCta = sanitizeCtaForFunnel(rawCta, finalStage);
+
     return NextResponse.json({
       item: {
         ...item,
         ...parsed,
+        cta: sanitizedCta,
         isManualEdited: false // updated via AI revision
       }
     });

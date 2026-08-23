@@ -18,9 +18,25 @@ import {
   updateProjectMeta,
   getProjectList
 } from '@/lib/storage';
-import { StrategyIntakeModal } from '@/components/StrategyIntakeModal';
+import dynamic from 'next/dynamic';
 import { ActiveStrategyBadge } from '@/components/ActiveStrategyBadge';
-import CalendarView from '@/components/CalendarView';
+import { GeminiApiKeyControl } from '@/components/GeminiApiKeyControl';
+import { buildGeminiRequestHeaders } from '@/lib/client-gemini-key';
+
+const CalendarView = dynamic(() => import('@/components/CalendarView'), {
+  ssr: false,
+  loading: () => (
+    <div className="p-12 text-center text-zinc-500 flex flex-col items-center justify-center gap-3">
+      <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+      <span className="text-xs font-mono">Memuat Kalender Konten...</span>
+    </div>
+  ),
+});
+
+const StrategyIntakeModal = dynamic(
+  () => import('@/components/StrategyIntakeModal').then((mod) => mod.StrategyIntakeModal),
+  { ssr: false }
+);
 
 const safeCopyToClipboard = async (text: string) => {
   if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
@@ -37,6 +53,7 @@ const safeCopyToClipboard = async (text: string) => {
 };
 
 export default function HomePageClient() {
+  const [isMounted, setIsMounted] = useState(false);
   const [activeProjectId, setActiveProjectIdState] = useState<string | null>(null);
   const [projectList, setProjectList] = useState<any[]>([]);
 
@@ -68,6 +85,7 @@ export default function HomePageClient() {
 
   // Initialization & Storage
   useEffect(() => {
+    setIsMounted(true);
     if (typeof window !== 'undefined') {
       const pList = getProjectList();
       setProjectList(pList);
@@ -194,7 +212,7 @@ export default function HomePageClient() {
     try {
       const response = await fetch('/api/gemini/generate-calendar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: buildGeminiRequestHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           coreTopic: coreTopic || sharedContext?.brand_context?.brand_name || 'Peluncuran Produk Strategy',
           startDate,
@@ -278,7 +296,7 @@ export default function HomePageClient() {
     try {
       const res = await fetch('/api/gemini/regenerate-item', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: buildGeminiRequestHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           item: target,
           instruction,
@@ -398,103 +416,255 @@ export default function HomePageClient() {
     strategyBlueprint: strategyBlueprint
   };
 
+  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+
+  const tofuCount = items.filter(i => (i.jenis || '').toUpperCase().includes('TOFU')).length;
+  const mofuCount = items.filter(i => (i.jenis || '').toUpperCase().includes('MOFU')).length;
+  const bofuCount = items.filter(i => (i.jenis || '').toUpperCase().includes('BOFU')).length;
+
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans">
-      <AnimatePresence>
-        {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed top-4 right-4 z-[9999] bg-brand text-black font-bold px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 text-xs border border-brand/50"
-          >
-            <Sparkles size={14} />
-            {toastMessage}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <header className="border-b border-zinc-800/60 bg-zinc-900/40 backdrop-blur-xl sticky top-0 z-40 px-4 md:px-8 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-2xl bg-brand/10 border border-brand/30 flex items-center justify-center text-brand">
-            <Zap size={18} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm font-black tracking-tight text-white uppercase">ALCO CONTENT ENGINE</h1>
-              <span className="px-2 py-0.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-[8px] font-mono font-bold tracking-widest uppercase">
-                Strategy-First v2.5
-              </span>
-            </div>
-            <p className="text-[10px] text-zinc-400">Content Operating System — Stage 2 after ALCO Creative System</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {projectList.length > 0 && (
-            <div className="relative group mr-2">
-              <button className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-xl text-[10px] font-bold text-zinc-300">
-                <FolderOpen size={12} className="text-zinc-500" />
-                {projectList.find(p => p.project_id === activeProjectId)?.project_name || 'Select Project'}
-              </button>
-              <div className="absolute top-full mt-1 right-0 w-48 bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden hidden group-hover:block z-50">
-                {projectList.map(p => (
-                  <button
-                    key={p.project_id}
-                    onClick={() => {
-                      setActiveProjectIdState(p.project_id);
-                      setActiveProjectId(p.project_id);
-                      window.location.reload();
-                    }}
-                    className={`w-full text-left px-3 py-2 text-[10px] hover:bg-zinc-800 transition-colors ${activeProjectId === p.project_id ? 'text-brand font-bold' : 'text-zinc-400'}`}
-                  >
-                    {p.project_name}
-                  </button>
-                ))}
-                <button
-                  onClick={() => {
-                    setActiveProjectIdState(null);
-                    setActiveProjectId(null);
-                    window.location.reload();
-                  }}
-                  className="w-full text-left px-3 py-2 text-[10px] text-red-400 hover:bg-zinc-800 transition-colors border-t border-zinc-800"
-                >
-                  Clear Active Project
-                </button>
-              </div>
-            </div>
+    <main className="min-h-screen bg-[#f6f3ee] text-[#1f2933] flex flex-col font-sans">
+      {/* Notification Toast */}
+      {isMounted && (
+        <AnimatePresence>
+          {toastMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="fixed top-4 right-4 z-[9999] bg-[#0f766e] text-white font-bold px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 text-xs border border-teal-600"
+            >
+              <Sparkles size={14} />
+              {toastMessage}
+            </motion.div>
           )}
-          <button
-            onClick={() => setIsIntakeModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-bold rounded-xl text-xs transition"
-          >
-            <FileText size={14} className="text-brand" />
-            Strategy Intake
-          </button>
+        </AnimatePresence>
+      )}
 
-          <div className="hidden sm:flex items-center bg-zinc-900 border border-zinc-800 rounded-xl p-1 text-[10px]">
-            {['ALL', 'TOFU', 'MOFU', 'BOFU'].map(type => (
-              <button
-                key={type}
-                onClick={() => setFilterType(type)}
-                className={`px-3 py-1 rounded-lg font-bold transition-all ${
-                  filterType === type ? 'bg-brand text-black shadow-sm' : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                {type}
-              </button>
-            ))}
+      <header className="border-b border-[#e7e0d4] bg-[#fffdf8]/90 backdrop-blur-md sticky top-0 z-40 px-4 md:px-8 py-3">
+        {/* Desktop & Mobile Main Row */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0f766e] shrink-0 shadow-xs">
+              <Zap size={18} />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm md:text-base font-bold tracking-tight text-[#1f2933] truncate">
+                  <span className="md:hidden">ALCO ENGINE</span>
+                  <span className="hidden md:inline">ALCO Content Engine</span>
+                </h1>
+                <span className="px-2 py-0.5 rounded-md bg-teal-50 border border-teal-200 text-[#0f766e] text-[10px] font-semibold tracking-wide shrink-0">
+                  <span className="md:hidden">Stage 2</span>
+                  <span className="hidden md:inline">Strategy-First v2.5</span>
+                </span>
+              </div>
+              <p className="text-xs text-[#627d98] truncate hidden sm:block">
+                Content Operating System - Stage 2 after ALCO Creative System
+              </p>
+            </div>
           </div>
 
-          <button
-            onClick={() => setIsConfiguring(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-brand hover:bg-brand/90 text-black font-extrabold rounded-xl text-xs transition-all shadow-lg"
-          >
-            <Layers size={14} />
-            {items.length > 0 ? 'Edit Parameter' : 'Buat Kalender Baru'}
-          </button>
+          {/* Desktop Navigation & Actions */}
+          <div className="hidden md:flex items-center gap-2.5">
+            {projectList.length > 0 && (
+              <div className="relative">
+                <button
+                  onClick={() => setIsProjectDropdownOpen(prev => !prev)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white border border-[#e7e0d4] rounded-xl text-xs font-semibold text-[#1f2933] hover:bg-[#f6f3ee] transition shadow-xs"
+                >
+                  <FolderOpen size={14} className="text-[#0f766e]" />
+                  <span className="max-w-[140px] truncate">
+                    {projectList.find(p => p.project_id === activeProjectId)?.project_name || 'Pilih Project'}
+                  </span>
+                </button>
+                {isProjectDropdownOpen && (
+                  <div className="absolute top-full mt-1.5 right-0 w-56 bg-[#fffdf8] border border-[#e7e0d4] rounded-xl shadow-lg overflow-hidden z-50">
+                    <div className="p-2.5 text-xs font-semibold text-[#627d98] border-b border-[#e7e0d4] bg-[#f6f3ee]">
+                      Pilih Project
+                    </div>
+                    <div className="max-h-60 overflow-y-auto custom-scrollbar">
+                      {projectList.map(p => (
+                        <button
+                          key={p.project_id}
+                          onClick={() => {
+                            setActiveProjectIdState(p.project_id);
+                            setActiveProjectId(p.project_id);
+                            setIsProjectDropdownOpen(false);
+                            window.location.reload();
+                          }}
+                          className={`w-full text-left px-3.5 py-2.5 text-xs transition-colors ${activeProjectId === p.project_id ? 'text-[#0f766e] font-bold bg-teal-50' : 'text-[#1f2933] hover:bg-[#f6f3ee]'}`}
+                        >
+                          {p.project_name}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => {
+                        setActiveProjectIdState(null);
+                        setActiveProjectId(null);
+                        setIsProjectDropdownOpen(false);
+                        window.location.reload();
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors border-t border-[#e7e0d4]"
+                    >
+                      Kosongkan Project Aktif
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            <GeminiApiKeyControl onToast={showToast} />
+
+            <button
+              onClick={() => setIsIntakeModalOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-[#f6f3ee] text-[#1f2933] border border-[#e7e0d4] font-semibold rounded-xl text-xs transition shadow-xs"
+            >
+              <FileText size={14} className="text-[#0f766e]" />
+              Input Strategi
+            </button>
+
+            <div className="flex items-center bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl p-1 text-xs">
+              {[
+                { type: 'ALL', count: items.length },
+                { type: 'TOFU', count: tofuCount },
+                { type: 'MOFU', count: mofuCount },
+                { type: 'BOFU', count: bofuCount }
+              ].map(({ type, count }) => (
+                <button
+                  key={type}
+                  onClick={() => setFilterType(type)}
+                  className={`px-3 py-1 rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
+                    filterType === type ? 'bg-[#0f766e] text-white shadow-xs font-bold' : 'text-[#627d98] hover:text-[#1f2933]'
+                  }`}
+                >
+                  <span>{type}</span>
+                  {items.length > 0 && count > 0 && (
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${filterType === type ? 'bg-white/20 text-white' : 'bg-black/5 text-[#627d98]'}`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setIsConfiguring(true)}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold rounded-xl text-xs transition-all shadow-sm shrink-0"
+            >
+              <Layers size={14} />
+              {items.length > 0 ? 'Edit Parameter' : 'Buat Kalender Baru'}
+            </button>
+          </div>
+
+          {/* Mobile Right Controls: API Key */}
+          <div className="flex md:hidden items-center gap-2">
+            <GeminiApiKeyControl variant="compact" onToast={showToast} />
+          </div>
         </div>
-      </header>      <div className="flex-1 p-3 md:p-6 max-w-[1600px] w-full mx-auto space-y-4">
+
+        {/* Mobile Rows: Row 2 (Projects & Primary CTAs) and Row 3 (Filters) */}
+        <div className="md:hidden mt-2.5 pt-2.5 border-t border-[#e7e0d4] space-y-2">
+          {/* Row 2: Project selector & Primary CTAs */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-0.5 no-scrollbar">
+            {projectList.length > 0 && (
+              <div className="relative shrink-0">
+                <button
+                  onClick={() => setIsProjectDropdownOpen(prev => !prev)}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-white border border-[#e7e0d4] rounded-xl text-xs font-semibold text-[#1f2933] min-h-[38px] shadow-xs"
+                >
+                  <FolderOpen size={13} className="text-[#0f766e]" />
+                  <span className="max-w-[95px] truncate">
+                    {projectList.find(p => p.project_id === activeProjectId)?.project_name || 'Project'}
+                  </span>
+                </button>
+                {isProjectDropdownOpen && (
+                  <div className="absolute top-full mt-1.5 left-0 w-52 bg-[#fffdf8] border border-[#e7e0d4] rounded-xl shadow-xl overflow-hidden z-50">
+                    <div className="p-2.5 text-xs font-semibold text-[#627d98] bg-[#f6f3ee] border-b border-[#e7e0d4]">
+                      Pilih Project
+                    </div>
+                    {projectList.map(p => (
+                      <button
+                        key={p.project_id}
+                        onClick={() => {
+                          setActiveProjectIdState(p.project_id);
+                          setActiveProjectId(p.project_id);
+                          setIsProjectDropdownOpen(false);
+                          window.location.reload();
+                        }}
+                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${activeProjectId === p.project_id ? 'text-[#0f766e] font-bold bg-teal-50' : 'text-[#1f2933]'}`}
+                      >
+                        {p.project_name}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => {
+                        setActiveProjectIdState(null);
+                        setActiveProjectId(null);
+                        setIsProjectDropdownOpen(false);
+                        window.location.reload();
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors border-t border-[#e7e0d4]"
+                    >
+                      Kosongkan Project Aktif
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              onClick={() => setIsIntakeModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-[#f6f3ee] text-[#1f2933] border border-[#e7e0d4] font-semibold rounded-xl text-xs shrink-0 min-h-[38px] shadow-xs"
+            >
+              <FileText size={13} className="text-[#0f766e]" />
+              Input Strategi
+            </button>
+
+            <button
+              onClick={() => setIsConfiguring(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold rounded-xl text-xs shadow-sm shrink-0 min-h-[38px]"
+            >
+              <Layers size={13} />
+              {items.length > 0 ? 'Edit Parameter' : 'Buat Kalender'}
+            </button>
+          </div>
+
+          {/* Row 3: Mobile Funnel Filters */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-0.5 no-scrollbar">
+            {[
+              { type: 'ALL', label: 'Semua', count: items.length, color: 'text-[#1f2933]' },
+              { type: 'TOFU', label: 'TOFU Awareness', count: tofuCount, color: 'text-teal-700' },
+              { type: 'MOFU', label: 'MOFU Consideration', count: mofuCount, color: 'text-amber-700' },
+              { type: 'BOFU', label: 'BOFU Conversion', count: bofuCount, color: 'text-[#0f766e]' }
+            ].map(({ type, label, count, color }) => {
+              const isSelected = filterType === type;
+              return (
+                <button
+                  key={type}
+                  onClick={() => setFilterType(type)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all flex items-center gap-1.5 min-h-[36px] border ${
+                    isSelected
+                      ? 'bg-[#0f766e] text-white border-[#0f766e] font-bold shadow-xs'
+                      : 'bg-white border-[#e7e0d4] text-[#627d98] hover:text-[#1f2933]'
+                  }`}
+                >
+                  <span className={isSelected ? 'text-white' : color}>{label}</span>
+                  {items.length > 0 && (
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
+                      isSelected ? 'bg-white/20 text-white' : 'bg-black/5 text-[#627d98]'
+                    }`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </header>
+
+      <div className="flex-1 p-4 md:p-8 max-w-[1600px] w-full mx-auto space-y-6">
         {activeProjectId && sharedContext ? (
           <ActiveStrategyBadge
             context={sharedContext}
@@ -503,17 +673,16 @@ export default function HomePageClient() {
         ) : null}
 
         {(!activeProjectId || (items.length === 0 && !isConfiguring)) && (
-          <div className="bg-gradient-to-br from-zinc-900/90 via-zinc-900/60 to-zinc-950 border border-brand/30 rounded-2xl p-6 md:p-8 text-center space-y-6 shadow-2xl relative overflow-hidden">
-            <div className="absolute -top-24 -right-24 w-72 h-72 bg-brand/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl p-8 md:p-12 text-center space-y-6 shadow-sm relative overflow-hidden">
             <div className="max-w-2xl mx-auto space-y-3 relative z-10">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand/10 border border-brand/30 text-brand text-xs font-mono font-bold tracking-wider uppercase">
-                <Sparkles size={13} />
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-[#0f766e] text-xs font-semibold">
+                <Sparkles size={14} />
                 Langkah Pertama Strategy
               </div>
-              <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+              <h2 className="text-2xl md:text-3xl font-bold text-[#1f2933] tracking-tight">
                 {activeProjectId ? 'Buat Kalender Konten Anda' : 'Belum Ada Project Aktif'}
               </h2>
-              <p className="text-xs md:text-sm text-zinc-400 leading-relaxed">
+              <p className="text-sm text-[#627d98] leading-relaxed">
                 {activeProjectId 
                   ? 'Sistem otomatisasi kalender konten berbasis strategi funnel (TOFU, MOFU, BOFU). Silakan pilih langkah awal untuk mulai menyusun kalender strategi konten Anda.'
                   : 'Sistem penyimpanan sekarang berbasis project agar data tidak tercampur. Mulai Strategy Intake baru untuk membuat project pertama Anda.'}
@@ -523,9 +692,9 @@ export default function HomePageClient() {
               {!activeProjectId && (
                 <button
                   onClick={() => setIsIntakeModalOpen(true)}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-brand hover:bg-brand/90 text-black font-extrabold rounded-xl text-xs shadow-xl transition-all group"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold rounded-xl text-xs shadow-sm transition-all group"
                 >
-                  <FileText size={16} className="group-hover:scale-110 transition-transform" />
+                  <FileText size={16} className="group-hover:scale-105 transition-transform" />
                   Mulai Project Baru
                 </button>
               )}
@@ -533,16 +702,16 @@ export default function HomePageClient() {
                 <>
                   <button
                     onClick={() => setIsIntakeModalOpen(true)}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-xl text-xs border border-zinc-700 shadow-lg transition-all group"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-white hover:bg-[#f6f3ee] text-[#1f2933] font-semibold rounded-xl text-xs border border-[#e7e0d4] shadow-xs transition-all group"
                   >
-                    <FileText size={16} className="text-brand group-hover:scale-110 transition-transform" />
+                    <FileText size={16} className="text-[#0f766e] group-hover:scale-105 transition-transform" />
                     Edit Strategy
                   </button>
                   <button
                     onClick={() => setIsConfiguring(true)}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-brand hover:bg-brand/90 text-black font-extrabold rounded-xl text-xs shadow-xl transition-all group"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold rounded-xl text-xs shadow-sm transition-all group"
                   >
-                    <Layers size={16} className="group-hover:scale-110 transition-transform" />
+                    <Layers size={16} className="group-hover:scale-105 transition-transform" />
                     Buat Kalender Pertama
                   </button>
                 </>
@@ -618,7 +787,8 @@ export default function HomePageClient() {
                 offers: [{ ctaText: sharedContext?.strategy_context?.main_offer || "Link Bio" }]
               },
               sharedContentContext: sharedContext,
-              strategyBlueprint: strategyBlueprint
+              strategyBlueprint: strategyBlueprint,
+              selectedProject: activeProjectId
             }}
           />
         )}
@@ -631,9 +801,9 @@ export default function HomePageClient() {
         currentBlueprint={strategyBlueprint}
       />
 
-      <footer className="border-t border-zinc-900 bg-zinc-950 py-3 px-6 flex justify-between items-center text-[10px] text-zinc-500 font-mono">
+      <footer className="border-t border-[#e7e0d4] bg-[#fffdf8] py-4 px-6 md:px-8 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-[#627d98]">
         <div>ALCO Content Engine — Powered by Google Gemini 3.6 Flash & Strategy Blueprint</div>
-        <div className="flex gap-4">
+        <div className="flex gap-4 font-medium">
           <span>Funnel Items: {items.length}</span>
           <span>Strategy Status: {sharedContext?.system_flags?.is_complete_for_planning ? 'Complete' : 'Partial'}</span>
         </div>

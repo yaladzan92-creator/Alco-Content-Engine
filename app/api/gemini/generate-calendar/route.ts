@@ -7,16 +7,18 @@ import {
   buildSharedContentContext,
   SharedContentContext
 } from "@/lib/content-contract";
+import { buildFunnelPromptBlock, sanitizeCtaForFunnel } from "@/lib/funnel-rules";
+import { resolveGeminiApiKey, missingGeminiApiKeyMessage } from "@/lib/gemini-api-key";
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = resolveGeminiApiKey(req);
     if (!apiKey) {
       return NextResponse.json(
-        { error: "GEMINI_API_KEY environment variable is missing" },
-        { status: 500 }
+        { error: missingGeminiApiKeyMessage },
+        { status: 403 }
       );
     }
 
@@ -129,13 +131,18 @@ Your task is to synthesize a high-converting, strategy-first Content Calendar Ma
 - Hook Mix Strategy: ${hookMixText}
 - Reference Logic: ${referenceType}
 
+### FUNNEL RULES CONTRACT (MANDATORY COMPLIANCE):
+${buildFunnelPromptBlock('TOFU')}
+${buildFunnelPromptBlock('MOFU')}
+${buildFunnelPromptBlock('BOFU')}
+
 ### MANDATORY GUIDELINES:
 1. Generate EXACTLY ${totalPosts} post items in sequential order (1 to ${totalPosts}).
 2. Calculate dates strictly starting from "${startDate}", skipping excluded days (${skipDays.join(', ') || 'none'}). Format: "YYYY-MM-DD".
 3. Maintain the requested funnel ratio: ~${ratio.tofu} TOFU, ~${ratio.mofu} MOFU, ~${ratio.bofu} BOFU items.
-   - TOFU (Awareness): Focus on audience pain points, myths, relational hooks, and broad problem recognition. Soft or zero sales pressure.
-   - MOFU (Consideration): Focus on positioning, core message, USP, framework/how-to, handling objections, and building trust.
-   - BOFU (Conversion): Focus directly on main offer, product benefits, social proof, urgency, and direct CTA (Link Bio, DM, Order).
+   - TOFU (Awareness): Focus on audience pain points, myths, relational hooks, and broad problem recognition. Soft or zero sales pressure. CTA MUST be soft (e.g., 'Simpan ide ini', 'Cek contoh lanjutannya'). Absolutely NO sales or conversion CTAs ('klik link bio', 'daftar sekarang', 'mumpung gratis', 'beli sekarang').
+   - MOFU (Consideration): Focus on positioning, core message, USP, framework/how-to, handling objections, and building trust. CTA MUST be soft action (e.g., 'Cek framework ini', 'Simpan checklist ini', 'Audit alur kontenmu'). Absolutely NO sales/hard closing ('klik link bio', 'daftar sekarang', 'mumpung gratis', 'beli sekarang').
+   - BOFU (Conversion): Focus directly on main offer, product benefits, social proof, urgency, and direct CTA ('Lihat demo', 'Daftar sekarang', 'Ambil penawaran', 'Konsultasi sekarang').
 4. Every single item MUST have a clear strategic daily objective ("tujuan") specifying what business/funnel goal this post accomplishes today.
 5. Every single item MUST have a strategic rationale ("keterangan") explaining why this specific content belongs in its designated funnel stage.
 6. Headlines, Body, Visual Prompt, and Captions MUST be written in natural, persuasive Bahasa Indonesia matching the Brand Voice.
@@ -250,9 +257,18 @@ Return ONLY the JSON matching the specified schema.`;
     });
 
     const parsed = JSON.parse(response.text || '{"items":[]}');
+    const sanitizedItems = (parsed.items || []).map((item: any) => ({
+      ...item,
+      cta: sanitizeCtaForFunnel(item.cta, item.jenis),
+    }));
+    const sanitizedGrowthItems = (parsed.growthItems || []).map((item: any) => ({
+      ...item,
+      cta: sanitizeCtaForFunnel(item.cta, item.jenis),
+    }));
+
     return NextResponse.json({
-      items: parsed.items || [],
-      growthItems: parsed.growthItems || [],
+      items: sanitizedItems,
+      growthItems: sanitizedGrowthItems,
       contextSummary: {
         brandName: context.brand_context.brand_name,
         primaryAudience: context.audience_context.primary_audience,
