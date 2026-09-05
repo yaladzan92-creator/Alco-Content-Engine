@@ -13,8 +13,8 @@
     "verify": "npm run typecheck && npm run lint",
     "verify:build": "npm run typecheck && npm run lint && cross-env NODE_ENV=production next build",
     "verify:stability": "node scripts/validate-stability.mjs",
-    "verify:full": "npm run verify:stability && npm run typecheck && npm run lint && cross-env NODE_ENV=production next build"
-    ,"desktop:build": "npm run build && electron-builder --win nsis"
+    "verify:full": "npm run verify:stability && npm run typecheck && npm run lint && cross-env NODE_ENV=production next build",
+    "desktop:build": "npm run build && electron-builder --config electron-builder.json --win nsis"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -50,41 +50,5 @@
     "electron": "^44.1.1",
     "electron-builder": "^26.15.3",
     "wait-on": "^9.0.0"
-  },
-  "build": {
-    "appId": "com.alco.contentengine",
-    "productName": "ALCO Content Engine",
-    "icon": "assets/icon.ico",
-    "directories": {
-      "output": "dist-electron"
-    },
-    "files": [
-      ".next/**/*",
-      "public/**/*",
-      "electron/**/*",
-      "package.json"
-    ],
-    "asarUnpack": [
-      ".next/**/*",
-      "node_modules/next/**/*",
-      "node_modules/@google/genai/**/*",
-      "node_modules/sharp/**/*",
-      "node_modules/@img/**/*"
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": ["x64"]
-        }
-      ]
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "artifactName": "ALCO Content Engine Setup ${version}.${ext}"
-    }
   }
 }

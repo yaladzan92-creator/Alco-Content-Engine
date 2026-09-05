@@ -1,0 +1,38 @@
+{
+  "appId": "com.alco.contentengine",
+  "productName": "ALCO Content Engine",
+  "icon": "assets/icon.ico",
+  "directories": {
+    "output": "dist-electron"
+  },
+  "files": [
+    ".next/**/*",
+    "public/**/*",
+    "electron/**/*",
+    "package.json"
+  ],
+  "asarUnpack": [
+    ".next/**/*",
+    "node_modules/next/**/*",
+    "node_modules/@google/genai/**/*",
+    "node_modules/sharp/**/*",
+    "node_modules/@img/**/*"
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      }
+    ]
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "artifactName": "ALCO Content Engine Setup ${version}.${ext}"
+  }
+}
