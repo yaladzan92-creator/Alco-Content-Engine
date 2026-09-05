@@ -1,38 +1,117 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --primary: #0f766e;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+  --sidebar: #ffffff;
+  --sidebar-border: #e2e8f0;
+}
+
+.dark, [data-theme="dark"] {
+  --background: #0b0f17;
+  --foreground: #f8fafc;
+  --card: #0f172a;
+  --card-foreground: #f8fafc;
+  --primary: #0f766e;
+  --primary-foreground: #ffffff;
+  --secondary: #1e293b;
+  --secondary-foreground: #f8fafc;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --border: #1e293b;
+  --sidebar: #020617;
+  --sidebar-border: #1e293b;
+}
+
 @theme {
-  --color-background: #f8fafc;
-  --color-foreground: #0f172a;
-  --color-card: #ffffff;
-  --color-card-foreground: #0f172a;
-  --color-primary: #2563eb;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #eef2ff;
-  --color-muted: #f1f5f9;
-  --color-muted-foreground: #64748b;
-  --color-border: #e2e8f0;
-  --color-sidebar: #ffffff;
-  --color-sidebar-border: #e2e8f0;
-  --color-brand: #2563eb;
-  --color-brand-muted: #3b82f6;
-  --color-brand-dark: #1d4ed8;
-  --color-brand-surface: #eff6ff;
-  --color-accent-amber: #b7791f;
-  --color-accent-amber-light: #fef3c7;
-  --color-editorial-bg: #f8fafc;
-  --color-editorial-card: #ffffff;
-  --color-editorial-text: #0f172a;
-  --color-editorial-muted: #64748b;
-  --color-editorial-border: #e2e8f0;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-border: var(--sidebar-border);
 }
 
 @layer base {
   body {
-    background-color: #f8fafc;
-    color: #0f172a;
+    background-color: var(--background);
+    color: var(--foreground);
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   }
+}
+
+/* Dark mode ALCO Hub palette overrides for legacy cream/beige tokens */
+.dark body {
+  background-color: #0b0f17 !important;
+  color: #f8fafc !important;
+}
+
+.dark .bg-\[\#fffdf8\] {
+  background-color: #0f172a !important;
+}
+
+.dark .bg-\[\#f6f3ee\] {
+  background-color: #1e293b !important;
+}
+
+.dark .border-\[\#e7e0d4\] {
+  border-color: #1e293b !important;
+}
+
+.dark .text-\[\#1f2933\] {
+  color: #f8fafc !important;
+}
+
+.dark .bg-white {
+  background-color: #0f172a !important;
+}
+
+.dark .text-stone-900 {
+  color: #f8fafc !important;
+}
+
+.dark .text-stone-800 {
+  color: #e2e8f0 !important;
+}
+
+.dark .text-stone-700 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-stone-600 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-stone-500 {
+  color: #64748b !important;
+}
+
+.dark .bg-stone-50 {
+  background-color: #1e293b !important;
+}
+
+.dark .bg-stone-100 {
+  background-color: #1e293b !important;
+}
+
+.dark .border-stone-200 {
+  border-color: #334155 !important;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -45,9 +124,17 @@
   border-radius: 9999px;
 }
 
+.dark .custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.5);
+}
+
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: rgba(186, 175, 160, 0.7);
   border-radius: 9999px;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.7);
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
@@ -69,6 +156,15 @@
   box-shadow: 0 2px 12px -2px rgba(31, 41, 51, 0.05), 0 1px 3px 0 rgba(31, 41, 51, 0.03);
 }
 
+.dark .editorial-shadow {
+  box-shadow: 0 2px 12px -2px rgba(0, 0, 0, 0.3), 0 1px 3px 0 rgba(0, 0, 0, 0.2);
+}
+
 .editorial-shadow-lg {
   box-shadow: 0 10px 25px -5px rgba(31, 41, 51, 0.08), 0 4px 10px -2px rgba(31, 41, 51, 0.03);
 }
+
+.dark .editorial-shadow-lg {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 4px 10px -2px rgba(0, 0, 0, 0.3);
+}
+

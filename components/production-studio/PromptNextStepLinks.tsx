@@ -3,18 +3,45 @@
 import React from 'react';
 import { ExternalLink, Sparkles, X } from 'lucide-react';
 
+interface PromptNextStepLinkItem {
+  label: string;
+  url: string;
+  primary?: boolean;
+}
+
 interface PromptNextStepLinksProps {
   show?: boolean;
   onDismiss?: () => void;
   className?: string;
+  title?: string;
+  description?: string;
+  links?: PromptNextStepLinkItem[];
 }
 
 export const PromptNextStepLinks: React.FC<PromptNextStepLinksProps> = ({
   show,
   onDismiss,
   className = '',
+  title = 'Langkah berikutnya',
+  description = 'Prompt sudah tersalin. Buka salah satu AI berikut, lalu paste prompt.',
+  links,
 }) => {
   if (!show) return null;
+
+  const defaultLinks: PromptNextStepLinkItem[] = [
+    {
+      label: 'Buka Google Gemini',
+      url: 'https://gemini.google.com/app',
+      primary: true,
+    },
+    {
+      label: 'Buka ChatGPT',
+      url: 'https://chatgpt.com/',
+      primary: false,
+    },
+  ];
+
+  const activeLinks = links && links.length > 0 ? links : defaultLinks;
 
   return (
     <div
@@ -24,10 +51,10 @@ export const PromptNextStepLinks: React.FC<PromptNextStepLinksProps> = ({
         <div className="space-y-1">
           <div className="flex items-center gap-2 font-bold text-sm text-[#0f766e]">
             <Sparkles size={16} className="text-[#0f766e] shrink-0" />
-            <span>Langkah berikutnya</span>
+            <span>{title}</span>
           </div>
           <p className="text-xs text-stone-700 font-medium leading-relaxed">
-            Prompt sudah tersalin. Buka salah satu AI berikut, lalu paste prompt.
+            {description}
           </p>
         </div>
         {onDismiss && (
@@ -44,24 +71,22 @@ export const PromptNextStepLinks: React.FC<PromptNextStepLinksProps> = ({
       </div>
 
       <div className="flex items-center gap-2.5 flex-wrap pt-0.5">
-        <a
-          href="https://gemini.google.com/app"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white font-bold text-xs rounded-xl transition-all shadow-xs active:scale-[0.98] cursor-pointer"
-        >
-          <span>Buka Google Gemini</span>
-          <ExternalLink size={13} />
-        </a>
-        <a
-          href="https://chatgpt.com/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#1f2933] hover:bg-stone-900 text-white font-bold text-xs rounded-xl transition-all shadow-xs active:scale-[0.98] cursor-pointer"
-        >
-          <span>Buka ChatGPT</span>
-          <ExternalLink size={13} />
-        </a>
+        {activeLinks.map((link) => (
+          <a
+            key={link.label}
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`inline-flex items-center gap-2 px-4 py-2 font-bold text-xs rounded-xl transition-all shadow-xs active:scale-[0.98] cursor-pointer ${
+              link.primary
+                ? 'bg-[#0f766e] hover:bg-[#0f766e]/90 text-white'
+                : 'bg-[#1f2933] hover:bg-stone-900 text-white'
+            }`}
+          >
+            <span>{link.label}</span>
+            <ExternalLink size={13} />
+          </a>
+        ))}
       </div>
     </div>
   );

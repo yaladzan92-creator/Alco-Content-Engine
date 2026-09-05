@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import { BrainCircuit, CalendarDays, Menu, PanelLeftClose, PanelLeftOpen, Settings, Zap } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 interface ContentEngineShellProps {
   title: string;
@@ -140,8 +141,11 @@ export default function ContentEngineShell({
                 {subtitle && <p className="hidden truncate text-xs text-muted-foreground sm:block">{subtitle}</p>}
               </div>
             </div>
-            {actions && <div className="hidden items-center gap-2 md:flex">{actions}</div>}
-            {mobileActions && <div className="flex items-center gap-2 md:hidden">{mobileActions}</div>}
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              {actions && <div className="hidden items-center gap-2 md:flex">{actions}</div>}
+              {mobileActions && <div className="flex items-center gap-2 md:hidden">{mobileActions}</div>}
+            </div>
           </div>
         </header>
 

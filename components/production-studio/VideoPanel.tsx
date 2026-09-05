@@ -162,7 +162,7 @@ export default function VideoPanel(props: any) {
           })}
         </div>
 
-        {/* Character Selector & Workflow Selector */}
+        {/* Character Selector & Workflow Info (Render via API hidden for production) */}
         <div className="flex items-center gap-2 flex-wrap">
           <CharacterSelector
             savedCharacters={savedCharacters || []}
@@ -170,31 +170,9 @@ export default function VideoPanel(props: any) {
             onSelectCharacter={handleSelectCharacter}
             onCreateCharacter={handleCreateCharacterClick}
           />
-          <div className="flex items-center gap-1 bg-[#f6f3ee] p-1 rounded-xl border border-[#e7e0d4]">
-            <button
-              type="button"
-              onClick={() => setVideoOutputMode('google_flow')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                currentOutputMode === 'google_flow'
-                  ? 'bg-[#0f766e] text-white shadow-xs'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              <Sparkles size={12} />
-              <span>Google Flow (3 Scene)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setVideoOutputMode('api')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                currentOutputMode === 'api'
-                  ? 'bg-[#b7791f] text-white shadow-xs'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              <Video size={12} />
-              <span>Render via API</span>
-            </button>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f6f3ee] rounded-xl border border-[#e7e0d4] text-xs font-bold text-[#0f766e]">
+            <Sparkles size={13} className="text-[#0f766e]" />
+            <span>Google Flow (3 Scene)</span>
           </div>
         </div>
       </div>
@@ -209,7 +187,7 @@ export default function VideoPanel(props: any) {
               {googleFlowScenes.map((scene: any) => {
                 const isActive = activeScene.sceneNumber === scene.sceneNumber;
                 const isSceneDone = Boolean(
-                  copiedStates[`gflow_prompt_${scene.sceneNumber}_${activeVideo.id}`] ||
+                  copiedStates[`gflow_prompt_${scene.sceneNumber}_${activeVideo.id}`] &&
                   copiedStates[`gflow_img_${scene.sceneNumber}_${activeVideo.id}`]
                 );
                 return (
@@ -408,7 +386,7 @@ export default function VideoPanel(props: any) {
 
             </div>
 
-            {/* Next step links when prompt is copied */}
+            {/* Next step links when prompt is copied (Dedicated Google Flow CTA) */}
             <PromptNextStepLinks
               show={Boolean(
                 nextStepVisibleKeys?.[`gflow_img_${activeScene.sceneNumber}_${activeVideo.id}`] ||
@@ -418,6 +396,15 @@ export default function VideoPanel(props: any) {
                 handleDismissNextStep?.(`gflow_img_${activeScene.sceneNumber}_${activeVideo.id}`);
                 handleDismissNextStep?.(`gflow_prompt_${activeScene.sceneNumber}_${activeVideo.id}`);
               }}
+              title="Langkah berikutnya: Google Flow"
+              description="Prompt video sudah tersalin. Buka Google Flow FX Studio, lalu tempel prompt untuk render scene."
+              links={[
+                {
+                  label: 'Buka Google Flow',
+                  url: 'https://labs.google/fx/tools/flow',
+                  primary: true,
+                },
+              ]}
               className="mt-1"
             />
 
@@ -425,12 +412,16 @@ export default function VideoPanel(props: any) {
             {activeScene.sceneNumber < googleFlowScenes.length ? (
               <div className="pt-3 border-t border-[#e7e0d4] flex items-center justify-between flex-wrap gap-2">
                 <div className="text-xs text-stone-500">
-                  {isImgCopied || isPromptCopied ? (
+                  {isImgCopied && isPromptCopied ? (
                     <span className="text-emerald-700 font-medium flex items-center gap-1">
-                      <Check size={13} className="text-emerald-600" /> Prompt Scene {activeScene.sceneNumber} sudah disalin.
+                      <Check size={13} className="text-emerald-600" /> Semua prompt Scene {activeScene.sceneNumber} sudah disalin.
+                    </span>
+                  ) : isImgCopied || isPromptCopied ? (
+                    <span className="text-amber-700 font-medium">
+                      Salin kedua prompt (Start Frame &amp; Video Motion) untuk menandai scene selesai.
                     </span>
                   ) : (
-                    <span>Salin prompt di atas sebelum melanjutkan.</span>
+                    <span>Salin kedua prompt di atas sebelum melanjutkan.</span>
                   )}
                 </div>
                 <button
@@ -450,7 +441,9 @@ export default function VideoPanel(props: any) {
                       ✓
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-emerald-900">Semua Scene Selesai</div>
+                      <div className="text-xs font-bold text-emerald-900">
+                        {isImgCopied && isPromptCopied ? 'Semua Scene Selesai' : 'Scene 3 Aktif'}
+                      </div>
                       <div className="text-[11px] text-emerald-700">Setelah Scene 3 selesai, gabungkan ketiga scene menjadi video final.</div>
                     </div>
                   </div>
