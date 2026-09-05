@@ -148,200 +148,80 @@ ${s.production_prompt || '-'}`;
 
   return (
     <div className="space-y-4">
-      {/* 1. Top Action Toolbar */}
-      <div className="bg-[#f6f3ee] border border-[#e7e0d4] p-3 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xs">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-stone-700 font-medium">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#0f766e]/10 border border-[#0f766e]/20 rounded-xl text-[#0f766e] font-bold">
-            <Sparkles size={13} />
-            <span>{funnelStage} Carousel Blueprint</span>
-          </div>
+      {/* 1. CAROUSEL OVERVIEW (Compact Context Strip) */}
+      <div className="bg-[#fffdf8] border border-[#e7e0d4] p-3 rounded-2xl flex flex-wrap items-center justify-between gap-2.5 shadow-xs">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="px-2.5 py-1 bg-[#0f766e]/10 border border-[#0f766e]/20 rounded-xl text-[#0f766e] font-bold">
+            {funnelStage} Carousel Blueprint
+          </span>
           <span className="text-stone-400">&bull;</span>
-          <span className="font-semibold text-stone-800">{slides.length} Slide</span>
+          <span className="font-semibold text-stone-800">{slides.length} Slides</span>
           {plan.primary_cta_text && (
             <>
               <span className="text-stone-400">&bull;</span>
               <span className="text-stone-600">CTA: <strong className="text-stone-900">{plan.primary_cta_text}</strong></span>
             </>
           )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              const combinedText = `[CAROUSEL 3-LAYER STRATEGY BLUEPRINT]\nFunnel Stage: ${funnelStage}\nGoal: ${plan.content_goal || '-'}\nCore Promise: ${plan.core_promise || '-'}\nPrimary CTA: ${plan.primary_cta_text || '-'} (${plan.primary_cta_type || '-'})\nSlide Count Reason: ${plan.slide_count_reason || '-'}\n\n` +
-                slides.map((s: any) => formatSlideFullText(s)).join('\n\n========================================\n\n');
-              handleCopyText('carousel_plan_all', combinedText, 'none');
-            }}
-            className="px-3.5 py-1.5 bg-[#fffdf8] hover:bg-stone-100 text-[#1f2933] border border-[#e7e0d4] rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-          >
-            {copiedStates['carousel_plan_all'] ? (
-              <>
-                <Check size={13} className="text-[#0f766e]" />
-                <span className="text-[#0f766e]">Semua Slide Tersalin!</span>
-              </>
-            ) : (
-              <>
-                <Copy size={13} />
-                <span>Salin Seluruh Blueprint</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* 2. Strategy Overview Card (Belief Shift, Core Promise & Alignment) */}
-      <div className="bg-[#fffdf8] border border-[#e7e0d4] p-4 rounded-2xl space-y-3 shadow-xs">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e7e0d4] pb-2.5">
-          <div className="flex items-center gap-2">
-            <Compass size={14} className="text-[#0f766e]" />
-            <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">Belief Journey &amp; Goal Strategy</span>
-          </div>
           {alignmentCheck && (
-            <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[11px] font-semibold ${
+            <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
               alignmentCheck.isAligned
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                : 'bg-amber-50 text-amber-800 border border-amber-200'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : 'bg-amber-50 text-amber-800 border-amber-200'
             }`}>
-              {alignmentCheck.isAligned ? (
-                <>
-                  <CheckCircle2 size={12} className="text-emerald-600" />
-                  <span>Sesuai Corong {funnelStage}</span>
-                </>
-              ) : (
-                <>
-                  <AlertCircle size={12} className="text-amber-600" />
-                  <span>Penyesuaian Corong Diterapkan</span>
-                </>
-              )}
-            </div>
+              {alignmentCheck.isAligned ? 'Corong OK' : 'Corong Disesuaikan'}
+            </span>
           )}
         </div>
 
-        {alignmentCheck && !alignmentCheck.isAligned && alignmentCheck.issue && (
-          <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-xs space-y-1">
-            <div className="font-bold text-amber-900 flex items-center gap-1.5">
-              <AlertCircle size={13} className="text-amber-700" />
-              <span>Catatan Penyelarasan Pesan:</span>
-            </div>
-            <p className="text-amber-800 text-[11px] leading-relaxed">{alignmentCheck.issue}</p>
-            {alignmentCheck.fixApplied && (
-              <p className="text-emerald-800 text-[11px] font-medium pt-1">
-                <strong>Koreksi:</strong> {alignmentCheck.fixApplied}
-              </p>
-            )}
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-          {plan.current_belief && plan.desired_belief && (
-            <div className="bg-[#f6f3ee] p-3 rounded-xl border border-[#e7e0d4] space-y-1.5">
-              <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">Transformasi Persepsi</span>
-              <div className="flex items-start gap-2 text-stone-700">
-                <span className="px-1.5 py-0.5 rounded bg-stone-200 text-stone-700 text-[10px] font-bold shrink-0">Lama</span>
-                <p className="text-[11px] leading-snug">{plan.current_belief}</p>
-              </div>
-              <div className="flex items-center justify-center py-0.5 text-stone-400">
-                <ArrowRight size={13} />
-              </div>
-              <div className="flex items-start gap-2 text-stone-900">
-                <span className="px-1.5 py-0.5 rounded bg-[#0f766e]/15 text-[#0f766e] text-[10px] font-bold shrink-0">Baru</span>
-                <p className="text-[11px] font-medium leading-snug">{plan.desired_belief}</p>
-              </div>
-            </div>
+        <button
+          onClick={() => {
+            const combinedText = `[CAROUSEL 3-LAYER STRATEGY BLUEPRINT]\nFunnel Stage: ${funnelStage}\nGoal: ${plan.content_goal || '-'}\nCore Promise: ${plan.core_promise || '-'}\nPrimary CTA: ${plan.primary_cta_text || '-'} (${plan.primary_cta_type || '-'})\nSlide Count Reason: ${plan.slide_count_reason || '-'}\n\n` +
+              slides.map((s: any) => formatSlideFullText(s)).join('\n\n========================================\n\n');
+            handleCopyText('carousel_plan_all', combinedText, 'none');
+          }}
+          className="px-3 py-1.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-[#1f2933] border border-[#e7e0d4] rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+        >
+          {copiedStates['carousel_plan_all'] ? (
+            <>
+              <Check size={12} className="text-[#0f766e]" />
+              <span className="text-[#0f766e]">Semua Slide Tersalin!</span>
+            </>
+          ) : (
+            <>
+              <Copy size={12} />
+              <span>Salin Seluruh Blueprint</span>
+            </>
           )}
-
-          <div className="bg-[#f6f3ee] p-3 rounded-xl border border-[#e7e0d4] space-y-2 flex flex-col justify-between">
-            <div>
-              <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block mb-1">Core Promise</span>
-              <p className="text-stone-900 font-semibold text-xs leading-relaxed">{plan.core_promise || plan.content_goal || '-'}</p>
-            </div>
-            {plan.primary_cta_text && (
-              <div className="pt-2 border-t border-[#e7e0d4] flex items-center justify-between text-[11px]">
-                <span className="text-stone-500 font-medium">Primary CTA ({plan.primary_cta_type || 'Action'}):</span>
-                <span className="font-bold text-[#0f766e] bg-[#0f766e]/10 px-2 py-0.5 rounded-md border border-[#0f766e]/20">
-                  {plan.primary_cta_text}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
+        </button>
       </div>
 
-      {/* Caption / Keterangan Postingan Carousel */}
-      {(plan.captionForPost || activeItem?.caption) && (
-        <div className="bg-[#fffdf8] border border-[#e7e0d4] p-4 rounded-2xl space-y-2.5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FileText size={14} className="text-[#0f766e]" />
-              <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">Caption / Keterangan Postingan (Siap Posting)</span>
-            </div>
-            <button
-              onClick={() => handleCopyText('carousel_caption_post', plan.captionForPost || activeItem?.caption, 'captionCopied')}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-[#1f2933] text-xs font-bold rounded-xl transition cursor-pointer border border-[#e7e0d4]"
-            >
-              {copiedStates['carousel_caption_post'] ? (
-                <>
-                  <Check size={13} className="text-[#0f766e]" />
-                  <span className="text-[#0f766e]">Caption Tersalin!</span>
-                </>
-              ) : (
-                <>
-                  <Copy size={13} />
-                  <span>Salin Caption</span>
-                </>
-              )}
-            </button>
-          </div>
-          <div className="text-[11px] text-stone-500 font-medium">
-            {plan.captionInstruction || "Paste teks ini di caption/keterangan postingan setelah aset dibuat."}
-          </div>
-          <div className="p-3.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-stone-900 font-sans text-xs leading-relaxed select-all whitespace-pre-wrap">
-            {plan.captionForPost || activeItem?.caption}
-          </div>
+      {/* 2. SLIDE NAVIGATION (Compact, focused buttons: [1] [2] [3]... ) */}
+      <div className="bg-[#fffdf8] border border-[#e7e0d4] p-3 rounded-2xl shadow-xs">
+        <div className="flex items-center justify-between pb-2 border-b border-[#e7e0d4] mb-2 px-1">
+          <span className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">Slide Navigator</span>
+          <span className="text-[11px] text-stone-500">Pilih slide untuk fokus naskah &amp; produksi:</span>
         </div>
-      )}
-
-      {/* 3. Horizontal Slide Timeline Navigator */}
-      <div className="bg-[#fffdf8] p-3.5 rounded-2xl border border-[#e7e0d4] shadow-xs">
-        <div className="flex items-center justify-between mb-2.5 px-1">
-          <div className="flex items-center gap-2">
-            <Layers size={14} className="text-[#0f766e]" />
-            <span className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">Navigasi Alur Slide ({slides.length} Slide)</span>
-          </div>
-          <span className="text-[11px] text-stone-500 font-medium">Klik slide untuk melihat struktur 3-lapis</span>
-        </div>
-        <div className="flex items-center gap-2.5 overflow-x-auto pb-1.5 custom-scrollbar">
-          {slides.map((slide: any) => {
-            const isActive = activeSlide && activeSlide.slide === slide.slide;
-            const slideVf = slide.visual_format || (slide.slide === 1 ? 'photography' : 'infographic');
+        <div className="grid grid-cols-4 sm:grid-cols-7 lg:grid-cols-7 gap-2">
+          {slides.map((s: any) => {
+            const isCurrent = s.slide === activeSlideNum;
             return (
               <button
-                key={slide.slide}
-                onClick={() => setActiveSlideNumber(slide.slide)}
-                className={`px-3 py-2.5 rounded-xl border text-center transition-all min-w-[110px] cursor-pointer shrink-0 ${
-                  isActive
-                    ? 'bg-[#0f766e] border-[#0f766e] text-white font-bold shadow-xs'
-                    : 'bg-[#f6f3ee] border-[#e7e0d4] text-stone-700 hover:text-stone-950 hover:bg-stone-200/70'
+                key={s.slide}
+                onClick={() => setActiveSlideNumber(s.slide)}
+                className={`p-2.5 rounded-xl text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                  isCurrent
+                    ? 'bg-[#0f766e] text-white shadow-xs'
+                    : 'bg-[#f6f3ee] hover:bg-[#e7e0d4] text-stone-700 border border-[#e7e0d4]'
                 }`}
               >
-                <div className="flex items-center justify-between text-[9px] font-mono uppercase tracking-widest opacity-85 mb-0.5">
-                  <span>Slide {slide.slide}</span>
-                  <span className={`px-1 rounded text-[8px] font-bold ${
-                    slideVf === 'photography' 
-                      ? (isActive ? 'bg-teal-900/50 text-teal-100' : 'bg-stone-200 text-stone-700')
-                      : slideVf === 'infographic'
-                      ? (isActive ? 'bg-emerald-900/50 text-emerald-100' : 'bg-emerald-100 text-emerald-800')
-                      : (isActive ? 'bg-amber-900/50 text-amber-100' : 'bg-amber-100 text-amber-800')
-                  }`}>
-                    {slideVf === 'photography' ? 'PHOTO' : slideVf === 'infographic' ? 'INFO' : 'HYBRID'}
-                  </span>
-                </div>
-                <div className="text-xs font-bold capitalize truncate max-w-[100px]">{slide.role || `Slide ${slide.slide}`}</div>
-                {slide.emotional_state && (
-                  <div className={`text-[9px] truncate max-w-[100px] mt-0.5 ${isActive ? 'text-teal-100' : 'text-stone-500'}`}>
-                    {slide.emotional_state}
-                  </div>
-                )}
+                <span className={`text-xs font-mono font-bold ${isCurrent ? 'text-white' : 'text-stone-900'}`}>
+                  Slide {s.slide}
+                </span>
+                <span className={`text-[10px] capitalize leading-tight truncate w-full text-center ${
+                  isCurrent ? 'text-white/85 font-medium' : 'text-stone-500'
+                }`}>
+                  {s.role || 'Content'}
+                </span>
               </button>
             );
           })}
@@ -465,113 +345,38 @@ ${s.production_prompt || '-'}`;
               </div>
             )}
 
-            {/* 3-LAYER ARCHITECTURE DISPLAY */}
-            <div className="pt-2 space-y-3">
-              {/* LAPISAN 1: CREATIVE STRATEGY */}
-              <div className="bg-[#fffdf8] border border-[#e7e0d4] p-4 rounded-xl space-y-2.5">
-                <div className="flex items-center justify-between border-b border-[#e7e0d4] pb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 bg-[#0f766e]/10 text-[#0f766e] rounded text-[10px] font-mono font-bold">LAPISAN 1</span>
-                    <span className="text-xs font-bold text-stone-900">Creative Strategy (Strategi Pesan)</span>
-                  </div>
-                  <span className="text-[10px] font-mono text-stone-500 uppercase">{creativeStrategy.slide_role || activeSlide.role} &bull; {funnelStage}</span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-[11px]">
-                  <div className="bg-[#f6f3ee] p-2.5 rounded-lg border border-[#e7e0d4]">
-                    <span className="text-stone-500 text-[9px] uppercase font-bold block mb-0.5">Visual Objective</span>
-                    <p className="text-stone-800 leading-snug">{creativeStrategy.visual_objective || activeSlide.visual_intent || '-'}</p>
-                  </div>
-
-                  <div className="bg-[#f6f3ee] p-2.5 rounded-lg border border-[#e7e0d4]">
-                    <span className="text-stone-500 text-[9px] uppercase font-bold block mb-0.5">Core Message</span>
-                    <p className="text-stone-800 font-semibold leading-snug">{creativeStrategy.core_message || activeSlide.headline || '-'}</p>
-                  </div>
-
-                  <div className="bg-[#f6f3ee] p-2.5 rounded-lg border border-[#e7e0d4]">
-                    <span className="text-stone-500 text-[9px] uppercase font-bold block mb-0.5">Audience Emotion</span>
-                    <p className="text-stone-800 leading-snug">{creativeStrategy.audience_emotion || activeSlide.emotional_state || '-'}</p>
-                  </div>
-
-                  <div className="bg-[#f6f3ee] p-2.5 rounded-lg border border-[#e7e0d4]">
-                    <span className="text-stone-500 text-[9px] uppercase font-bold block mb-0.5">Visual Concept &amp; Text Overlay</span>
-                    <p className="text-stone-800 leading-snug">
-                      <strong className="text-stone-900">Overlay:</strong> &ldquo;{creativeStrategy.text_overlay || activeSlide.headline}&rdquo;
-                    </p>
-                  </div>
-                </div>
+            {/* Visual Direction & Text Overlay Preview */}
+            <div className="bg-[#f0fdfa] border border-[#0f766e]/20 p-3.5 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#0f766e]">Arah Visual (Visual Direction):</span>
+                {activeSlide.swipe_bridge && (
+                  <span className="text-[11px] text-stone-600 font-medium">
+                    Swipe Bridge: <strong className="text-[#0f766e]">&rarr; {activeSlide.swipe_bridge}</strong>
+                  </span>
+                )}
               </div>
-
-              {/* LAPISAN 2 & 3: VISUAL FORMAT & VISUAL PRODUCTION */}
-              <div className="bg-[#fffdf8] border border-[#e7e0d4] p-4 rounded-xl space-y-2.5">
-                <div className="flex items-center justify-between border-b border-[#e7e0d4] pb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 bg-sky-100 text-sky-800 rounded text-[10px] font-mono font-bold">LAPISAN 2 &amp; 3</span>
-                    <span className="text-xs font-bold text-stone-900">Visual Format &amp; Visual Production (Instruksi Eksekusi)</span>
-                  </div>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                    visualFormat === 'photography' ? 'bg-sky-100 text-sky-800' : visualFormat === 'infographic' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                  }`}>
-                    Format: {visualFormat}
+              <p className="text-xs text-stone-800 leading-relaxed font-medium">
+                {creativeStrategy.visual_objective || activeSlide.visual_intent || '-'}
+              </p>
+              {creativeStrategy.text_overlay && (
+                <div className="pt-1 flex items-center gap-2 text-xs">
+                  <span className="text-stone-500 font-medium text-[10px]">Teks Overlay:</span>
+                  <span className="font-semibold text-[#0f766e] bg-white px-2.5 py-0.5 rounded-md border border-[#0f766e]/20">
+                    &ldquo;{creativeStrategy.text_overlay}&rdquo;
                   </span>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-[11px]">
-                  <div className="bg-[#f6f3ee] p-2.5 rounded-lg border border-[#e7e0d4] md:col-span-2">
-                    <span className="text-stone-500 text-[9px] uppercase font-bold block mb-0.5">
-                      {visualFormat === 'photography' ? 'Subject & Action (Real Person / Scene)' : 'Subject / Object Diagram & Graphic Metaphor'}
-                    </span>
-                    <p className="text-stone-800 leading-snug font-medium">{visualProduction.subject || '-'}</p>
-                    {visualProduction.action && (
-                      <p className="text-stone-600 text-[10px] mt-1 pt-1 border-t border-[#e7e0d4]">
-                        <strong>Aksi/Anotasi:</strong> {visualProduction.action}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="bg-[#f6f3ee] p-2.5 rounded-lg border border-[#e7e0d4]">
-                    <span className="text-stone-500 text-[9px] uppercase font-bold block mb-0.5">Composition &amp; Layout</span>
-                    <p className="text-stone-800 leading-snug">{visualProduction.composition || activeSlide.text_zone || 'Upper Third'}</p>
-                    {visualProduction.negative_space && (
-                      <p className="text-stone-500 text-[10px] mt-1">
-                        Neg. Space: {visualProduction.negative_space}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="bg-[#f6f3ee] p-2.5 rounded-lg border border-[#e7e0d4]">
-                    <span className="text-stone-500 text-[9px] uppercase font-bold block mb-0.5">Typography &amp; Layout Grid</span>
-                    <p className="text-stone-800 leading-snug">{visualProduction.typography || 'Headline 28pt bold, body 16pt'}</p>
-                  </div>
-
-                  <div className="bg-[#f6f3ee] p-2.5 rounded-lg border border-[#e7e0d4]">
-                    <span className="text-stone-500 text-[9px] uppercase font-bold block mb-0.5">Background &amp; Palette Mood</span>
-                    <p className="text-stone-800 leading-snug">{visualProduction.background || '#FAF9F6'} &bull; {visualProduction.color_mood || 'Professional'}</p>
-                  </div>
-
-                  <div className="bg-[#f6f3ee] p-2.5 rounded-lg border border-[#e7e0d4]">
-                    <span className="text-stone-500 text-[9px] uppercase font-bold block mb-0.5">Format Guard</span>
-                    <p className="text-stone-800 leading-snug">
-                      {visualFormat === 'infographic' 
-                        ? 'Tanpa lensa/kamera fisik. Fokus pada struktur kartu UI, diagram alur, dan hierarki tipografi.'
-                        : visualFormat === 'photography'
-                        ? 'Gaya fotografi editorial otentik dengan pencahayaan natural hangat.'
-                        : 'Kombinasi foto subjek nyata dengan overlay kartu informasi grafis.'}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
 
-            {/* 5. COLLAPSIBLE TECHNICAL / DETAIL TEKNIS SECTION */}
-            <details className="group border border-[#e7e0d4] bg-[#f6f3ee]/80 rounded-xl overflow-hidden shadow-xs transition-all">
-              <summary className="p-3 flex items-center justify-between font-bold text-xs text-stone-700 hover:text-stone-900 cursor-pointer select-none">
+            {/* 4. PROMPT DETAILS FOR ACTIVE SLIDE */}
+            <details className="group border border-[#e7e0d4] bg-[#fcfaf6] rounded-xl overflow-hidden shadow-xs transition-all">
+              <summary className="p-3 flex items-center justify-between font-bold text-xs text-stone-700 hover:text-[#0f766e] cursor-pointer select-none">
                 <div className="flex items-center gap-2">
-                  <Sliders size={13} className="text-[#0f766e]" />
-                  <span>Detail Teknis &bull; Slide {activeSlide.slide}</span>
+                  <Palette size={13} className="text-[#0f766e]" />
+                  <span>Prompt Details &bull; Slide {activeSlide.slide}</span>
                 </div>
                 <div className="flex items-center gap-2 text-stone-500 text-[11px]">
-                  <span>Prompt Image &amp; Layout</span>
+                  <span>Image &amp; Layout Prompts</span>
                   <ChevronDown size={14} className="group-open:rotate-180 transition-transform" />
                 </div>
               </summary>
@@ -644,18 +449,59 @@ ${s.production_prompt || '-'}`;
         </div>
       )}
 
-      {/* 6. Collapsible Technical & Visual System Details */}
-      <details className="group border border-[#e7e0d4] bg-[#f6f3ee]/60 rounded-2xl overflow-hidden shadow-xs transition-all">
-        <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-700 hover:text-stone-900 cursor-pointer select-none">
+      {/* 5. STRATEGY & VISUAL PRODUCTION DETAILS (Progressive Disclosure) */}
+      <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
+        <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
           <div className="flex items-center gap-2">
-            <Sliders size={14} className="text-[#0f766e]" />
-            <span>Detail Teknis, Alasan Slide &amp; Sistem Visual Carousel</span>
+            <Compass size={14} className="text-[#0f766e]" />
+            <span>Strategy &amp; Visual Production Details &bull; Slide {activeSlideNum}</span>
+            <span className="text-[10px] font-normal text-stone-500">({creativeStrategy.slide_role || activeSlide?.role})</span>
           </div>
-          <ChevronDown size={14} className="text-stone-500 group-open:rotate-180 transition-transform" />
+          <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />
         </summary>
-        <div className="p-4 pt-2 border-t border-[#e7e0d4] space-y-3 text-xs">
+        <div className="p-4 pt-2 border-t border-[#e7e0d4] space-y-3.5 text-xs bg-[#fcfaf6]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <span className="text-stone-500 font-medium block text-[10px]">Tujuan Visual:</span>
+              <p className="text-stone-800 mt-0.5">{creativeStrategy.visual_objective || activeSlide?.visual_intent || '-'}</p>
+            </div>
+            <div>
+              <span className="text-stone-500 font-medium block text-[10px]">Pesan Utama:</span>
+              <p className="text-stone-800 font-semibold mt-0.5">{creativeStrategy.core_message || activeSlide?.headline || '-'}</p>
+            </div>
+            <div>
+              <span className="text-stone-500 font-medium block text-[10px]">Subjek &amp; Aksi:</span>
+              <p className="text-stone-800 mt-0.5">{visualProduction.subject || '-'}</p>
+              {visualProduction.action && <p className="text-stone-600 text-[11px] mt-0.5">{visualProduction.action}</p>}
+            </div>
+            <div>
+              <span className="text-stone-500 font-medium block text-[10px]">Komposisi &amp; Tata Letak:</span>
+              <p className="text-stone-800 mt-0.5">{visualProduction.composition || activeSlide?.text_zone || 'Upper Third'}</p>
+            </div>
+            <div>
+              <span className="text-stone-500 font-medium block text-[10px]">Tipografi:</span>
+              <p className="text-stone-800 mt-0.5">{visualProduction.typography || 'Headline 28pt bold, body 16pt'}</p>
+            </div>
+            <div>
+              <span className="text-stone-500 font-medium block text-[10px]">Latar Belakang &amp; Mood:</span>
+              <p className="text-stone-800 mt-0.5">{visualProduction.background || '#FAF9F6'} &bull; {visualProduction.color_mood || 'Professional'}</p>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      {/* 6. BELIEF JOURNEY & SYSTEM NOTES (Progressive Disclosure) */}
+      <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
+        <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+          <div className="flex items-center gap-2">
+            <Layers size={14} className="text-[#0f766e]" />
+            <span>Belief Journey &amp; Sistem Visual Carousel</span>
+          </div>
+          <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />
+        </summary>
+        <div className="p-4 pt-2 border-t border-[#e7e0d4] space-y-3 text-xs bg-[#fcfaf6]">
           {plan.belief_journey_summary && (
-            <div className="bg-[#fffdf8] p-3.5 rounded-xl border border-[#e7e0d4]">
+            <div className="bg-[#f6f3ee] p-3.5 rounded-xl border border-[#e7e0d4]">
               <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block mb-1">Ringkasan Alur Keyakinan (Belief Journey)</span>
               <p className="text-stone-800 leading-relaxed">{plan.belief_journey_summary}</p>
             </div>
@@ -663,13 +509,13 @@ ${s.production_prompt || '-'}`;
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {plan.slide_count_reason && (
-              <div className="bg-[#fffdf8] p-3.5 rounded-xl border border-[#e7e0d4]">
+              <div className="bg-[#f6f3ee] p-3.5 rounded-xl border border-[#e7e0d4]">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block mb-1">Alasan Jumlah Slide ({plan.slide_count || slides.length} Slide)</span>
                 <p className="text-stone-800 leading-relaxed">{plan.slide_count_reason}</p>
               </div>
             )}
             {plan.visual_system_notes && (
-              <div className="bg-[#fffdf8] p-3.5 rounded-xl border border-[#e7e0d4]">
+              <div className="bg-[#f6f3ee] p-3.5 rounded-xl border border-[#e7e0d4]">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block mb-1">Catatan Sistem Visual</span>
                 <p className="text-stone-800 leading-relaxed">{plan.visual_system_notes}</p>
               </div>

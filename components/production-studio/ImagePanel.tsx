@@ -1,152 +1,236 @@
 'use client';
 import React from 'react';
-import { Sparkles, Loader2, Copy, Check, Info, FileText, Image as ImageIcon, Zap, Edit3, ChevronLeft, ChevronRight, PlaySquare, Video, Clipboard, Clock, Sliders, Target, Layers, FileCode2, CheckCircle2, Download, Save, AlertCircle, RefreshCw, CheckSquare, ListTodo, BrainCircuit, Users, ExternalLink, PlayCircle, MessageSquare, ChevronDown } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { 
+  Sparkles, Loader2, Copy, Check, FileText, Image as ImageIcon, 
+  Sliders, Target, CheckCircle2, Download, RefreshCw, ChevronDown, 
+  AlertCircle 
+} from 'lucide-react';
 import { PromptNextStepLinks } from './PromptNextStepLinks';
 
 export default function ImagePanel(props: any) {
   const {
-    activeItem, activeContext, imageAnglesPackage, selectedAngleId, setSelectedAngleId,
-    generatedImages, imageGeneratingKey, handleCopyText, copiedStates, handleGenerateImage,
-    nextStepVisibleKeys, handleDismissNextStep,
-    imageOutput, getInitialDraft, funnelRules, carouselFrames, selectedCarouselId,
-    setSelectedCarouselId, activeSlideNumber, setActiveSlideNumber, handleCopyCarouselSlide,
-    carouselOutput, videoOutput, tryParseJSON, normalizeFunnelStage, getFunnelRules,
-    selectedVideoId, handleSelectVideoStyle, videoMode, setVideoMode, characterImageUrl,
-    setCharacterImageUrl, productScreenImageUrl, setProductScreenImageUrl, coverImageUrl,
-    setCoverImageUrl, videoOutputMode, setVideoOutputMode, showToast, handleGenerateJson2VideoPayload,
-    isRenderingVideo, renderVideoWithJson2Video, renderJobId, renderJobData, renderError,
-    isCheckingStatus, checkRenderStatus, flowCustomCreator, setFlowCustomCreator,
-    flowCustomSetting, setFlowCustomSetting, flowCustomDialogues, setFlowCustomDialogues,
-    handleGenerateVideoScriptFromFlow, videoGeneratingKey, ugcOutput, ugcDataPackage,
-    ugcGeneratingKey, handleGenerateUGCImage, generatedUGCImages, sourceItem, imageAnglesPackage: imgAngs,
-      handleDownloadImage, imageGenerateError, handleRenderVideo, handleCheckRenderStatus,
-      json2VideoPayload, characterDNA, getGoogleFlowVideoPack, setActiveTab
-
+    activeItem,
+    activeContext,
+    imageAnglesPackage,
+    selectedAngleId,
+    setSelectedAngleId,
+    generatedImages,
+    imageGeneratingKey,
+    handleCopyText,
+    copiedStates,
+    handleGenerateImage,
+    nextStepVisibleKeys,
+    handleDismissNextStep,
+    imageOutput,
+    getInitialDraft,
+    sourceItem,
+    handleDownloadImage,
+    imageGenerateError,
   } = props;
-  
-  // Return the block safely
-  
 
-          if (!imageAnglesPackage || imageAnglesPackage.angles.length === 0) {
+  if (!imageAnglesPackage || imageAnglesPackage.angles.length === 0) {
+    const rawFallback = imageOutput || getInitialDraft('image', activeItem, activeContext);
     return (
-      <div className="whitespace-pre-wrap font-sans text-stone-800 text-xs leading-relaxed">
-        {imageOutput || getInitialDraft('image', activeItem, activeContext)}
+      <div className="bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl p-6 space-y-3 shadow-xs">
+        <div className="flex items-center justify-between pb-3 border-b border-[#e7e0d4]">
+          <div className="flex items-center gap-2">
+            <ImageIcon size={16} className="text-[#0f766e]" />
+            <h3 className="text-xs font-bold text-[#1f2933]">Draft Naskah Image</h3>
+          </div>
+          <button
+            onClick={() => handleCopyText('image_raw_draft', rawFallback, 'none')}
+            className="px-3 py-1.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-[#1f2933] text-xs font-bold rounded-xl transition flex items-center gap-1.5 border border-[#e7e0d4]"
+          >
+            {copiedStates['image_raw_draft'] ? <Check size={13} className="text-[#0f766e]" /> : <Copy size={13} />}
+            <span>{copiedStates['image_raw_draft'] ? 'Tersalin' : 'Salin Naskah'}</span>
+          </button>
+        </div>
+        <div className="whitespace-pre-wrap font-mono text-stone-800 text-xs leading-relaxed bg-[#f6f3ee] p-4 rounded-xl border border-[#e7e0d4]">
+          {rawFallback}
+        </div>
       </div>
     );
   }
 
   const activeAngle = imageAnglesPackage.angles.find((a: any) => a.id === selectedAngleId) || imageAnglesPackage.angles[0];
-  const recommendedAngle = imageAnglesPackage.angles.find((a: any) => a.id === imageAnglesPackage.recommendedAngleId) || imageAnglesPackage.angles[0];
+  const recommendedAngleId = imageAnglesPackage.recommendedAngleId || 'A';
   const imageKey = `${sourceItem?.no || 1}_${activeAngle.id}`;
   const generatedImg = generatedImages[imageKey];
   const isGenerating = imageGeneratingKey === imageKey;
 
   return (
     <div className="space-y-4">
-      {/* AI Recommendation Banner */}
-      {imageAnglesPackage.recommendationReason && (
-        <div className="bg-amber-50/80 border border-amber-200/80 p-3.5 rounded-2xl flex items-start gap-3 shadow-xs">
-          <div className="p-2 bg-amber-100 text-amber-700 rounded-xl shrink-0 mt-0.5">
-            <Sparkles size={15} />
-          </div>
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-full border border-amber-200">
-                Rekomendasi AI: Angle {recommendedAngle.id} ({recommendedAngle.name})
-              </span>
-            </div>
-            <p className="text-xs text-stone-700 font-medium leading-relaxed pt-0.5">
-              {imageAnglesPackage.recommendationReason}
-            </p>
-          </div>
+      {/* 1. ANGLE SELECTOR (Compact Horizontal Pills with small Recommended badge) */}
+      <div className="bg-[#fffdf8] border border-[#e7e0d4] p-2.5 rounded-2xl flex flex-wrap items-center justify-between gap-2 shadow-xs">
+        <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
+          {imageAnglesPackage.angles.map((angle: any) => {
+            const isRecommended = angle.id === recommendedAngleId;
+            const isSelected = selectedAngleId === angle.id;
+
+            return (
+              <button
+                key={angle.id}
+                onClick={() => setSelectedAngleId(angle.id)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+                  isSelected
+                    ? 'bg-[#0f766e] text-white shadow-xs'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-[#f6f3ee] border border-transparent'
+                }`}
+              >
+                <span>{angle.name || `Angle ${angle.id}`}</span>
+                {isRecommended && (
+                  <span
+                    className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
+                      isSelected
+                        ? 'bg-white/20 text-white border border-white/30'
+                        : 'bg-amber-100 text-amber-900 border border-amber-200'
+                    }`}
+                  >
+                    Recommended
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="text-[11px] text-stone-500 font-medium px-2">
+          Format: <span className="font-semibold text-stone-700">4:5 Vertical Editorial</span> &bull; {activeAngle.funnelStage || 'TOFU'}
+        </div>
+      </div>
+
+      {/* ERROR ALERT IF GENERATION FAILED */}
+      {imageGenerateError && (
+        <div className="bg-rose-50 border border-rose-200 p-3 rounded-xl flex items-start gap-2.5 text-rose-800 text-xs shadow-xs">
+          <AlertCircle size={15} className="shrink-0 mt-0.5 text-rose-600" />
+          <p className="font-medium leading-relaxed">{imageGenerateError}</p>
         </div>
       )}
 
-      {/* Angle Selection Tabs */}
-      <div className="flex items-center gap-2 border-b border-[#e7e0d4] pb-3 overflow-x-auto custom-scrollbar">
-        {imageAnglesPackage.angles.map((angle: any) => {
-          const isRecommended = angle.id === imageAnglesPackage.recommendedAngleId;
-          const isSelected = selectedAngleId === angle.id;
-
-          return (
-            <button
-              key={angle.id}
-              onClick={() => setSelectedAngleId(angle.id)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
-                isSelected
-                  ? 'bg-[#0f766e] text-white shadow-sm'
-                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100 border border-[#e7e0d4] bg-[#fffdf8]'
-              }`}
-            >
-              <div className={`w-2 h-2 rounded-full ${isSelected ? 'bg-white' : 'bg-stone-400'}`} />
-              <span>{angle.name || `Angle ${angle.id}`}</span>
-              {isRecommended && (
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
-                  isSelected 
-                    ? 'bg-white/20 text-white border border-white/30' 
-                    : 'bg-amber-100 text-amber-800 border border-amber-200'
-                }`}>
-                  Rekomendasi
-                </span>
+      {/* 2. RESULT / VISUAL PREVIEW & PRIMARY ACTIONS (Dominant Workspace Element) */}
+      <div className="bg-[#fffdf8] border border-[#e7e0d4] p-5 rounded-2xl shadow-xs space-y-4">
+        {generatedImg ? (
+          /* STATE A: GAMBAR SUDAH DIBUAT */
+          <div className="space-y-4">
+            <div className="relative group rounded-xl overflow-hidden border border-[#e7e0d4] bg-[#f6f3ee] flex justify-center max-w-lg mx-auto shadow-xs">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={generatedImg.imageDataUrl}
+                alt={`Visual Angle ${activeAngle.id}`}
+                className="w-full h-auto object-contain max-h-[480px] rounded-xl"
+              />
+              <div className="absolute top-2.5 right-2.5 px-2 py-0.5 bg-black/75 backdrop-blur-md rounded-md text-[10px] font-mono text-white border border-white/20">
+                {generatedImg.model || 'gemini-3.1-flash-lite-image'}
+              </div>
+              {activeAngle.textOverlay && (
+                <div className="absolute bottom-3 left-3 right-3 p-2 bg-black/60 backdrop-blur-sm rounded-lg text-white text-center text-xs font-semibold">
+                  &ldquo;{activeAngle.textOverlay}&rdquo;
+                </div>
               )}
-            </button>
-          );
-        })}
-      </div>
+            </div>
 
-      {/* 3 Main Action Toolbar */}
-      <div className="bg-[#f6f3ee] border border-[#e7e0d4] p-2.5 rounded-2xl flex flex-wrap items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2 text-xs text-stone-600 font-medium px-1">
-          <Sparkles size={14} className="text-[#0f766e]" />
-          <span>Angle <strong>{activeAngle.name}</strong> &bull; {activeAngle.funnelStage || 'TOFU'}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleCopyText(`prompt_${selectedAngleId}`, activeAngle.finalPrompt, 'promptCopied')}
-            className="px-3.5 py-1.5 bg-[#fffdf8] hover:bg-stone-100 text-[#1f2933] border border-[#e7e0d4] rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
-          >
-            {copiedStates[`prompt_${selectedAngleId}`] ? (
-              <>
-                <Check size={13} className="text-[#0f766e]" />
-                <span className="text-[#0f766e]">Prompt Tersalin!</span>
-              </>
-            ) : (
-              <>
-                <Copy size={13} />
-                <span>Salin Prompt Image</span>
-              </>
-            )}
-          </button>
+            {/* Action Bar: Dominant Download, Secondary Copy & Regenerate */}
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+              {/* Dominant Action */}
+              <button
+                onClick={() => handleDownloadImage(generatedImg.imageDataUrl, activeAngle.id)}
+                className="px-5 py-2.5 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-xs cursor-pointer"
+              >
+                <Download size={14} />
+                <span>Download Image</span>
+              </button>
 
-          {!generatedImg ? (
-            <button
-              onClick={() => handleGenerateImage(activeAngle.finalPrompt, activeAngle.id)}
-              disabled={isGenerating}
-              className="px-3.5 py-1.5 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs disabled:opacity-50"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 size={13} className="animate-spin" />
-                  <span>Generating Visual...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles size={13} />
-                  <span>Generate Visual Gemini</span>
-                </>
-              )}
-            </button>
-          ) : (
-            <button
-              onClick={() => handleDownloadImage(generatedImg.imageDataUrl, activeAngle.id)}
-              className="px-3.5 py-1.5 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs"
-            >
-              <Download size={13} />
-              <span>Download Gambar</span>
-            </button>
-          )}
-        </div>
+              {/* Secondary Action 1: Copy Prompt */}
+              <button
+                onClick={() => handleCopyText(`prompt_${selectedAngleId}`, activeAngle.finalPrompt, 'promptCopied')}
+                className="px-4 py-2.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-[#1f2933] border border-[#e7e0d4] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                {copiedStates[`prompt_${selectedAngleId}`] ? (
+                  <>
+                    <Check size={13} className="text-[#0f766e]" />
+                    <span className="text-[#0f766e]">Prompt Tersalin!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={13} />
+                    <span>Copy Prompt</span>
+                  </>
+                )}
+              </button>
+
+              {/* Secondary Action 2: Regenerate */}
+              <button
+                onClick={() => handleGenerateImage(activeAngle.finalPrompt, activeAngle.id)}
+                disabled={isGenerating}
+                className="px-4 py-2.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-stone-700 border border-[#e7e0d4] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin text-[#0f766e]" />
+                    <span>Regenerating...</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw size={13} />
+                    <span>Regenerate</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* STATE B: BELUM DIBUAT / SEDANG DIBUAT (Clean Empty State with Dominant Action) */
+          <div className="py-10 px-4 text-center border-2 border-dashed border-[#e7e0d4] rounded-xl bg-[#fcfaf6] flex flex-col items-center justify-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-[#0f766e]/10 text-[#0f766e] flex items-center justify-center">
+              <ImageIcon size={24} />
+            </div>
+
+            <div className="space-y-1 max-w-md">
+              <h4 className="text-sm font-bold text-[#1f2933]">Visual belum dibuat</h4>
+              <p className="text-xs text-stone-500 leading-relaxed">
+                Generate visual resolusi tinggi berdasarkan strategi konten Angle {activeAngle.id} ({activeAngle.name}) langsung menggunakan model Imagen.
+              </p>
+            </div>
+
+            {/* DOMINANT ACTION BUTTON */}
+            <div className="pt-2 flex flex-wrap items-center justify-center gap-2.5">
+              <button
+                onClick={() => handleGenerateImage(activeAngle.finalPrompt, activeAngle.id)}
+                disabled={isGenerating}
+                className="px-6 py-2.5 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-xs disabled:opacity-50 cursor-pointer"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Generating Visual...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={14} />
+                    <span>Generate Visual</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={() => handleCopyText(`prompt_${selectedAngleId}`, activeAngle.finalPrompt, 'promptCopied')}
+                className="px-4 py-2.5 bg-[#fffdf8] hover:bg-[#f6f3ee] text-stone-700 border border-[#e7e0d4] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+              >
+                {copiedStates[`prompt_${selectedAngleId}`] ? (
+                  <>
+                    <Check size={13} className="text-[#0f766e]" />
+                    <span className="text-[#0f766e]">Prompt Tersalin!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={13} />
+                    <span>Copy Prompt</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Next Step Links when prompt copied */}
@@ -155,123 +239,33 @@ export default function ImagePanel(props: any) {
         onDismiss={() => handleDismissNextStep?.(`prompt_${selectedAngleId}`)}
       />
 
-      {/* Layer 1: Strategy Brief (Ringkasan Strategi Konten) */}
-      {activeAngle.strategyBrief && (
-        <div className="bg-[#fcfaf6] border border-[#e7e0d4] p-4 rounded-2xl space-y-2.5 shadow-xs">
-          <div className="flex items-center justify-between pb-2 border-b border-[#e7e0d4]">
-            <div className="flex items-center gap-2">
-              <Target size={15} className="text-[#0f766e]" />
-              <span className="text-xs font-bold text-[#1f2933]">Lapisan 1: Ringkasan Strategi Konten (Strategy Brief)</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#0f766e]/10 text-[#0f766e] border border-[#0f766e]/20">
-                {activeAngle.strategyBrief.funnelStage || activeAngle.funnelStage || 'TOFU'}
-              </span>
-              {activeAngle.messageAlignmentCheck && (
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${
-                  activeAngle.messageAlignmentCheck.isAligned
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    : 'bg-amber-50 text-amber-700 border-amber-200'
-                }`}>
-                  <CheckCircle2 size={11} />
-                  <span>{activeAngle.messageAlignmentCheck.isAligned ? 'Penyelarasan Corong OK' : 'Disesuaikan'}</span>
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-            <div>
-              <span className="text-stone-500 font-medium block text-[10px]">Tujuan Konten:</span>
-              <p className="text-stone-800 font-semibold">{activeAngle.strategyBrief.tujuanKonten || activeAngle.contentGoal || '-'}</p>
-            </div>
-            <div>
-              <span className="text-stone-500 font-medium block text-[10px]">Ide Utama Konten:</span>
-              <p className="text-stone-800 font-semibold">{activeAngle.strategyBrief.ideUtama || '-'}</p>
-            </div>
-            <div>
-              <span className="text-stone-500 font-medium block text-[10px]">Konteks Audiens:</span>
-              <p className="text-stone-800">{activeAngle.strategyBrief.audienceContext || '-'}</p>
-            </div>
-            <div>
-              <span className="text-stone-500 font-medium block text-[10px]">Angle &amp; Emosi Utama:</span>
-              <p className="text-stone-800 font-medium">{activeAngle.strategyBrief.angle || activeAngle.name} &bull; <span className="text-stone-700 font-normal">{activeAngle.strategyBrief.emosiUtama || activeAngle.targetEmotion || '-'}</span></p>
-            </div>
-            {activeAngle.visualObjective && (
-              <div className="md:col-span-2 bg-[#f0fdfa] p-2.5 rounded-xl border border-[#0f766e]/20">
-                <span className="text-[#0f766e] font-bold block text-[10px] uppercase tracking-wide">Visual Objective ({activeAngle.funnelStage || 'TOFU'}):</span>
-                <p className="text-stone-800 text-xs mt-0.5 font-medium">{activeAngle.visualObjective}</p>
-              </div>
-            )}
-            <div className="md:col-span-2 bg-[#f6f3ee] p-2.5 rounded-xl border border-[#e7e0d4]/80">
-              <span className="text-stone-500 font-medium block text-[10px]">Pesan Visual yang Dibangun:</span>
-              <p className="text-stone-800 text-xs mt-0.5">{activeAngle.strategyBrief.pesanVisual || activeAngle.visualStrategy || '-'}</p>
-            </div>
-            {activeAngle.messageAlignmentCheck && (
-              <div className="md:col-span-2 bg-stone-50 p-2.5 rounded-xl border border-stone-200 text-[11px] text-stone-600 space-y-1">
-                <div className="flex items-center gap-1.5 font-bold text-stone-800">
-                  <CheckCircle2 size={12} className="text-[#0f766e]" />
-                  <span>Validasi Headline &amp; Text Overlay ({activeAngle.funnelStage || 'TOFU'}):</span>
-                </div>
-                {activeAngle.messageAlignmentCheck.issue && (
-                  <p className="text-amber-700 text-[11px]"><strong>Catatan Penyelarasan:</strong> {activeAngle.messageAlignmentCheck.issue}</p>
-                )}
-                <p className="text-stone-700"><strong>Alasan Keselarasan:</strong> {activeAngle.messageAlignmentCheck.reason}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Layer 2: Primary Visual Production Prompt Box */}
-      <div className="bg-[#fffdf8] border border-[#e7e0d4] p-4.5 rounded-2xl space-y-2.5 shadow-xs">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <ImageIcon size={14} className="text-[#0f766e]" />
-            <span className="text-xs font-bold text-[#1f2933]">Lapisan 2: Prompt Produksi Visual (Midjourney v6 / Imagen)</span>
-          </div>
-          <span className="text-[10px] text-stone-500 font-medium bg-[#f6f3ee] px-2 py-0.5 rounded-md border border-[#e7e0d4]">4:5 Vertical Editorial</span>
-        </div>
-        <div className="p-3.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-stone-900 font-mono text-xs leading-relaxed select-all whitespace-pre-wrap">
-          {activeAngle.finalPrompt}
-        </div>
-        {activeAngle.textOverlay && (
-          <div className="flex items-center gap-2 pt-1">
-            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Teks Dalam Gambar (Overlay):</span>
-            <span className="text-xs font-semibold text-[#0f766e] bg-[#0f766e]/10 border border-[#0f766e]/20 px-2.5 py-0.5 rounded-lg">
-              &ldquo;{activeAngle.textOverlay}&rdquo;
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Layer 3: Caption / Keterangan Postingan */}
+      {/* 3. CAPTION / KETERANGAN POSTINGAN (Clean, post-ready) */}
       {activeAngle.captionForPost && (
         <div className="bg-[#fffdf8] border border-[#e7e0d4] p-4.5 rounded-2xl space-y-2.5 shadow-xs">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <FileText size={14} className="text-[#0f766e]" />
-              <span className="text-xs font-bold text-[#1f2933]">Lapisan 3: Caption / Keterangan Postingan</span>
+              <span className="text-xs font-bold text-[#1f2933]">Caption Postingan (Siap Publish)</span>
             </div>
             <button
               onClick={() => handleCopyText(`caption_${activeAngle.id}`, activeAngle.captionForPost, 'captionCopied')}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-[#1f2933] text-[10px] font-bold rounded-xl transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-[#1f2933] text-xs font-bold rounded-xl transition cursor-pointer border border-[#e7e0d4]"
             >
               {copiedStates[`caption_${activeAngle.id}`] ? (
                 <>
                   <Check size={12} className="text-[#0f766e]" />
-                  Tersalin
+                  <span className="text-[#0f766e]">Caption Tersalin</span>
                 </>
               ) : (
                 <>
                   <Copy size={12} />
-                  Salin Caption
+                  <span>Salin Caption</span>
                 </>
               )}
             </button>
           </div>
           {activeAngle.captionInstruction && (
-            <div className="text-[10px] text-stone-500 font-medium pb-1">
+            <div className="text-[11px] text-stone-500 font-medium">
               {activeAngle.captionInstruction}
             </div>
           )}
@@ -281,149 +275,116 @@ export default function ImagePanel(props: any) {
         </div>
       )}
 
-      {/* Collapsible Section: Detail Teknis & Parameter Strategi */}
-      <details className="group border border-[#e7e0d4] bg-[#f6f3ee]/50 rounded-2xl overflow-hidden shadow-xs transition-all">
-        <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-700 hover:text-stone-900 cursor-pointer select-none">
-          <div className="flex items-center gap-2">
-            <Sliders size={14} className="text-[#0f766e]" />
-            <span>Detail Teknis &amp; Parameter Strategi Angle {activeAngle.id}</span>
-          </div>
-          <ChevronDown size={15} className="group-open:rotate-180 transition-transform text-stone-500" />
-        </summary>
-        <div className="p-4 pt-2 border-t border-[#e7e0d4] grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-          <div className="space-y-3 bg-[#fffdf8] p-3.5 rounded-xl border border-[#e7e0d4]">
-            <div className="flex items-center justify-between pb-1.5 border-b border-[#e7e0d4]">
-              <span className="font-bold text-[#1f2933]">Funnel &amp; Target Emosi</span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#0f766e]/10 text-[#0f766e]">{activeAngle.funnelStage || 'TOFU'}</span>
+      {/* 4. PROGRESSIVE DISCLOSURE: STRATEGY DETAILS (Default Collapsed) */}
+      {activeAngle.strategyBrief && (
+        <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
+          <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+            <div className="flex items-center gap-2">
+              <Target size={14} className="text-[#0f766e]" />
+              <span>Strategy Details</span>
+              <span className="text-[10px] font-normal text-stone-500">({activeAngle.strategyBrief.funnelStage || activeAngle.funnelStage || 'TOFU'})</span>
             </div>
-            <div>
-              <span className="text-stone-500 font-medium block text-[10px]">Tujuan Konten</span>
-              <p className="text-stone-800 font-semibold">{activeAngle.contentGoal || '-'}</p>
-            </div>
-            <div>
-              <span className="text-stone-500 font-medium block text-[10px]">Target Emosi</span>
-              <p className="text-stone-800">{activeAngle.targetEmotion || '-'}</p>
-            </div>
-            <div>
-              <span className="text-stone-500 font-medium block text-[10px]">Strategi Hook Visual</span>
-              <p className="text-stone-800">{activeAngle.hookStrategy || '-'}</p>
-            </div>
-          </div>
-
-          <div className="space-y-3 bg-[#fffdf8] p-3.5 rounded-xl border border-[#e7e0d4]">
-            <div className="pb-1.5 border-b border-[#e7e0d4]">
-              <span className="font-bold text-[#1f2933]">Komposisi &amp; Psikologi Visual</span>
-            </div>
-            <div>
-              <span className="text-stone-500 font-medium block text-[10px]">Strategi Visual</span>
-              <p className="text-stone-800">{activeAngle.visualStrategy || '-'}</p>
-            </div>
-            <div>
-              <span className="text-stone-500 font-medium block text-[10px]">Tata Letak / Layout</span>
-              <p className="text-stone-800">{activeAngle.layoutStrategy || '-'}</p>
-            </div>
-            {activeAngle.colorPsychology && (
+            <ChevronDown size={15} className="group-open:rotate-180 transition-transform text-stone-400" />
+          </summary>
+          <div className="p-4 pt-2 border-t border-[#e7e0d4] space-y-3 text-xs bg-[#fcfaf6]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <span className="text-stone-500 font-medium block text-[10px]">Nuansa &amp; Psikologi Warna</span>
-                <p className="text-stone-800">{activeAngle.colorPsychology}</p>
+                <span className="text-stone-500 font-medium block text-[10px]">Tujuan Konten:</span>
+                <p className="text-stone-800 font-semibold">{activeAngle.strategyBrief.tujuanKonten || activeAngle.contentGoal || '-'}</p>
+              </div>
+              <div>
+                <span className="text-stone-500 font-medium block text-[10px]">Ide Utama Konten:</span>
+                <p className="text-stone-800 font-semibold">{activeAngle.strategyBrief.ideUtama || '-'}</p>
+              </div>
+              <div>
+                <span className="text-stone-500 font-medium block text-[10px]">Konteks Audiens:</span>
+                <p className="text-stone-800">{activeAngle.strategyBrief.audienceContext || '-'}</p>
+              </div>
+              <div>
+                <span className="text-stone-500 font-medium block text-[10px]">Target Emosi:</span>
+                <p className="text-stone-800 font-medium">{activeAngle.strategyBrief.emosiUtama || activeAngle.targetEmotion || '-'}</p>
+              </div>
+            </div>
+
+            {activeAngle.visualObjective && (
+              <div className="bg-[#f0fdfa] p-2.5 rounded-xl border border-[#0f766e]/20">
+                <span className="text-[#0f766e] font-bold block text-[10px] uppercase tracking-wide">Visual Objective:</span>
+                <p className="text-stone-800 text-xs mt-0.5">{activeAngle.visualObjective}</p>
+              </div>
+            )}
+
+            {activeAngle.messageAlignmentCheck && (
+              <div className="flex items-center gap-2 text-[11px] text-stone-600 pt-1">
+                <CheckCircle2 size={12} className={activeAngle.messageAlignmentCheck.isAligned ? 'text-emerald-600' : 'text-amber-600'} />
+                <span>{activeAngle.messageAlignmentCheck.reason}</span>
               </div>
             )}
           </div>
+        </details>
+      )}
+
+      {/* 5. PROGRESSIVE DISCLOSURE: PROMPT DETAILS (Default Collapsed) */}
+      <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
+        <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+          <div className="flex items-center gap-2">
+            <ImageIcon size={14} className="text-[#0f766e]" />
+            <span>Prompt Details</span>
+            <span className="text-[10px] font-normal text-stone-500">(Midjourney / Imagen Prompt)</span>
+          </div>
+          <ChevronDown size={15} className="group-open:rotate-180 transition-transform text-stone-400" />
+        </summary>
+        <div className="p-4 pt-2 border-t border-[#e7e0d4] space-y-3 bg-[#fcfaf6]">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-stone-500 font-medium">Salin prompt lengkap untuk digunakan di Midjourney atau platform lain:</span>
+            <button
+              onClick={() => handleCopyText(`prompt_${selectedAngleId}`, activeAngle.finalPrompt, 'promptCopied')}
+              className="text-xs font-bold text-[#0f766e] hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <Copy size={12} />
+              <span>Salin Prompt</span>
+            </button>
+          </div>
+          <div className="p-3.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-stone-900 font-mono text-xs leading-relaxed select-all whitespace-pre-wrap">
+            {activeAngle.finalPrompt}
+          </div>
+          {activeAngle.textOverlay && (
+            <div className="flex items-center gap-2 pt-1 text-xs">
+              <span className="text-stone-500 font-medium text-[10px]">Teks Overlay:</span>
+              <span className="font-semibold text-[#0f766e] bg-[#0f766e]/10 px-2 py-0.5 rounded-md border border-[#0f766e]/20">
+                &ldquo;{activeAngle.textOverlay}&rdquo;
+              </span>
+            </div>
+          )}
         </div>
       </details>
 
-      {/* Direct Gemini Image Generation Box & Preview */}
-      <div className="bg-[#fffdf8] border border-[#e7e0d4] p-4.5 rounded-2xl space-y-3.5 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-[#e7e0d4]">
-          <div>
-            <h4 className="text-xs font-bold text-[#1f2933] flex items-center gap-1.5">
-              <ImageIcon size={14} className="text-[#0f766e]" />
-              Aset Gambar Nyata (Gemini Visual Engine)
-            </h4>
-            <p className="text-[11px] text-stone-500">
-              Generate visual langsung dari prompt di atas menggunakan model Imagen / Gemini.
-            </p>
+      {/* 6. PROGRESSIVE DISCLOSURE: ADVANCED (Default Collapsed) */}
+      <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
+        <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+          <div className="flex items-center gap-2">
+            <Sliders size={14} className="text-[#0f766e]" />
+            <span>Advanced Details</span>
+            <span className="text-[10px] font-normal text-stone-500">(Komposisi, Layout &amp; Psikologi Warna)</span>
           </div>
-
-          {!generatedImg && (
-            <button
-              onClick={() => handleGenerateImage(activeAngle.finalPrompt, activeAngle.id)}
-              disabled={isGenerating}
-              className="px-4 py-2 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 size={13} className="animate-spin text-white" />
-                  <span>Generating Image...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles size={13} />
-                  <span>Generate Visual</span>
-                </>
-              )}
-            </button>
+          <ChevronDown size={15} className="group-open:rotate-180 transition-transform text-stone-400" />
+        </summary>
+        <div className="p-4 pt-2 border-t border-[#e7e0d4] grid grid-cols-1 md:grid-cols-2 gap-3 text-xs bg-[#fcfaf6]">
+          <div>
+            <span className="text-stone-500 font-medium block text-[10px]">Strategi Visual:</span>
+            <p className="text-stone-800 mt-0.5">{activeAngle.visualStrategy || '-'}</p>
+          </div>
+          <div>
+            <span className="text-stone-500 font-medium block text-[10px]">Tata Letak / Layout:</span>
+            <p className="text-stone-800 mt-0.5">{activeAngle.layoutStrategy || '-'}</p>
+          </div>
+          {activeAngle.colorPsychology && (
+            <div className="md:col-span-2">
+              <span className="text-stone-500 font-medium block text-[10px]">Psikologi Warna:</span>
+              <p className="text-stone-800 mt-0.5">{activeAngle.colorPsychology}</p>
+            </div>
           )}
         </div>
-
-        {/* Error Message if any */}
-        {imageGenerateError && (
-          <div className="bg-rose-50 border border-rose-200 p-3 rounded-xl flex items-start gap-2.5 text-rose-800 text-xs">
-            <AlertCircle size={15} className="shrink-0 mt-0.5 text-rose-600" />
-            <p className="font-medium">{imageGenerateError}</p>
-          </div>
-        )}
-
-        {/* Generated Image Preview & Controls */}
-        {generatedImg ? (
-          <div className="space-y-3 pt-1">
-            <div className="relative group rounded-xl overflow-hidden border border-[#e7e0d4] bg-[#f6f3ee] flex justify-center max-w-md mx-auto shadow-xs">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={generatedImg.imageDataUrl}
-                alt={`Generated Visual Angle ${activeAngle.id}`}
-                className="w-full h-auto object-contain max-h-[460px] rounded-xl"
-              />
-              <div className="absolute top-2 right-2 px-2 py-0.5 bg-black/70 backdrop-blur-md rounded-md text-[10px] font-mono text-white border border-white/20">
-                {generatedImg.model || 'gemini-3.1-flash-lite-image'}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-center gap-2.5 pt-1">
-              <button
-                onClick={() => handleDownloadImage(generatedImg.imageDataUrl, activeAngle.id)}
-                className="px-4 py-2 bg-[#fffdf8] hover:bg-stone-100 text-[#1f2933] border border-[#e7e0d4] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs"
-              >
-                <Download size={13} className="text-[#0f766e]" />
-                <span>Download Image</span>
-              </button>
-
-              <button
-                onClick={() => handleGenerateImage(activeAngle.finalPrompt, activeAngle.id)}
-                disabled={isGenerating}
-                className="px-4 py-2 bg-[#fffdf8] hover:bg-stone-100 text-stone-700 border border-[#e7e0d4] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-50 shadow-xs"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 size={13} className="animate-spin text-[#0f766e]" />
-                    <span>Regenerating...</span>
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw size={13} className="text-[#0f766e]" />
-                    <span>Regenerate</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="p-6 text-center border border-dashed border-[#e7e0d4] rounded-xl bg-[#f6f3ee]/50 text-xs text-stone-500 space-y-1">
-            <p>Klik tombol <strong>Generate Visual</strong> di atas untuk menghasilkan ilustrasi langsung dari AI Studio.</p>
-          </div>
-        )}
-      </div>
+      </details>
     </div>
   );
-
 }

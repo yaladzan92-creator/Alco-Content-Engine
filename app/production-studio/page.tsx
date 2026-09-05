@@ -4956,6 +4956,36 @@ ${formatDirection}${revisionDirective}`;
         </div>
       )}
 
+      {/* Content Production Context Strip */}
+      <div className="border-b border-[#e7e0d4] bg-[#fffdf8] px-4 md:px-8 py-3">
+        <div className="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] uppercase shrink-0 ${
+              (activeItem.jenis || '').includes('TOFU') ? 'bg-sky-100 text-sky-800 border border-sky-200' :
+              (activeItem.jenis || '').includes('MOFU') ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+              'bg-[#0f766e]/10 text-[#0f766e] border border-[#0f766e]/20'
+            }`}>
+              {activeItem.jenis || 'KONTEN'}
+            </span>
+            <div className="flex items-center gap-1.5 truncate">
+              <span className="font-bold text-stone-400 shrink-0">#{activeItem.no || '1'}</span>
+              <span className="font-bold text-stone-900 truncate">{activeItem.headline}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-stone-500 text-[11px] hidden sm:inline">Format Terjadwal:</span>
+            <span className="px-2.5 py-1 bg-[#f6f3ee] text-stone-800 font-bold rounded-lg border border-[#e7e0d4] text-[11px]">
+              {activeItem.format || 'Semua Format'}
+            </span>
+            <span className="text-stone-300">|</span>
+            <span className="text-stone-500 text-[11px] hidden sm:inline">Mode Aktif:</span>
+            <span className="px-2.5 py-1 bg-[#0f766e]/10 text-[#0f766e] font-bold rounded-lg border border-[#0f766e]/20 text-[11px] uppercase">
+              {activeTab}
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Main Studio Workspace Grid */}
       <div className="flex-1 p-4 md:p-6 max-w-[1600px] w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5">
         
@@ -5143,16 +5173,17 @@ ${formatDirection}${revisionDirective}`;
         {/* RIGHT COLUMN: WORKSPACE TAB NAVIGATION & DYNAMIC WORKSHOP CONTENT (lg:col-span-8) */}
         <div className="lg:col-span-8 flex flex-col space-y-4">
           
-          {/* URUTAN KERJA (5-Step Visual Production Guide) */}
-          <div className="bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl p-4 shadow-xs">
-            <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-[#e7e0d4]">
+          {/* URUTAN KERJA (Collapsible Workflow Guide) */}
+          <details className="group bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl overflow-hidden shadow-xs">
+            <summary className="p-3 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
               <div className="flex items-center gap-2">
                 <ListTodo size={15} className="text-[#0f766e]" />
-                <h3 className="text-xs font-bold text-[#1f2933]">Urutan Kerja Produksi Konten</h3>
+                <h3 className="text-xs font-bold text-[#1f2933]">Panduan Alur Kerja Produksi</h3>
+                <span className="text-[10px] text-stone-500 font-normal hidden sm:inline">(5 Langkah Praktis Menuju Aset Siap Pakai)</span>
               </div>
-              <span className="text-[11px] text-stone-500 font-medium">5 Langkah Praktis</span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-xs">
+              <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />
+            </summary>
+            <div className="p-3 pt-0 border-t border-[#e7e0d4]/60 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-xs mt-2.5">
               <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl p-2.5 flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-[#0f766e]/15 text-[#0f766e] font-bold text-[10px] flex items-center justify-center shrink-0">1</span>
                 <span className="text-stone-700 font-medium text-[11px] leading-tight">Pilih format</span>
@@ -5167,14 +5198,14 @@ ${formatDirection}${revisionDirective}`;
               </div>
               <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl p-2.5 flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-[#0f766e]/15 text-[#0f766e] font-bold text-[10px] flex items-center justify-center shrink-0">4</span>
-                <span className="text-stone-700 font-medium text-[11px] leading-tight">Buka tool lanjutan</span>
+                <span className="text-stone-700 font-medium text-[11px] leading-tight">Buka tool eksternal</span>
               </div>
               <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl p-2.5 flex items-center gap-2 col-span-2 sm:col-span-1">
                 <span className="w-5 h-5 rounded-full bg-[#0f766e]/15 text-[#0f766e] font-bold text-[10px] flex items-center justify-center shrink-0">5</span>
-                <span className="text-stone-700 font-medium text-[11px] leading-tight">Paste &amp; produksi aset</span>
+                <span className="text-stone-700 font-medium text-[11px] leading-tight">Paste &amp; eksekusi</span>
               </div>
             </div>
-          </div>
+          </details>
 
           {generationError && (
             <div className="bg-amber-50 border border-amber-200 text-amber-900 p-4 rounded-2xl flex items-start justify-between gap-3 text-xs shadow-xs">
@@ -5198,14 +5229,15 @@ ${formatDirection}${revisionDirective}`;
           <div className="bg-[#fffdf8] border border-[#e7e0d4] p-2 rounded-2xl flex flex-wrap items-center justify-between gap-2 shadow-xs">
             <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
               {[
-                { id: 'review', label: 'Cek Rencana', icon: Eye },
-                { id: 'image', label: 'Gambar', icon: ImageIcon },
-                { id: 'carousel', label: 'Carousel', icon: Layers },
-                { id: 'video', label: 'Video', icon: Video },
-                { id: 'dna', label: 'DNA Karakter', icon: BrainCircuit },
+                { id: 'review', label: 'Cek Rencana', icon: Eye, formatMatch: [] },
+                { id: 'image', label: 'Gambar', icon: ImageIcon, formatMatch: ['gambar', 'single', 'image', 'feed', 'poster'] },
+                { id: 'carousel', label: 'Carousel', icon: Layers, formatMatch: ['carousel'] },
+                { id: 'video', label: 'Video', icon: Video, formatMatch: ['video', 'reels', 'tiktok', 'shorts'] },
+                { id: 'dna', label: 'DNA Karakter', icon: BrainCircuit, formatMatch: [] },
               ].map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
+                const isMatch = tab.formatMatch.some((m: string) => (activeItem.format || '').toLowerCase().includes(m));
                 return (
                   <button
                     key={tab.id}
@@ -5220,7 +5252,14 @@ ${formatDirection}${revisionDirective}`;
                     }`}
                   >
                     <Icon size={14} />
-                    {tab.label}
+                    <span>{tab.label}</span>
+                    {isMatch && (
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-tight ${
+                        isActive ? 'bg-white/25 text-white' : 'bg-[#0f766e]/10 text-[#0f766e]'
+                      }`}>
+                        Target
+                      </span>
+                    )}
                   </button>
                 );
               })}
