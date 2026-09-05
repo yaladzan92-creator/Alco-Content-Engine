@@ -1,13 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Sparkles, Zap, FileText, Layers, FolderOpen } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Sparkles, FileText, Layers, FolderOpen, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   StrategyBlueprint,
   SharedContentContext,
-  buildSharedContentContext,
-  SAMPLE_STRATEGY_BLUEPRINT,
   ContentItem
 } from '@/lib/content-contract';
 import {
@@ -16,27 +14,20 @@ import {
   loadProjectData,
   saveProjectData,
   updateProjectMeta,
-  getProjectList
+  getProjectList,
+  CalendarSettings,
+  DEFAULT_CALENDAR_SETTINGS,
+  getDefaultCalendarSettings,
+  getProjectCalendarSettings,
+  saveProjectCalendarSettings
 } from '@/lib/storage';
-import dynamic from 'next/dynamic';
 import { ActiveStrategyBadge } from '@/components/ActiveStrategyBadge';
 import { GeminiApiKeyControl } from '@/components/GeminiApiKeyControl';
-import { buildGeminiRequestHeaders } from '@/lib/client-gemini-key';
-
-const CalendarView = dynamic(() => import('@/components/CalendarView'), {
-  ssr: false,
-  loading: () => (
-    <div className="p-12 text-center text-zinc-500 flex flex-col items-center justify-center gap-3">
-      <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
-      <span className="text-xs font-mono">Memuat Kalender Konten...</span>
-    </div>
-  ),
-});
-
-const StrategyIntakeModal = dynamic(
-  () => import('@/components/StrategyIntakeModal').then((mod) => mod.StrategyIntakeModal),
-  { ssr: false }
-);
+import { GeminiApiKeyOnboardingCard } from '@/components/GeminiApiKeyOnboardingCard';
+import { buildGeminiRequestHeaders, useGeminiApiKey } from '@/lib/client-gemini-key';
+import CalendarView from '@/components/CalendarView';
+import { StrategyIntakeModal } from '@/components/StrategyIntakeModal';
+import ContentEngineShell from '@/components/ContentEngineShell';
 
 const safeCopyToClipboard = async (text: string) => {
   if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
@@ -56,6 +47,11 @@ export default function HomePageClient() {
   const [isMounted, setIsMounted] = useState(false);
   const [activeProjectId, setActiveProjectIdState] = useState<string | null>(null);
   const [projectList, setProjectList] = useState<any[]>([]);
+  const [isProjectIncomplete, setIsProjectIncomplete] = useState(false);
+  const isSwitchingRef = useRef(false);
+  const activeProjectIdRef = useRef<string | null>(null);
+  const onboardingRef = useRef<HTMLDivElement>(null);
+  const { hasCustomKey } = useGeminiApiKey();
 
   const [items, setItems] = useState<ContentItem[]>([]);
   const [growthItems, setGrowthItems] = useState<ContentItem[]>([]);
@@ -80,8 +76,183 @@ export default function HomePageClient() {
   const [accessStatus] = useState({ type: 'FULL', maxContent: 30 });
   const [usageStats] = useState({ generates: 0, copies: 0 });
 
-  const [coreTopic, setCoreTopic] = useState('Digital Course Launch Strategy');
-  const [startDate, setStartDate] = useState('2026-08-08');
+  // 14 calendar settings per project
+  const [coreTopic, setCoreTopic] = useState(DEFAULT_CALENDAR_SETTINGS.coreTopic);
+  const [startDate, setStartDate] = useState(DEFAULT_CALENDAR_SETTINGS.startDate);
+  const [skipDays, setSkipDays] = useState<string[]>(DEFAULT_CALENDAR_SETTINGS.skipDays);
+  const [gender, setGender] = useState(DEFAULT_CALENDAR_SETTINGS.gender);
+  const [ageRange, setAgeRange] = useState<[number, number]>(DEFAULT_CALENDAR_SETTINGS.ageRange);
+  const [formats, setFormats] = useState<string[]>(DEFAULT_CALENDAR_SETTINGS.formats);
+  const [carouselSlides, setCarouselSlides] = useState<number>(DEFAULT_CALENDAR_SETTINGS.carouselSlides);
+  const [reelsDuration, setReelsDuration] = useState<string>(DEFAULT_CALENDAR_SETTINGS.reelsDuration);
+  const [ratio, setRatio] = useState(DEFAULT_CALENDAR_SETTINGS.ratio);
+  const [formatRatio, setFormatRatio] = useState<Record<string, number>>(DEFAULT_CALENDAR_SETTINGS.formatRatio);
+  const [selectedVoices, setSelectedVoices] = useState<string[]>(DEFAULT_CALENDAR_SETTINGS.selectedVoices);
+  const [hookMix, setHookMix] = useState<{ type: string; percentage?: number }[]>(DEFAULT_CALENDAR_SETTINGS.hookMix);
+  const [selectedFormula, setSelectedFormula] = useState(DEFAULT_CALENDAR_SETTINGS.selectedFormula);
+  const [referenceType, setReferenceType] = useState(DEFAULT_CALENDAR_SETTINGS.referenceType);
+  const [selectedCTAs, setSelectedCTAs] = useState<string[]>(DEFAULT_CALENDAR_SETTINGS.selectedCTAs);
+  const [isFastMode, setIsFastMode] = useState(DEFAULT_CALENDAR_SETTINGS.isFastMode);
+
+  const applyCalendarSettings = (
+    settings: Partial<CalendarSettings> | null,
+    blueprint?: StrategyBlueprint | SharedContentContext | null,
+    projectName?: string
+  ) => {
+    const fallbackDefaults = getDefaultCalendarSettings(blueprint, projectName);
+    const s = settings || fallbackDefaults;
+
+    const resolvedCoreTopic =
+      s.coreTopic && s.coreTopic !== 'Digital Course Launch Strategy'
+        ? s.coreTopic
+        : fallbackDefaults.coreTopic;
+
+    setCoreTopic(resolvedCoreTopic);
+    setStartDate(s.startDate || fallbackDefaults.startDate);
+    setSkipDays(Array.isArray(s.skipDays) ? s.skipDays : fallbackDefaults.skipDays);
+    setGender(s.gender || fallbackDefaults.gender);
+    setAgeRange(Array.isArray(s.ageRange) && s.ageRange.length === 2 ? s.ageRange : fallbackDefaults.ageRange);
+    setFormats(Array.isArray(s.formats) && s.formats.length > 0 ? s.formats : fallbackDefaults.formats);
+    setCarouselSlides(typeof s.carouselSlides === 'number' ? s.carouselSlides : fallbackDefaults.carouselSlides);
+    setReelsDuration(s.reelsDuration || fallbackDefaults.reelsDuration);
+    setRatio(s.ratio || fallbackDefaults.ratio);
+    setFormatRatio(s.formatRatio || fallbackDefaults.formatRatio);
+    setSelectedVoices(Array.isArray(s.selectedVoices) && s.selectedVoices.length > 0 ? s.selectedVoices : fallbackDefaults.selectedVoices);
+    setHookMix(Array.isArray(s.hookMix) && s.hookMix.length > 0 ? s.hookMix : fallbackDefaults.hookMix);
+    setSelectedFormula(s.selectedFormula || fallbackDefaults.selectedFormula);
+    setReferenceType(s.referenceType || fallbackDefaults.referenceType);
+    setSelectedCTAs(Array.isArray(s.selectedCTAs) && s.selectedCTAs.length > 0 ? s.selectedCTAs : fallbackDefaults.selectedCTAs);
+    setIsFastMode(Boolean(s.isFastMode));
+  };
+
+  const saveCurrentProjectSnapshot = (pid: string | null) => {
+    if (!pid || isProjectIncomplete || isSwitchingRef.current) return;
+    const currentSettings: CalendarSettings = {
+      coreTopic,
+      startDate,
+      skipDays,
+      gender,
+      ageRange,
+      formats,
+      carouselSlides,
+      reelsDuration,
+      ratio,
+      formatRatio,
+      selectedVoices,
+      hookMix,
+      selectedFormula,
+      referenceType,
+      selectedCTAs,
+      isFastMode
+    };
+    saveProjectCalendarSettings(pid, currentSettings);
+    saveProjectData(pid, 'items', items);
+    saveProjectData(pid, 'growthItems', growthItems);
+    saveProjectData(pid, 'history', history);
+    saveProjectData(pid, 'revisions', revisions);
+  };
+
+  const loadProject = (pid: string | null) => {
+    // 1. Save current active project snapshot before switching away
+    const oldPid = activeProjectIdRef.current;
+    if (oldPid && oldPid !== pid && !isProjectIncomplete) {
+      saveCurrentProjectSnapshot(oldPid);
+    }
+
+    // 2. Set switching flag to block auto-save effects during transition
+    isSwitchingRef.current = true;
+
+    // 3. Immediately clear all states of old project
+    setItems([]);
+    setGrowthItems([]);
+    setHistory([]);
+    setRevisions({});
+    setStrategyBlueprint(null);
+    setSharedContext(null);
+    setIsConfiguring(false);
+    setActiveConfigCell(null);
+
+    // 4. Update active project ID
+    setActiveProjectIdState(pid);
+    setActiveProjectId(pid);
+    activeProjectIdRef.current = pid;
+
+    // 5. If pid is null, reset everything to defaults
+    if (!pid) {
+      setIsProjectIncomplete(false);
+      applyCalendarSettings(getDefaultCalendarSettings(null), null);
+      setTimeout(() => {
+        isSwitchingRef.current = false;
+      }, 50);
+      return;
+    }
+
+    // 6. Validate that both blueprint and context are present and valid
+    const savedBlueprint = loadProjectData(pid, 'blueprint');
+    const savedContext = loadProjectData(pid, 'context');
+
+    const isBlueprintValid = Boolean(
+      savedBlueprint &&
+      typeof savedBlueprint === 'object' &&
+      Object.keys(savedBlueprint).length > 0 &&
+      (savedBlueprint.brand_identity || savedBlueprint.project_id || savedBlueprint.project_name || savedBlueprint.core_strategy)
+    );
+
+    const isContextValid = Boolean(
+      savedContext &&
+      typeof savedContext === 'object' &&
+      Object.keys(savedContext).length > 0 &&
+      (savedContext.brand_context || savedContext.project_id)
+    );
+
+    if (!isBlueprintValid || !isContextValid) {
+      // Incomplete / corrupted project data:
+      // Do NOT show calendar, context, or items of previous project.
+      setIsProjectIncomplete(true);
+      setStrategyBlueprint(null);
+      setSharedContext(null);
+      setItems([]);
+      setGrowthItems([]);
+      setHistory([]);
+      setRevisions({});
+      applyCalendarSettings(getDefaultCalendarSettings(null), null);
+      setTimeout(() => {
+        isSwitchingRef.current = false;
+      }, 50);
+      return;
+    }
+
+    // 7. Project is valid and complete
+    setIsProjectIncomplete(false);
+    setStrategyBlueprint(savedBlueprint);
+    setSharedContext(savedContext);
+
+    const savedItems = loadProjectData(pid, 'items', []);
+    const savedGrowthItems = loadProjectData(pid, 'growthItems', []);
+    const savedHistory = loadProjectData(pid, 'history', []);
+    const savedRevisions = loadProjectData(pid, 'revisions', {});
+    setItems(savedItems);
+    setGrowthItems(savedGrowthItems);
+    setHistory(savedHistory);
+    setRevisions(savedRevisions);
+
+    // Load or default calendar settings specifically for this project
+    const savedSettings = getProjectCalendarSettings(pid);
+    if (savedSettings) {
+      applyCalendarSettings(savedSettings, savedBlueprint);
+    } else {
+      const freshDefault = getDefaultCalendarSettings(savedBlueprint);
+      saveProjectCalendarSettings(pid, freshDefault);
+      applyCalendarSettings(freshDefault, savedBlueprint);
+    }
+
+    setTimeout(() => {
+      isSwitchingRef.current = false;
+    }, 50);
+  };
+
+  const loadProjectRef = useRef<(pid: string | null) => void>(() => {});
+  loadProjectRef.current = loadProject;
 
   // Initialization & Storage
   useEffect(() => {
@@ -92,89 +263,179 @@ export default function HomePageClient() {
 
       const pid = getActiveProjectId();
       if (pid) {
-        setActiveProjectIdState(pid);
-        const savedBlueprint = loadProjectData(pid, 'blueprint');
-        const savedContext = loadProjectData(pid, 'context');
-        if (savedBlueprint) setStrategyBlueprint(savedBlueprint);
-        if (savedContext) setSharedContext(savedContext);
-
-        const savedItems = loadProjectData(pid, 'items', []);
-        const savedGrowthItems = loadProjectData(pid, 'growthItems', []);
-        const savedHistory = loadProjectData(pid, 'history', []);
-        
-        setItems(savedItems);
-        setGrowthItems(savedGrowthItems);
-        setHistory(savedHistory);
-        
-        if (savedBlueprint?.brand_identity?.brand_name) {
-          setCoreTopic(`${savedBlueprint.brand_identity.brand_name} Campaign`);
-        }
+        loadProjectRef.current(pid);
+      } else {
+        applyCalendarSettings(getDefaultCalendarSettings(null), null);
       }
     }
-
-    const timer = setTimeout(() => {
-      setStartDate(new Date().toISOString().split('T')[0]);
-    }, 0);
-    return () => clearTimeout(timer);
   }, []);
 
-  // Save changes to local storage when they change
+  // Auto-save blueprint & context
   useEffect(() => {
-    if (activeProjectId && strategyBlueprint && sharedContext) {
-      saveProjectData(activeProjectId, 'blueprint', strategyBlueprint);
-      saveProjectData(activeProjectId, 'context', sharedContext);
-      updateProjectMeta(activeProjectId, strategyBlueprint.project_name || 'ALCO Campaign');
-      setProjectList(getProjectList());
+    if (isSwitchingRef.current || !activeProjectId || isProjectIncomplete || !strategyBlueprint || !sharedContext || activeProjectIdRef.current !== activeProjectId) {
+      return;
     }
-  }, [strategyBlueprint, sharedContext, activeProjectId]);
+    saveProjectData(activeProjectId, 'blueprint', strategyBlueprint);
+    saveProjectData(activeProjectId, 'context', sharedContext);
+    updateProjectMeta(activeProjectId, strategyBlueprint.brand_identity?.brand_name || strategyBlueprint.project_name || 'ALCO Campaign');
+    setProjectList(getProjectList());
+  }, [strategyBlueprint, sharedContext, activeProjectId, isProjectIncomplete]);
 
+  // Auto-save items & history
   useEffect(() => {
-    if (activeProjectId) {
-      saveProjectData(activeProjectId, 'items', items);
-      saveProjectData(activeProjectId, 'growthItems', growthItems);
-      saveProjectData(activeProjectId, 'history', history);
+    if (isSwitchingRef.current || !activeProjectId || isProjectIncomplete || activeProjectIdRef.current !== activeProjectId) {
+      return;
     }
-  }, [items, growthItems, history, activeProjectId]);
+    saveProjectData(activeProjectId, 'items', items);
+    saveProjectData(activeProjectId, 'growthItems', growthItems);
+    saveProjectData(activeProjectId, 'history', history);
+    saveProjectData(activeProjectId, 'revisions', revisions);
+  }, [items, growthItems, history, revisions, activeProjectId, isProjectIncomplete]);
 
-  const [skipDays, setSkipDays] = useState<string[]>([]);
-  const [gender, setGender] = useState('Both');
-  const [ageRange, setAgeRange] = useState<[number, number]>([20, 45]);
-  const [formats, setFormats] = useState<string[]>(['Single', 'Carousel', 'Reels']);
-  const [carouselSlides, setCarouselSlides] = useState<number>(5);
-  const [reelsDuration, setReelsDuration] = useState<string>('30s');
-  const [ratio, setRatio] = useState({ tofu: 8, mofu: 6, bofu: 4 });
-  const [formatRatio, setFormatRatio] = useState<Record<string, number>>({ Single: 30, Carousel: 40, Reels: 30 });
-  const [selectedVoices, setSelectedVoices] = useState<string[]>(['The Efficiency Expert']);
-  const [hookMix, setHookMix] = useState<{ type: string; percentage?: number }[]>([
-    { type: 'Call-Out', percentage: 40 },
-    { type: 'Curiosity Gap', percentage: 35 },
-    { type: 'Social Proof', percentage: 25 }
+  // Auto-save calendar settings per project
+  useEffect(() => {
+    if (isSwitchingRef.current || !activeProjectId || isProjectIncomplete || !strategyBlueprint || !sharedContext || activeProjectIdRef.current !== activeProjectId) {
+      return;
+    }
+    const currentSettings: CalendarSettings = {
+      coreTopic,
+      startDate,
+      skipDays,
+      gender,
+      ageRange,
+      formats,
+      carouselSlides,
+      reelsDuration,
+      ratio,
+      formatRatio,
+      selectedVoices,
+      hookMix,
+      selectedFormula,
+      referenceType,
+      selectedCTAs,
+      isFastMode,
+    };
+    saveProjectCalendarSettings(activeProjectId, currentSettings);
+  }, [
+    activeProjectId,
+    isProjectIncomplete,
+    strategyBlueprint,
+    sharedContext,
+    coreTopic,
+    startDate,
+    skipDays,
+    gender,
+    ageRange,
+    formats,
+    carouselSlides,
+    reelsDuration,
+    ratio,
+    formatRatio,
+    selectedVoices,
+    hookMix,
+    selectedFormula,
+    referenceType,
+    selectedCTAs,
+    isFastMode,
   ]);
-  const [selectedFormula, setSelectedFormula] = useState('Awareness & Soft Selling');
-  const [referenceType, setReferenceType] = useState('Logika AI');
-  const [selectedCTAs, setSelectedCTAs] = useState<string[]>(['Link Bio']);
-  const [isFastMode, setIsFastMode] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleApplyStrategy = (newBlueprint: StrategyBlueprint, newContext: SharedContentContext) => {
-    let pid = activeProjectId;
-    if (!pid) {
-      pid = newBlueprint.project_id || `proj_${Date.now()}`;
-      newBlueprint.project_id = pid;
-      newContext.project_id = pid;
-      setActiveProjectIdState(pid);
-      setActiveProjectId(pid);
+  const handleApplyStrategy = (newBlueprint: StrategyBlueprint, newContext: SharedContentContext, isNewProject: boolean) => {
+    let finalProjectId = activeProjectId;
+    const incomingProjectId = newBlueprint.project_id || newContext.project_id;
+
+    if (isNewProject || !finalProjectId) {
+      finalProjectId = incomingProjectId || `proj_${Date.now()}`;
+      if (finalProjectId === activeProjectId) {
+        finalProjectId = `proj_${Date.now()}`;
+      }
     }
-    setStrategyBlueprint(newBlueprint);
-    setSharedContext(newContext);
-    if (newBlueprint.brand_identity?.brand_name) {
-      setCoreTopic(`${newBlueprint.brand_identity.brand_name} Campaign`);
+
+    newBlueprint.project_id = finalProjectId;
+    newContext.project_id = finalProjectId;
+
+    const isDifferentProject = finalProjectId !== activeProjectId;
+
+    if (isDifferentProject || isNewProject) {
+      // 1. Snapshot previous project if one existed
+      const oldPid = activeProjectIdRef.current;
+      if (oldPid && oldPid !== finalProjectId && !isProjectIncomplete) {
+        saveCurrentProjectSnapshot(oldPid);
+      }
+
+      // 2. Set switching flag to block auto-save effects
+      isSwitchingRef.current = true;
+
+      // 3. Reset calendar, items, and revision states completely
+      setItems([]);
+      setGrowthItems([]);
+      setHistory([]);
+      setRevisions({});
+      setIsConfiguring(false);
+      setActiveConfigCell(null);
+
+      // 4. Generate clean default settings based on the new blueprint
+      const freshSettings = getDefaultCalendarSettings(newBlueprint, newBlueprint.project_name);
+
+      // 5. Save everything under finalProjectId immediately in storage
+      saveProjectData(finalProjectId, 'blueprint', newBlueprint);
+      saveProjectData(finalProjectId, 'context', newContext);
+      saveProjectCalendarSettings(finalProjectId, freshSettings);
+      saveProjectData(finalProjectId, 'items', []);
+      saveProjectData(finalProjectId, 'growthItems', []);
+      saveProjectData(finalProjectId, 'history', []);
+      saveProjectData(finalProjectId, 'revisions', {});
+
+      // 6. Update active project ID & state
+      setActiveProjectIdState(finalProjectId);
+      setActiveProjectId(finalProjectId);
+      activeProjectIdRef.current = finalProjectId;
+
+      // 7. Apply the new settings, blueprint, and context to React state
+      applyCalendarSettings(freshSettings, newBlueprint, newBlueprint.project_name);
+      setIsProjectIncomplete(false);
+      setStrategyBlueprint(newBlueprint);
+      setSharedContext(newContext);
+
+      updateProjectMeta(finalProjectId, newBlueprint.brand_identity?.brand_name || newBlueprint.project_name || 'ALCO Campaign');
+      setProjectList(getProjectList());
+
+      setTimeout(() => {
+        isSwitchingRef.current = false;
+      }, 50);
+
+      showToast(isDifferentProject ? `Beralih ke project: ${newBlueprint.brand_identity?.brand_name || newBlueprint.project_name || finalProjectId}` : 'Strategy Blueprint baru berhasil diterapkan!');
+    } else {
+      // Updating current project blueprint & context
+      saveProjectData(finalProjectId, 'blueprint', newBlueprint);
+      saveProjectData(finalProjectId, 'context', newContext);
+      updateProjectMeta(finalProjectId, newBlueprint.brand_identity?.brand_name || newBlueprint.project_name || 'ALCO Campaign');
+      setProjectList(getProjectList());
+
+      setStrategyBlueprint(newBlueprint);
+      setSharedContext(newContext);
+
+      // If project has saved settings, keep them, but update coreTopic if it was default or empty
+      const existingSettings = getProjectCalendarSettings(finalProjectId);
+      if (!existingSettings) {
+        const freshSettings = getDefaultCalendarSettings(newBlueprint);
+        saveProjectCalendarSettings(finalProjectId, freshSettings);
+        applyCalendarSettings(freshSettings, newBlueprint);
+      } else if (newBlueprint.brand_identity?.brand_name && (!existingSettings.coreTopic || existingSettings.coreTopic === 'Content Campaign' || existingSettings.coreTopic === 'Digital Course Launch Strategy')) {
+        const updated = {
+          ...existingSettings,
+          coreTopic: `${newBlueprint.brand_identity.brand_name} Campaign`
+        };
+        saveProjectCalendarSettings(finalProjectId, updated);
+        setCoreTopic(updated.coreTopic);
+      }
+
+      showToast('Strategy Blueprint berhasil diperbarui!');
     }
-    showToast('Strategy Blueprint berhasil diterapkan ke Content Engine!');
   };
 
   const toggleSkipDay = (day: string) => {
@@ -205,7 +466,28 @@ export default function HomePageClient() {
     });
   };
 
+  const handleOpenConfig = () => {
+    if (isProjectIncomplete || !strategyBlueprint || !sharedContext) {
+      showToast('Project ini tidak lengkap. Silakan upload blueprint ulang.');
+      setIsIntakeModalOpen(true);
+      return;
+    }
+    setIsConfiguring(true);
+  };
+
   const handleGenerateCalendar = async () => {
+    if (!hasCustomKey) {
+      showToast('Hubungkan Gemini API Key dulu untuk menggunakan fitur generate AI.');
+      onboardingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    if (isProjectIncomplete || !strategyBlueprint || !sharedContext) {
+      showToast('Project ini tidak lengkap. Silakan upload blueprint ulang.');
+      setIsIntakeModalOpen(true);
+      return;
+    }
+
     if (isLoading) return;
     setIsLoading(true);
     showToast('Generasi strategi konten sedang berjalan via Gemini AI...');
@@ -288,6 +570,12 @@ export default function HomePageClient() {
   };
 
   const handleRegenerateItem = async (itemNo: number, instruction: string) => {
+    if (!hasCustomKey) {
+      showToast('Hubungkan Gemini API Key dulu untuk menggunakan fitur generate AI.');
+      onboardingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
     const target = items.find(i => i.no === itemNo);
     if (!target || isRegeneratingItem) return;
     setIsRegeneratingItem(true);
@@ -383,47 +671,111 @@ export default function HomePageClient() {
     showToast('Sistem di-reset ke awal.');
   };
 
-  const configData = {
-    coreTopic, setCoreTopic,
-    startDate, setStartDate,
-    skipDays, toggleSkipDay,
-    gender, setGender,
-    ageRange, setAgeRange,
-    formats, toggleFormat,
-    carouselSlides, setCarouselSlides,
-    reelsDuration, setReelsDuration,
-    ratio, setRatio,
-    formatRatio, setFormatRatio,
-    selectedVoices, toggleVoice,
-    hookMix, updateHookMix,
-    selectedFormula, setSelectedFormula,
-    referenceType, setReferenceType,
-    selectedCTAs, toggleCTA,
-    isFastMode, setIsFastMode,
-    generateContent: handleGenerateCalendar,
-    connectionStatus: "active",
-    brandContext: { brandName: sharedContext?.brand_context?.brand_name || "ALCO Engine" },
-    editableContext: {
-      contentStrategy: {
-        pillars: sharedContext?.strategy_context?.content_pillars || ["TOFU Awareness", "MOFU Consideration", "BOFU Conversion"]
-      },
-      audience: {
-        segments: [sharedContext?.audience_context?.primary_audience || "Target Buyers"]
-      },
-      offers: [{ ctaText: sharedContext?.strategy_context?.main_offer || "Link Bio" }]
-    },
-    sharedContentContext: sharedContext,
-    strategyBlueprint: strategyBlueprint
-  };
-
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
 
   const tofuCount = items.filter(i => (i.jenis || '').toUpperCase().includes('TOFU')).length;
   const mofuCount = items.filter(i => (i.jenis || '').toUpperCase().includes('MOFU')).length;
   const bofuCount = items.filter(i => (i.jenis || '').toUpperCase().includes('BOFU')).length;
+  const currentProjectName = projectList.find(p => p.project_id === activeProjectId)?.project_name || 'Pilih Project';
+  const funnelFilters = [
+    { type: 'ALL', label: 'Semua', count: items.length, color: 'text-slate-900' },
+    { type: 'TOFU', label: 'TOFU Awareness', count: tofuCount, color: 'text-sky-700' },
+    { type: 'MOFU', label: 'MOFU Consideration', count: mofuCount, color: 'text-amber-700' },
+    { type: 'BOFU', label: 'BOFU Conversion', count: bofuCount, color: 'text-emerald-700' }
+  ];
+  const projectSelector = projectList.length > 0 ? (
+    <div className="relative">
+      <button
+        onClick={() => setIsProjectDropdownOpen(prev => !prev)}
+        className="flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-xs font-semibold text-foreground shadow-sm transition hover:bg-muted"
+      >
+        <FolderOpen size={14} className="text-primary" />
+        <span className="max-w-[160px] truncate">{currentProjectName}</span>
+      </button>
+      {isProjectDropdownOpen && (
+        <div className="absolute right-0 top-full z-50 mt-1.5 w-60 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+          <div className="border-b border-border bg-muted p-2.5 text-xs font-semibold text-muted-foreground">
+            Pilih Project
+          </div>
+          <div className="max-h-60 overflow-y-auto custom-scrollbar">
+            {projectList.map(p => (
+              <button
+                key={p.project_id}
+                onClick={() => {
+                  setIsProjectDropdownOpen(false);
+                  loadProject(p.project_id);
+                }}
+                className={`w-full px-3.5 py-2.5 text-left text-xs transition-colors ${activeProjectId === p.project_id ? 'bg-primary/10 font-bold text-primary' : 'text-foreground hover:bg-muted'}`}
+              >
+                {p.project_name}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => {
+              setIsProjectDropdownOpen(false);
+              loadProject(null);
+            }}
+            className="w-full border-t border-border px-3.5 py-2 text-left text-xs text-rose-600 transition-colors hover:bg-rose-50"
+          >
+            Kosongkan Project Aktif
+          </button>
+        </div>
+      )}
+    </div>
+  ) : null;
+  const primaryActions = (
+    <>
+      {projectSelector}
+      <GeminiApiKeyControl onToast={showToast} />
+      <button
+        onClick={() => setIsIntakeModalOpen(true)}
+        className="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 text-xs font-semibold text-foreground shadow-sm transition hover:bg-muted"
+      >
+        <FileText size={14} className="text-primary" />
+        Input Strategi
+      </button>
+      <button
+        onClick={handleOpenConfig}
+        className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground shadow-sm transition hover:bg-primary/95"
+      >
+        <Layers size={14} />
+        {items.length > 0 ? 'Edit Parameter' : 'Buat Kalender Baru'}
+      </button>
+    </>
+  );
+  const mobileActions = (
+    <>
+      <GeminiApiKeyControl variant="compact" onToast={showToast} />
+      <button
+        onClick={handleOpenConfig}
+        className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground shadow-sm"
+      >
+        <Layers size={13} />
+        Kalender
+      </button>
+    </>
+  );
 
   return (
-    <main className="min-h-screen bg-[#f6f3ee] text-[#1f2933] flex flex-col font-sans">
+    <ContentEngineShell
+      title="ALCO Content Engine"
+      subtitle="Execution workspace setelah ALCO Creative System"
+      eyebrow="Strategy-First v2.5"
+      actions={primaryActions}
+      mobileActions={mobileActions}
+      footer={(
+        <footer className="shrink-0 border-t border-border bg-card px-6 py-4 text-xs text-muted-foreground md:px-8">
+          <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
+            <div>ALCO Content Engine - Powered by Google Gemini 3.6 Flash & Strategy Blueprint</div>
+            <div className="flex gap-4 font-medium">
+              <span>Funnel Items: {items.length}</span>
+              <span>Strategy Status: {isProjectIncomplete ? 'Incomplete' : (sharedContext?.system_flags?.is_complete_for_planning ? 'Complete' : 'Partial')}</span>
+            </div>
+          </div>
+        </footer>
+      )}
+    >
       {/* Notification Toast */}
       {isMounted && (
         <AnimatePresence>
@@ -441,238 +793,58 @@ export default function HomePageClient() {
         </AnimatePresence>
       )}
 
-      <header className="border-b border-[#e7e0d4] bg-[#fffdf8]/90 backdrop-blur-md sticky top-0 z-40 px-4 md:px-8 py-3">
-        {/* Desktop & Mobile Main Row */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0f766e] shrink-0 shadow-xs">
-              <Zap size={18} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="text-sm md:text-base font-bold tracking-tight text-[#1f2933] truncate">
-                  <span className="md:hidden">ALCO ENGINE</span>
-                  <span className="hidden md:inline">ALCO Content Engine</span>
-                </h1>
-                <span className="px-2 py-0.5 rounded-md bg-teal-50 border border-teal-200 text-[#0f766e] text-[10px] font-semibold tracking-wide shrink-0">
-                  <span className="md:hidden">Stage 2</span>
-                  <span className="hidden md:inline">Strategy-First v2.5</span>
-                </span>
-              </div>
-              <p className="text-xs text-[#627d98] truncate hidden sm:block">
-                Content Operating System - Stage 2 after ALCO Creative System
-              </p>
-            </div>
-          </div>
-
-          {/* Desktop Navigation & Actions */}
-          <div className="hidden md:flex items-center gap-2.5">
-            {projectList.length > 0 && (
-              <div className="relative">
-                <button
-                  onClick={() => setIsProjectDropdownOpen(prev => !prev)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-white border border-[#e7e0d4] rounded-xl text-xs font-semibold text-[#1f2933] hover:bg-[#f6f3ee] transition shadow-xs"
-                >
-                  <FolderOpen size={14} className="text-[#0f766e]" />
-                  <span className="max-w-[140px] truncate">
-                    {projectList.find(p => p.project_id === activeProjectId)?.project_name || 'Pilih Project'}
-                  </span>
-                </button>
-                {isProjectDropdownOpen && (
-                  <div className="absolute top-full mt-1.5 right-0 w-56 bg-[#fffdf8] border border-[#e7e0d4] rounded-xl shadow-lg overflow-hidden z-50">
-                    <div className="p-2.5 text-xs font-semibold text-[#627d98] border-b border-[#e7e0d4] bg-[#f6f3ee]">
-                      Pilih Project
-                    </div>
-                    <div className="max-h-60 overflow-y-auto custom-scrollbar">
-                      {projectList.map(p => (
-                        <button
-                          key={p.project_id}
-                          onClick={() => {
-                            setActiveProjectIdState(p.project_id);
-                            setActiveProjectId(p.project_id);
-                            setIsProjectDropdownOpen(false);
-                            window.location.reload();
-                          }}
-                          className={`w-full text-left px-3.5 py-2.5 text-xs transition-colors ${activeProjectId === p.project_id ? 'text-[#0f766e] font-bold bg-teal-50' : 'text-[#1f2933] hover:bg-[#f6f3ee]'}`}
-                        >
-                          {p.project_name}
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => {
-                        setActiveProjectIdState(null);
-                        setActiveProjectId(null);
-                        setIsProjectDropdownOpen(false);
-                        window.location.reload();
-                      }}
-                      className="w-full text-left px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors border-t border-[#e7e0d4]"
-                    >
-                      Kosongkan Project Aktif
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-            <GeminiApiKeyControl onToast={showToast} />
-
-            <button
-              onClick={() => setIsIntakeModalOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-[#f6f3ee] text-[#1f2933] border border-[#e7e0d4] font-semibold rounded-xl text-xs transition shadow-xs"
-            >
-              <FileText size={14} className="text-[#0f766e]" />
-              Input Strategi
-            </button>
-
-            <div className="flex items-center bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl p-1 text-xs">
-              {[
-                { type: 'ALL', count: items.length },
-                { type: 'TOFU', count: tofuCount },
-                { type: 'MOFU', count: mofuCount },
-                { type: 'BOFU', count: bofuCount }
-              ].map(({ type, count }) => (
-                <button
-                  key={type}
-                  onClick={() => setFilterType(type)}
-                  className={`px-3 py-1 rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
-                    filterType === type ? 'bg-[#0f766e] text-white shadow-xs font-bold' : 'text-[#627d98] hover:text-[#1f2933]'
-                  }`}
-                >
-                  <span>{type}</span>
-                  {items.length > 0 && count > 0 && (
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${filterType === type ? 'bg-white/20 text-white' : 'bg-black/5 text-[#627d98]'}`}>
-                      {count}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={() => setIsConfiguring(true)}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold rounded-xl text-xs transition-all shadow-sm shrink-0"
-            >
-              <Layers size={14} />
-              {items.length > 0 ? 'Edit Parameter' : 'Buat Kalender Baru'}
-            </button>
-          </div>
-
-          {/* Mobile Right Controls: API Key */}
-          <div className="flex md:hidden items-center gap-2">
-            <GeminiApiKeyControl variant="compact" onToast={showToast} />
-          </div>
+      <div className="p-4 md:p-8 max-w-[1600px] w-full mx-auto space-y-6">
+        <div className="md:hidden flex items-center gap-2 overflow-x-auto no-scrollbar">
+          {projectSelector}
+          <button
+            onClick={() => setIsIntakeModalOpen(true)}
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-semibold text-foreground shadow-sm"
+          >
+            <FileText size={13} className="text-primary" />
+            Input Strategi
+          </button>
+        </div>
+        {/* Onboarding Card */}
+        <div ref={onboardingRef}>
+          <GeminiApiKeyOnboardingCard />
         </div>
 
-        {/* Mobile Rows: Row 2 (Projects & Primary CTAs) and Row 3 (Filters) */}
-        <div className="md:hidden mt-2.5 pt-2.5 border-t border-[#e7e0d4] space-y-2">
-          {/* Row 2: Project selector & Primary CTAs */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-0.5 no-scrollbar">
-            {projectList.length > 0 && (
-              <div className="relative shrink-0">
-                <button
-                  onClick={() => setIsProjectDropdownOpen(prev => !prev)}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-white border border-[#e7e0d4] rounded-xl text-xs font-semibold text-[#1f2933] min-h-[38px] shadow-xs"
-                >
-                  <FolderOpen size={13} className="text-[#0f766e]" />
-                  <span className="max-w-[95px] truncate">
-                    {projectList.find(p => p.project_id === activeProjectId)?.project_name || 'Project'}
-                  </span>
-                </button>
-                {isProjectDropdownOpen && (
-                  <div className="absolute top-full mt-1.5 left-0 w-52 bg-[#fffdf8] border border-[#e7e0d4] rounded-xl shadow-xl overflow-hidden z-50">
-                    <div className="p-2.5 text-xs font-semibold text-[#627d98] bg-[#f6f3ee] border-b border-[#e7e0d4]">
-                      Pilih Project
-                    </div>
-                    {projectList.map(p => (
-                      <button
-                        key={p.project_id}
-                        onClick={() => {
-                          setActiveProjectIdState(p.project_id);
-                          setActiveProjectId(p.project_id);
-                          setIsProjectDropdownOpen(false);
-                          window.location.reload();
-                        }}
-                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${activeProjectId === p.project_id ? 'text-[#0f766e] font-bold bg-teal-50' : 'text-[#1f2933]'}`}
-                      >
-                        {p.project_name}
-                      </button>
-                    ))}
-                    <button
-                      onClick={() => {
-                        setActiveProjectIdState(null);
-                        setActiveProjectId(null);
-                        setIsProjectDropdownOpen(false);
-                        window.location.reload();
-                      }}
-                      className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors border-t border-[#e7e0d4]"
-                    >
-                      Kosongkan Project Aktif
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <button
-              onClick={() => setIsIntakeModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-[#f6f3ee] text-[#1f2933] border border-[#e7e0d4] font-semibold rounded-xl text-xs shrink-0 min-h-[38px] shadow-xs"
-            >
-              <FileText size={13} className="text-[#0f766e]" />
-              Input Strategi
-            </button>
-
-            <button
-              onClick={() => setIsConfiguring(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold rounded-xl text-xs shadow-sm shrink-0 min-h-[38px]"
-            >
-              <Layers size={13} />
-              {items.length > 0 ? 'Edit Parameter' : 'Buat Kalender'}
-            </button>
-          </div>
-
-          {/* Row 3: Mobile Funnel Filters */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-0.5 no-scrollbar">
-            {[
-              { type: 'ALL', label: 'Semua', count: items.length, color: 'text-[#1f2933]' },
-              { type: 'TOFU', label: 'TOFU Awareness', count: tofuCount, color: 'text-teal-700' },
-              { type: 'MOFU', label: 'MOFU Consideration', count: mofuCount, color: 'text-amber-700' },
-              { type: 'BOFU', label: 'BOFU Conversion', count: bofuCount, color: 'text-[#0f766e]' }
-            ].map(({ type, label, count, color }) => {
-              const isSelected = filterType === type;
-              return (
-                <button
-                  key={type}
-                  onClick={() => setFilterType(type)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all flex items-center gap-1.5 min-h-[36px] border ${
-                    isSelected
-                      ? 'bg-[#0f766e] text-white border-[#0f766e] font-bold shadow-xs'
-                      : 'bg-white border-[#e7e0d4] text-[#627d98] hover:text-[#1f2933]'
-                  }`}
-                >
-                  <span className={isSelected ? 'text-white' : color}>{label}</span>
-                  {items.length > 0 && (
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
-                      isSelected ? 'bg-white/20 text-white' : 'bg-black/5 text-[#627d98]'
-                    }`}>
-                      {count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </header>
-
-      <div className="flex-1 p-4 md:p-8 max-w-[1600px] w-full mx-auto space-y-6">
-        {activeProjectId && sharedContext ? (
+        {/* Active Strategy Context Badge (Only if project is valid and complete) */}
+        {activeProjectId && !isProjectIncomplete && sharedContext ? (
           <ActiveStrategyBadge
             context={sharedContext}
             onOpenIntakeModal={() => setIsIntakeModalOpen(true)}
           />
         ) : null}
 
-        {(!activeProjectId || (items.length === 0 && !isConfiguring)) && (
+        {/* Incomplete Project State Warning Card */}
+        {activeProjectId && isProjectIncomplete && (
+          <div className="bg-[#fffdf8] border border-amber-300 rounded-2xl p-8 md:p-12 text-center space-y-6 shadow-sm relative overflow-hidden">
+            <div className="max-w-md mx-auto space-y-3 relative z-10">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 mx-auto shadow-xs">
+                <AlertTriangle size={24} />
+              </div>
+              <h2 className="text-xl md:text-2xl font-bold text-[#1f2933]">
+                Project ini tidak lengkap. Silakan upload blueprint ulang.
+              </h2>
+              <p className="text-xs md:text-sm text-[#627d98] leading-relaxed">
+                Data blueprint atau context strategi untuk project ini tidak ditemukan atau rusak. Silakan upload blueprint untuk mengaktifkan kembali perancangan kalender.
+              </p>
+            </div>
+            <div className="flex justify-center relative z-10">
+              <button
+                onClick={() => setIsIntakeModalOpen(true)}
+                className="flex items-center gap-2 px-6 py-3.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold rounded-xl text-xs shadow-sm transition-all group"
+              >
+                <FileText size={16} className="group-hover:scale-105 transition-transform" />
+                Upload Blueprint
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Empty state / Welcome card when no active project or no items yet */}
+        {(!activeProjectId || (!isProjectIncomplete && items.length === 0 && !isConfiguring)) && (
           <div className="bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl p-8 md:p-12 text-center space-y-6 shadow-sm relative overflow-hidden">
             <div className="max-w-2xl mx-auto space-y-3 relative z-10">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-[#0f766e] text-xs font-semibold">
@@ -698,7 +870,7 @@ export default function HomePageClient() {
                   Mulai Project Baru
                 </button>
               )}
-              {activeProjectId && (
+              {activeProjectId && !isProjectIncomplete && (
                 <>
                   <button
                     onClick={() => setIsIntakeModalOpen(true)}
@@ -708,7 +880,7 @@ export default function HomePageClient() {
                     Edit Strategy
                   </button>
                   <button
-                    onClick={() => setIsConfiguring(true)}
+                    onClick={handleOpenConfig}
                     className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold rounded-xl text-xs shadow-sm transition-all group"
                   >
                     <Layers size={16} className="group-hover:scale-105 transition-transform" />
@@ -720,77 +892,109 @@ export default function HomePageClient() {
           </div>
         )}
 
-        {activeProjectId && (
-          <CalendarView
-            items={items}
-            growthItems={growthItems}
-            onReschedule={handleReschedule}
-            filterType={filterType}
-            onFilterChange={setFilterType}
-            accessCode={accessCode}
-            setAccessCode={setAccessCode}
-            isAccessValid={isAccessValid}
-            isEditAccessLocked={isEditAccessLocked}
-            setShowUnlockModal={setShowUnlockModal}
-            accessStatus={accessStatus}
-            usageStats={usageStats}
-            isLoading={isLoading}
-            isConfiguring={isConfiguring}
-            setIsConfiguring={setIsConfiguring}
-            currentStep={currentStep}
-            setCurrentStep={setCurrentStep}
-            activeConfigCell={activeConfigCell}
-            setActiveConfigCell={setActiveConfigCell}
-            revisions={revisions}
-            setRevisions={setRevisions}
-            onRegenerate={handleGenerateCalendar}
-            onClear={handleReset}
-            onCopy={handleCopyTSV}
-            onDownload={handleDownloadCSV}
-            onUpdateItem={handleUpdateItem}
-            onRegenerateItem={handleRegenerateItem}
-            history={history}
-            onDeleteHistory={(id) => setHistory(prev => prev.filter(h => h.id !== id))}
-            onClearHistory={() => setHistory([])}
-            onReset={handleReset}
-            onLoadHistory={(entry) => {
-              if (entry.items) setItems(entry.items);
-              if (entry.growthItems) setGrowthItems(entry.growthItems);
-              showToast(`Memuat ${entry.items?.length || 0} post dari histori.`);
-            }}
-            onSendToCalcer={() => showToast('Brief disalin ke clipboard untuk Calcer AI!')}
-            configData={{
-              coreTopic, setCoreTopic,
-              startDate, setStartDate,
-              skipDays, setSkipDays, toggleSkipDay,
-              gender, setGender,
-              ageRange, setAgeRange,
-              formats, setFormats, toggleFormat,
-              carouselSlides, setCarouselSlides,
-              reelsDuration, setReelsDuration,
-              ratio, setRatio,
-              formatRatio, setFormatRatio,
-              selectedVoices, setSelectedVoices, toggleVoice,
-              hookMix, setHookMix, updateHookMix,
-              selectedFormula, setSelectedFormula,
-              referenceType, setReferenceType,
-              selectedCTAs, setSelectedCTAs, toggleCTA,
-              isFastMode, setIsFastMode,
-              generateContent: handleGenerateCalendar,
-              editableContext: {
-                contentStrategy: {
-                  pillars: sharedContext?.strategy_context?.content_pillars || ["TOFU Awareness", "MOFU Consideration", "BOFU Conversion"]
+        {/* Active Project Calendar View (Only if project is valid and complete) */}
+        {activeProjectId && !isProjectIncomplete && (
+          <section className="space-y-4">
+            <div className="flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-sm font-black text-foreground">Kalender Konten</h2>
+                <p className="text-xs text-muted-foreground">Filter funnel dan jadwal produksi berada di workspace kalender.</p>
+              </div>
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                {funnelFilters.map(({ type, label, count, color }) => {
+                  const isSelected = filterType === type;
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => setFilterType(type)}
+                      className={`flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold transition ${
+                        isSelected
+                          ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                          : 'border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground'
+                      }`}
+                    >
+                      <span className={isSelected ? 'text-primary-foreground' : color}>{label}</span>
+                      {items.length > 0 && (
+                        <span className={`rounded-full px-1.5 text-[10px] font-semibold ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-muted-foreground'}`}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <CalendarView
+              items={items}
+              growthItems={growthItems}
+              onReschedule={handleReschedule}
+              filterType={filterType}
+              onFilterChange={setFilterType}
+              accessCode={accessCode}
+              setAccessCode={setAccessCode}
+              isAccessValid={isAccessValid}
+              isEditAccessLocked={isEditAccessLocked}
+              setShowUnlockModal={setShowUnlockModal}
+              accessStatus={accessStatus}
+              usageStats={usageStats}
+              isLoading={isLoading}
+              isConfiguring={isConfiguring}
+              setIsConfiguring={setIsConfiguring}
+              currentStep={currentStep}
+              setCurrentStep={setCurrentStep}
+              activeConfigCell={activeConfigCell}
+              setActiveConfigCell={setActiveConfigCell}
+              revisions={revisions}
+              setRevisions={setRevisions}
+              onRegenerate={handleGenerateCalendar}
+              onClear={handleReset}
+              onCopy={handleCopyTSV}
+              onDownload={handleDownloadCSV}
+              onUpdateItem={handleUpdateItem}
+              onRegenerateItem={handleRegenerateItem}
+              history={history}
+              onDeleteHistory={(id) => setHistory(prev => prev.filter(h => h.id !== id))}
+              onClearHistory={() => setHistory([])}
+              onReset={handleReset}
+              onLoadHistory={(entry) => {
+                if (entry.items) setItems(entry.items);
+                if (entry.growthItems) setGrowthItems(entry.growthItems);
+                showToast(`Memuat ${entry.items?.length || 0} post dari histori.`);
+              }}
+              onSendToCalcer={() => showToast('Brief disalin ke clipboard untuk Calcer AI!')}
+              configData={{
+                coreTopic, setCoreTopic,
+                startDate, setStartDate,
+                skipDays, setSkipDays, toggleSkipDay,
+                gender, setGender,
+                ageRange, setAgeRange,
+                formats, setFormats, toggleFormat,
+                carouselSlides, setCarouselSlides,
+                reelsDuration, setReelsDuration,
+                ratio, setRatio,
+                formatRatio, setFormatRatio,
+                selectedVoices, setSelectedVoices, toggleVoice,
+                hookMix, setHookMix, updateHookMix,
+                selectedFormula, setSelectedFormula,
+                referenceType, setReferenceType,
+                selectedCTAs, setSelectedCTAs, toggleCTA,
+                isFastMode, setIsFastMode,
+                generateContent: handleGenerateCalendar,
+                editableContext: {
+                  contentStrategy: {
+                    pillars: sharedContext?.strategy_context?.content_pillars || ["TOFU Awareness", "MOFU Consideration", "BOFU Conversion"]
+                  },
+                  audience: {
+                    segments: [sharedContext?.audience_context?.primary_audience || "Target Buyers"]
+                  },
+                  offers: [{ ctaText: sharedContext?.strategy_context?.main_offer || "Link Bio" }]
                 },
-                audience: {
-                  segments: [sharedContext?.audience_context?.primary_audience || "Target Buyers"]
-                },
-                offers: [{ ctaText: sharedContext?.strategy_context?.main_offer || "Link Bio" }]
-              },
-              sharedContentContext: sharedContext,
-              strategyBlueprint: strategyBlueprint,
-              selectedProject: activeProjectId
-            }}
-          />
+                sharedContentContext: sharedContext,
+                strategyBlueprint: strategyBlueprint,
+                selectedProject: activeProjectId
+              }}
+            />
+          </section>
         )}
       </div>
 
@@ -799,15 +1003,9 @@ export default function HomePageClient() {
         onClose={() => setIsIntakeModalOpen(false)}
         onApplyStrategy={handleApplyStrategy}
         currentBlueprint={strategyBlueprint}
+        hasActiveProject={!!activeProjectId && !isProjectIncomplete}
       />
 
-      <footer className="border-t border-[#e7e0d4] bg-[#fffdf8] py-4 px-6 md:px-8 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-[#627d98]">
-        <div>ALCO Content Engine — Powered by Google Gemini 3.6 Flash & Strategy Blueprint</div>
-        <div className="flex gap-4 font-medium">
-          <span>Funnel Items: {items.length}</span>
-          <span>Strategy Status: {sharedContext?.system_flags?.is_complete_for_planning ? 'Complete' : 'Partial'}</span>
-        </div>
-      </footer>
-    </main>
+    </ContentEngineShell>
   );
 }

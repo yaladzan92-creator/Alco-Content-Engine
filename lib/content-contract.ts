@@ -3,12 +3,21 @@ export type SupportedChannel = 'instagram' | 'facebook';
 export type PlanningHorizon = '7_days' | '14_days' | '30_days';
 
 export interface StrategyBlueprint {
+  blueprint_type?: string;
   project_id?: string;
   project_name?: string;
   brand_identity?: {
     brand_name?: string;
     brand_summary?: string;
     category?: string;
+  };
+  brand_visual_identity?: {
+    visual_style?: string;
+    color_palette?: string | string[];
+    typography_style?: string;
+    image_style_rules?: string[];
+    design_mood?: string;
+    [key: string]: any;
   };
   target_audience?: {
     primary_audience?: string;
@@ -41,7 +50,7 @@ export interface SharedContentContext {
   project_id: string;
   project_name: string;
   source: {
-    origin: 'creative_system_json' | 'campaign_pack_converted' | 'paste_blueprint' | 'manual_context';
+    origin: 'creative_system_json' | 'campaign_pack_converted' | 'paste_blueprint' | 'manual_context' | 'alco_ecosystem_blueprint';
     source_version?: string;
     import_note?: string;
   };
@@ -50,6 +59,13 @@ export interface SharedContentContext {
     category: string;
     brand_summary: string;
     brand_voice: string;
+  };
+  brand_visual_context?: {
+    visual_style?: string;
+    color_palette?: string | string[];
+    typography_style?: string;
+    image_style_rules?: string[];
+    design_mood?: string;
   };
   audience_context: {
     primary_audience: string;
@@ -94,6 +110,60 @@ export interface GenerateCalendarRequest {
   sharedContentContext?: SharedContentContext;
 }
 
+export interface ProductionProgress {
+  briefReady?: boolean;       // Brief siap (default true saat konten dibuat)
+  promptCopied?: boolean;     // Prompt disalin
+  assetCreated?: boolean;     // Aset dibuat (manual checklist)
+  captionCopied?: boolean;    // Caption disalin
+  readyToPost?: boolean;      // Siap posting
+  alreadyPosted?: boolean;    // Sudah diposting (manual checklist)
+}
+
+export type ProductionSummaryStatus = 'not_started' | 'in_production' | 'ready_to_post' | 'posted';
+
+export function getProductionStatus(item?: ContentItem | null): ProductionSummaryStatus {
+  if (!item) return 'not_started';
+  const p = item.productionProgress;
+  if (p?.alreadyPosted) return 'posted';
+  if (p?.readyToPost) return 'ready_to_post';
+  if (p?.promptCopied || p?.assetCreated || p?.captionCopied) return 'in_production';
+  return 'not_started';
+}
+
+export function getProductionStatusBadge(status: ProductionSummaryStatus): {
+  label: string;
+  bgClass: string;
+  dotClass: string;
+} {
+  switch (status) {
+    case 'posted':
+      return {
+        label: 'Sudah diposting',
+        bgClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+        dotClass: 'bg-emerald-500',
+      };
+    case 'ready_to_post':
+      return {
+        label: 'Siap posting',
+        bgClass: 'bg-teal-100 text-teal-800 border-teal-200',
+        dotClass: 'bg-teal-500',
+      };
+    case 'in_production':
+      return {
+        label: 'Sedang diproduksi',
+        bgClass: 'bg-amber-100 text-amber-800 border-amber-200',
+        dotClass: 'bg-amber-500',
+      };
+    case 'not_started':
+    default:
+      return {
+        label: 'Belum mulai',
+        bgClass: 'bg-stone-100 text-stone-600 border-stone-200',
+        dotClass: 'bg-stone-400',
+      };
+  }
+}
+
 export interface ContentItem {
   no: number;
   tanggal: string;
@@ -115,6 +185,7 @@ export interface ContentItem {
   isManualEdited?: boolean;
   carousel_plan?: CarouselPlan;
   projectId?: string;
+  productionProgress?: ProductionProgress;
 }
 
 export interface CarouselSlidePlan {
@@ -294,7 +365,7 @@ export function isCampaignPackJson(json: any): boolean {
 export interface IntakeParseResult {
   blueprint: StrategyBlueprint;
   isConverted: boolean;
-  conversionType: 'campaign_pack' | 'blueprint_json' | 'partial_json';
+  conversionType: 'campaign_pack' | 'blueprint_json' | 'partial_json' | 'alco_ecosystem_blueprint';
   conversionNote: string;
 }
 
@@ -546,6 +617,26 @@ export function mapCampaignPackToBlueprint(cp: any): IntakeParseResult {
  * Universal JSON intake function for both standard Strategy Blueprints & Campaign Packs.
  */
 export function parseAndMapStrategyJson(rawJson: any): IntakeParseResult {
+  if (!rawJson || typeof rawJson !== 'object' || Array.isArray(rawJson)) {
+    return {
+      blueprint: rawJson as StrategyBlueprint,
+      isConverted: false,
+      conversionType: 'blueprint_json',
+      conversionNote: 'Invalid JSON format',
+    };
+  }
+
+  // Task 1 & 5: Check if alco_ecosystem_blueprint or has brand_visual_identity (do not use campaign pack as primary source)
+  if (rawJson.blueprint_type === 'alco_ecosystem_blueprint' || rawJson.brand_visual_identity) {
+    const blueprint = rawJson as StrategyBlueprint;
+    return {
+      blueprint,
+      isConverted: false,
+      conversionType: 'alco_ecosystem_blueprint',
+      conversionNote: 'Blueprint ALCO berhasil dibaca',
+    };
+  }
+
   if (isCampaignPackJson(rawJson)) {
     return mapCampaignPackToBlueprint(rawJson);
   }
@@ -555,7 +646,7 @@ export function parseAndMapStrategyJson(rawJson: any): IntakeParseResult {
     blueprint,
     isConverted: false,
     conversionType: 'blueprint_json',
-    conversionNote: 'Direct Strategy Blueprint JSON',
+    conversionNote: 'Blueprint ALCO berhasil dibaca',
   };
 }
 
@@ -564,18 +655,20 @@ export function parseAndMapStrategyJson(rawJson: any): IntakeParseResult {
  */
 export function buildSharedContentContext(
   blueprint: StrategyBlueprint,
-  origin: 'creative_system_json' | 'campaign_pack_converted' | 'paste_blueprint' | 'manual_context' = 'creative_system_json',
+  origin: 'creative_system_json' | 'campaign_pack_converted' | 'paste_blueprint' | 'manual_context' | 'alco_ecosystem_blueprint' = 'creative_system_json',
   importNote?: string
 ): SharedContentContext {
   const validation = validateBlueprint(blueprint);
+  const isAlco = blueprint.blueprint_type === 'alco_ecosystem_blueprint' || Boolean(blueprint.brand_visual_identity);
+  const note = importNote || (isAlco ? 'Blueprint ALCO berhasil dibaca' : 'Direct Strategy Blueprint JSON');
 
   return {
     project_id: blueprint.project_id || `proj_${Date.now()}`,
     project_name: blueprint.project_name || blueprint.brand_identity?.brand_name || 'ALCO Campaign',
     source: {
-      origin,
+      origin: isAlco ? 'alco_ecosystem_blueprint' : origin,
       source_version: '1.0.0',
-      import_note: importNote,
+      import_note: note,
     },
     brand_context: {
       brand_name: blueprint.brand_identity?.brand_name || 'Brand Strategy',
@@ -583,6 +676,13 @@ export function buildSharedContentContext(
       brand_summary: blueprint.brand_identity?.brand_summary || '',
       brand_voice: blueprint.messaging?.brand_voice || 'Professional, Authoritative & Helpful',
     },
+    brand_visual_context: blueprint.brand_visual_identity ? {
+      visual_style: blueprint.brand_visual_identity.visual_style,
+      color_palette: blueprint.brand_visual_identity.color_palette,
+      typography_style: blueprint.brand_visual_identity.typography_style,
+      image_style_rules: blueprint.brand_visual_identity.image_style_rules,
+      design_mood: blueprint.brand_visual_identity.design_mood,
+    } : undefined,
     audience_context: {
       primary_audience: blueprint.target_audience?.primary_audience || 'Target Buyers',
       pain_points: blueprint.target_audience?.audience_problem || [],

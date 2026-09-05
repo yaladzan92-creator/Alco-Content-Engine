@@ -7,6 +7,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Layers, Zap } from 'lucide-react';
 import { ContentItem } from './types';
 import { trackActivity } from '@/lib/activity';
+import { getProductionStatus, getProductionStatusBadge } from '@/lib/content-contract';
 
 const safeCopyToClipboard = async (text: string) => {
   if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
@@ -43,6 +44,8 @@ export const SortableItem: React.FC<{ item: ContentItem; onClick?: () => void; i
 
   const isTofu = (item.jenis || '').includes('TOFU');
   const isMofu = (item.jenis || '').includes('MOFU');
+  const prodStatus = getProductionStatus(item);
+  const statusBadge = getProductionStatusBadge(prodStatus);
 
   return (
     <div
@@ -97,6 +100,14 @@ export const SortableItem: React.FC<{ item: ContentItem; onClick?: () => void; i
             <span className="text-[#0f766e] font-semibold">{item.primaryAssetType}</span>
           </>
         )}
+      </div>
+
+      {/* Production Status Summary Badge */}
+      <div className="mt-1.5 pt-1.5 border-t border-black/5 flex items-center justify-between">
+        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border ${statusBadge.bgClass}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${statusBadge.dotClass}`} />
+          <span>{statusBadge.label}</span>
+        </span>
       </div>
 
       {item.carousel_plan && (

@@ -44,6 +44,7 @@ import {
 import { buildGeminiRequestHeaders } from '@/lib/client-gemini-key';
 import { extractJSON } from '@/lib/geminiUtils';
 import { saveProjectData, getActiveProjectId } from '@/lib/storage';
+import { getProductionStatus, getProductionStatusBadge } from '@/lib/content-contract';
 import { ContentItem, ConfigDataProps } from './calendar/types';
 import { CalendarDay } from './calendar/CalendarDay';
 import { CalendarConfigWizard } from './calendar/CalendarConfigWizard';
@@ -184,15 +185,23 @@ export default function CalendarView({
       let promptTitle = '';
       if (assetType === 'brief') promptTitle = 'Brief';
       else if (assetType === 'caption') promptTitle = 'Caption';
-      else if (assetType === 'image') promptTitle = 'Image Ad Prompt (Midjourney)';
+      else if (assetType === 'image') promptTitle = 'Prompt Image Konten';
       else if (assetType === 'carousel') promptTitle = 'Carousel Blueprint';
       else if (assetType === 'video') promptTitle = 'Video Script';
 
-      const prompt = `Buatkan ${promptTitle} (Bahasa Indonesia, rapi, siap pakai) untuk post konten ini:
+      let prompt = `Buatkan ${promptTitle} (Bahasa Indonesia, rapi, siap pakai) untuk post konten ini:
 No: ${editingItem.no} | Tgl: ${editingItem.tanggal} | Funnel: ${editingItem.jenis} | Objective: ${editingItem.tujuan} | Hook: ${editingItem.hookType} | Format: ${editingItem.format}
 Headline: ${editingItem.headline}
 Body: ${editingItem.body}
 Keterangan: ${editingItem.keterangan}`;
+
+      if (assetType === 'image') {
+        prompt = `Buatkan Prompt Image Konten (Bahasa Indonesia, rapi, siap pakai) untuk post konten ini. PASTIKAN hasil prompt image selalu diawali dengan teks persis: "Buatkan saya image untuk konten Instagram...".
+No: ${editingItem.no} | Tgl: ${editingItem.tanggal} | Funnel: ${editingItem.jenis} | Objective: ${editingItem.tujuan} | Hook: ${editingItem.hookType} | Format: ${editingItem.format}
+Headline: ${editingItem.headline}
+Body: ${editingItem.body}
+Keterangan: ${editingItem.keterangan}`;
+      }
 
       const response = await fetch('/api/gemini/recommendation', {
         method: 'POST',
@@ -222,9 +231,7 @@ Keterangan: ${editingItem.keterangan}`;
       const errMsg = err.message || '';
       const isRateLimited =
         /dibatasi/i.test(errMsg) ||
-        /rate.*limit/i.test(errMsg) ||
-        /quota/i.test(errMsg) ||
-        /429/i.test(errMsg);
+        /rate.*limit/i.test(errMsg) || /quota/i.test(errMsg) || /429/i.test(errMsg) || /503/i.test(errMsg) || /high.*demand/i.test(errMsg) || /unavailable/i.test(errMsg);
 
       setProductionAsset({
         type: assetType,
@@ -232,7 +239,7 @@ Keterangan: ${editingItem.keterangan}`;
           ? 'Permintaan AI Sedang Dibatasi'
           : `${assetType.toUpperCase()} Production Asset`,
         content: isRateLimited
-          ? `### ⚠️ PERMINTAAN AI SEDANG DIBATASI\n\nPermintaan AI sedang dibatasi (Rate Limit / Quota Exceeded). Coba lagi beberapa saat.\n\nSilakan gunakan draf cadangan berikut untuk sementara:\n\n---\n\n### RENCANA PRODUKSI: ${editingItem.headline}\n\n- **Funnel Stage:** ${editingItem.jenis}\n- **Objective:** ${editingItem.tujuan}\n- **Format:** ${editingItem.format}\n- **Hook:** ${editingItem.hookType}\n\n**Deskripsi & Naskah:**\n${editingItem.body}`
+          ? `### ⚠️ PERMINTAAN AI SEDANG DIBATASI\n\nPermintaan AI sedang dibatasi (Rate Limit / High Demand). Coba lagi beberapa saat.\n\nSilakan gunakan draf cadangan berikut untuk sementara:\n\n---\n\n### RENCANA PRODUKSI: ${editingItem.headline}\n\n- **Funnel Stage:** ${editingItem.jenis}\n- **Objective:** ${editingItem.tujuan}\n- **Format:** ${editingItem.format}\n- **Hook:** ${editingItem.hookType}\n\n**Deskripsi & Naskah:**\n${editingItem.body}`
           : `### RENCANA PRODUKSI: ${editingItem.headline}\n\n- **Funnel Stage:** ${editingItem.jenis}\n- **Objective:** ${editingItem.tujuan}\n- **Format:** ${editingItem.format}\n- **Hook:** ${editingItem.hookType}\n\n**Deskripsi & Naskah:**\n${editingItem.body}\n\n*(Catatan: Dibuat sebagai aset operasional konten untuk eksekusi langsung).*`,
       });
     } finally {
@@ -289,12 +296,10 @@ Keterangan: ${editingItem.keterangan}`;
       const errMsg = err.message || '';
       const isRateLimited =
         /dibatasi/i.test(errMsg) ||
-        /rate.*limit/i.test(errMsg) ||
-        /quota/i.test(errMsg) ||
-        /429/i.test(errMsg);
+        /rate.*limit/i.test(errMsg) || /quota/i.test(errMsg) || /429/i.test(errMsg) || /503/i.test(errMsg) || /high.*demand/i.test(errMsg) || /unavailable/i.test(errMsg);
 
       const fallbackMsg = isRateLimited
-        ? '⚠️ PERMINTAAN AI DIBATASI (Rate Limit / Quota Exceeded). Coba lagi beberapa saat.'
+        ? '⚠️ PERMINTAAN AI DIBATASI (Rate Limit / High Demand). Coba lagi beberapa saat.'
         : '⚠️ Gagal memuat rekomendasi. Anda dapat mengedit secara manual.';
 
       setRecommendations((prev) => ({ ...prev, [step]: { error: fallbackMsg } }));
@@ -786,6 +791,17 @@ Keterangan: ${editingItem.keterangan}`;
                           >
                             {/* Badges Row */}
                             <div className="flex flex-wrap items-center gap-1.5">
+                              {(() => {
+                                const prodStatus = getProductionStatus(item);
+                                const statusBadge = getProductionStatusBadge(prodStatus);
+                                return (
+                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border ${statusBadge.bgClass}`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${statusBadge.dotClass}`} />
+                                    <span>{statusBadge.label}</span>
+                                  </span>
+                                );
+                              })()}
+
                               <span
                                 className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
                                   isTofu
@@ -1051,7 +1067,10 @@ Keterangan: ${editingItem.keterangan}`;
         onClose={() => setEditingItem(null)}
         isEditAccessLocked={isEditAccessLocked}
         setShowUnlockModal={setShowUnlockModal}
-        onUpdateItem={onUpdateItem}
+        onUpdateItem={(item) => {
+          setEditingItem(item);
+          onUpdateItem(item);
+        }}
         onRegenerateItem={onRegenerateItem}
         productionAsset={productionAsset}
         setProductionAsset={setProductionAsset}

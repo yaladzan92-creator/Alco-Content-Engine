@@ -1,3 +1,4 @@
+'use client';
 import React from 'react';
 import { Sparkles, Loader2, Copy, Check, Info, FileText, Image as ImageIcon, Zap, Edit3, ChevronLeft, ChevronRight, PlaySquare, Video, Clipboard, Clock, Sliders, Target, Layers, FileCode2, CheckCircle2, Download, Save, AlertCircle, RefreshCw, CheckSquare, ListTodo, BrainCircuit, Users, ExternalLink, PlayCircle, MessageSquare, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -11,7 +12,7 @@ export default function ImagePanel(props: any) {
     imageOutput, getInitialDraft, funnelRules, carouselFrames, selectedCarouselId,
     setSelectedCarouselId, activeSlideNumber, setActiveSlideNumber, handleCopyCarouselSlide,
     carouselOutput, videoOutput, tryParseJSON, normalizeFunnelStage, getFunnelRules,
-    selectedVideoId, handleSelectany, videoMode, setVideoMode, characterImageUrl,
+    selectedVideoId, handleSelectVideoStyle, videoMode, setVideoMode, characterImageUrl,
     setCharacterImageUrl, productScreenImageUrl, setProductScreenImageUrl, coverImageUrl,
     setCoverImageUrl, videoOutputMode, setVideoOutputMode, showToast, handleGenerateJson2VideoPayload,
     isRenderingVideo, renderVideoWithJson2Video, renderJobId, renderJobData, renderError,
@@ -102,7 +103,7 @@ export default function ImagePanel(props: any) {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => handleCopyText(`prompt_${selectedAngleId}`, activeAngle.finalPrompt)}
+            onClick={() => handleCopyText(`prompt_${selectedAngleId}`, activeAngle.finalPrompt, 'promptCopied')}
             className="px-3.5 py-1.5 bg-[#fffdf8] hover:bg-stone-100 text-[#1f2933] border border-[#e7e0d4] rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
           >
             {copiedStates[`prompt_${selectedAngleId}`] ? (
@@ -244,6 +245,42 @@ export default function ImagePanel(props: any) {
         )}
       </div>
 
+      {/* Layer 3: Caption / Keterangan Postingan */}
+      {activeAngle.captionForPost && (
+        <div className="bg-[#fffdf8] border border-[#e7e0d4] p-4.5 rounded-2xl space-y-2.5 shadow-xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <FileText size={14} className="text-[#0f766e]" />
+              <span className="text-xs font-bold text-[#1f2933]">Lapisan 3: Caption / Keterangan Postingan</span>
+            </div>
+            <button
+              onClick={() => handleCopyText(`caption_${activeAngle.id}`, activeAngle.captionForPost, 'captionCopied')}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-[#1f2933] text-[10px] font-bold rounded-xl transition"
+            >
+              {copiedStates[`caption_${activeAngle.id}`] ? (
+                <>
+                  <Check size={12} className="text-[#0f766e]" />
+                  Tersalin
+                </>
+              ) : (
+                <>
+                  <Copy size={12} />
+                  Salin Caption
+                </>
+              )}
+            </button>
+          </div>
+          {activeAngle.captionInstruction && (
+            <div className="text-[10px] text-stone-500 font-medium pb-1">
+              {activeAngle.captionInstruction}
+            </div>
+          )}
+          <div className="p-3.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-stone-900 font-sans text-xs leading-relaxed select-all whitespace-pre-wrap">
+            {activeAngle.captionForPost}
+          </div>
+        </div>
+      )}
+
       {/* Collapsible Section: Detail Teknis & Parameter Strategi */}
       <details className="group border border-[#e7e0d4] bg-[#f6f3ee]/50 rounded-2xl overflow-hidden shadow-xs transition-all">
         <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-700 hover:text-stone-900 cursor-pointer select-none">
@@ -348,7 +385,7 @@ export default function ImagePanel(props: any) {
                 className="w-full h-auto object-contain max-h-[460px] rounded-xl"
               />
               <div className="absolute top-2 right-2 px-2 py-0.5 bg-black/70 backdrop-blur-md rounded-md text-[10px] font-mono text-white border border-white/20">
-                {generatedImg.model || 'gemini-2.5-flash-image'}
+                {generatedImg.model || 'gemini-3.1-flash-lite-image'}
               </div>
             </div>
 

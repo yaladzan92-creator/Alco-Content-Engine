@@ -18,3 +18,15 @@ View your app in AI Studio: https://ai.studio/apps/ca02633d-1834-4b88-8a45-51b41
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+## Desktop Electron (Windows)
+
+Development:
+
+`npm run desktop:dev`
+
+Installer Windows:
+
+`npm run desktop:build`
+
+The packaged app starts the Next.js server locally, so the existing `app/api` routes remain available to the desktop UI.

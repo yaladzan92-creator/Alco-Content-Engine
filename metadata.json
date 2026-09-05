@@ -1,6 +1,8 @@
 {
-  "name": "ALCO Content Engine",
-  "description": "Premium brand-aware content planning and calendar engine powered by Gemini AI",
+  "name": "ALCO Content Engine v2",
+  "description": "Premium brand-aware content planning and calendar engine powered by Aladzan Corpora",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

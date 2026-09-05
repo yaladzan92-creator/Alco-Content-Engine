@@ -46,10 +46,10 @@ export async function POST(req: NextRequest) {
     });
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.1-flash-image",
+      model: "gemini-3.1-flash-lite-image",
       contents: { parts: parts },
       config: {
-        imageConfig: { aspectRatio: "1:1", imageSize: "1K" },
+        imageConfig: { aspectRatio: "1:1" },
       },
     });
 

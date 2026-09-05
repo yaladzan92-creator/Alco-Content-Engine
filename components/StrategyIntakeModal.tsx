@@ -28,7 +28,8 @@ import { motion, AnimatePresence } from 'motion/react';
 interface StrategyIntakeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onApplyStrategy: (blueprint: StrategyBlueprint, context: SharedContentContext) => void;
+  onApplyStrategy: (blueprint: StrategyBlueprint, context: SharedContentContext, isNewProject: boolean) => void;
+  hasActiveProject?: boolean;
   currentBlueprint?: StrategyBlueprint | null;
 }
 
@@ -36,7 +37,7 @@ export function StrategyIntakeModal({
   isOpen,
   onClose,
   onApplyStrategy,
-  currentBlueprint
+  currentBlueprint, hasActiveProject
 }: StrategyIntakeModalProps) {
   const [activeTab, setActiveTab] = useState<'upload' | 'paste' | 'form'>('upload');
   const [pastedJson, setPastedJson] = useState('');
@@ -106,10 +107,10 @@ export function StrategyIntakeModal({
     setActiveTab('form');
   };
 
-  const handleSaveAndApply = () => {
+  const handleSaveAndApply = (isNewProject: boolean) => {
     const origin = importStatus?.isConverted ? 'campaign_pack_converted' : 'creative_system_json';
     const context = buildSharedContentContext(blueprint, origin, importStatus?.note);
-    onApplyStrategy(blueprint, context);
+    onApplyStrategy(blueprint, context, isNewProject);
     onClose();
   };
 
@@ -253,6 +254,19 @@ export function StrategyIntakeModal({
             {/* TAB 3: REVIEW & FORM EDIT */}
             {activeTab === 'form' && (
               <div className="space-y-6">
+                {/* ALCO Ecosystem Blueprint Success Status Banner */}
+                {importStatus?.type === 'alco_ecosystem_blueprint' && (
+                  <div className="p-4 bg-teal-50 border border-teal-200 rounded-xl text-teal-900 text-xs flex items-center gap-3">
+                    <CheckCircle2 size={18} className="text-teal-600 shrink-0" />
+                    <div>
+                      <span className="font-bold text-xs text-teal-950">Blueprint ALCO berhasil dibaca</span>
+                      <p className="text-xs text-teal-700 mt-0.5">
+                        Ecosystem Blueprint resmi ALCO telah dimuat lengkap dengan identitas visual, positioning, dan strategi konten.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Campaign Pack Conversion Honest Status Banner */}
                 {importStatus?.isConverted && (
                   <div className="p-4 bg-sky-50 border border-sky-200 rounded-xl text-sky-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -491,7 +505,7 @@ export function StrategyIntakeModal({
           </div>
 
           {/* Modal Footer Actions */}
-          <div className="p-4 border-t border-[#e7e0d4] bg-[#f6f3ee]/80 flex items-center justify-between">
+          <div className="p-4 border-t border-[#e7e0d4] bg-[#f6f3ee]/80 flex flex-col sm:flex-row items-center justify-between gap-3">
             <button
               onClick={onClose}
               className="px-4 py-2 text-xs text-[#627d98] hover:text-[#1f2933] font-semibold transition"
@@ -499,13 +513,23 @@ export function StrategyIntakeModal({
               Batal
             </button>
 
-            <button
-              onClick={handleSaveAndApply}
-              className="px-6 py-2.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold text-xs rounded-xl transition flex items-center gap-2 shadow-xs"
-            >
-              <Sparkles size={16} />
-              Terapkan Strategy Blueprint
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              {hasActiveProject && (
+                <button
+                  onClick={() => handleSaveAndApply(false)}
+                  className="px-6 py-2.5 bg-white border border-[#e7e0d4] hover:bg-[#f6f3ee] text-[#1f2933] font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-xs"
+                >
+                  Update Project Aktif
+                </button>
+              )}
+              <button
+                onClick={() => handleSaveAndApply(true)}
+                className="px-6 py-2.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-xs"
+              >
+                <Sparkles size={16} />
+                {hasActiveProject ? 'Buat Project Baru dari JSON' : 'Terapkan Strategy Blueprint'}
+              </button>
+            </div>
           </div>
         </motion.div>
       </div>

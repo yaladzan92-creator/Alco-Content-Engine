@@ -1,3 +1,4 @@
+'use client';
 import { motion } from 'motion/react';
 import React from 'react';
 import { Sparkles, Loader2, Copy, Check, Info, FileText, Image as ImageIcon, Zap, Edit3, ChevronLeft, ChevronRight, PlaySquare, Video, Clipboard, Clock, Sliders, Target, Layers, FileCode2, CheckCircle2, Download, Save, AlertCircle, RefreshCw, CheckSquare, ListTodo, BrainCircuit, Users, ExternalLink, PlayCircle, MessageSquare, ChevronDown } from 'lucide-react';
@@ -217,7 +218,7 @@ export default function ReviewPanel(props: any) {
           >
             <div className="flex items-center gap-2 text-[#1f2933] font-bold text-xs group-hover:text-[#0f766e] transition mb-1">
               <ImageIcon size={13} className="text-sky-600" />
-              <span>Prompt Image</span>
+              <span>Gambar</span>
             </div>
             <p className="text-xs text-stone-500 line-clamp-2 leading-normal">
               Buat prompt gambar Midjourney/Imagen siap pakai berdasarkan detail visual.
@@ -231,7 +232,7 @@ export default function ReviewPanel(props: any) {
           >
             <div className="flex items-center gap-2 text-[#1f2933] font-bold text-xs group-hover:text-[#0f766e] transition mb-1">
               <Layers size={13} className="text-[#0f766e]" />
-              <span>Carousel Blueprint</span>
+              <span>Carousel</span>
             </div>
             <p className="text-xs text-stone-500 line-clamp-2 leading-normal">
               Kembangkan alur slide-by-slide lengkap dengan trigger visual psikologis.
@@ -245,7 +246,7 @@ export default function ReviewPanel(props: any) {
           >
             <div className="flex items-center gap-2 text-[#1f2933] font-bold text-xs group-hover:text-[#0f766e] transition mb-1">
               <Video size={13} className="text-rose-600" />
-              <span>Script Video &amp; Google Flow</span>
+              <span>Video</span>
             </div>
             <p className="text-xs text-stone-500 line-clamp-2 leading-normal">
               Susun script Reels/TikTok lengkap dengan urutan prompt per scene Google Flow.
@@ -275,7 +276,7 @@ export default function ReviewPanel(props: any) {
             {isEditingMode ? 'Preview' : 'Edit Report'}
           </button>
           <button
-            onClick={() => handleCopyText('review_report', reviewOutput || getInitialDraft('review', activeItem, activeContext))}
+            onClick={() => handleCopyText('review_report', reviewOutput || getInitialDraft('review', activeItem, activeContext), 'none')}
             className="p-1.5 bg-[#fffdf8] hover:bg-stone-100 text-stone-600 hover:text-stone-900 rounded-lg border border-[#e7e0d4] transition"
             title="Salin Laporan"
           >

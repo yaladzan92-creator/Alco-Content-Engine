@@ -87,17 +87,20 @@ export async function POST(req: NextRequest) {
     const errMsg = String(error?.message || error || "");
     const errStatus = error?.status || error?.statusCode || 500;
 
-    const isRateLimit = errStatus === 429 || 
-                        /429/i.test(errMsg) || 
-                        /rate.*exceed/i.test(errMsg) || 
-                        /quota/i.test(errMsg) || 
-                        /resource.*exhaust/i.test(errMsg) || 
-                        /limit.*exceed/i.test(errMsg);
+    const isRateLimit = errStatus === 429 || errStatus === 503 ||
+                         /429/i.test(errMsg) || /503/i.test(errMsg) ||
+                         /rate.*exceed/i.test(errMsg) ||
+                         /quota/i.test(errMsg) ||
+                         /resource.*exhaust/i.test(errMsg) ||
+                         /high.*demand/i.test(errMsg) ||
+                         /overloaded/i.test(errMsg) ||
+                         /unavailable/i.test(errMsg) ||
+                         /limit.*exceed/i.test(errMsg);
 
     if (isRateLimit) {
       return NextResponse.json(
         { 
-          error: "Permintaan AI sedang dibatasi (Rate Limit / Quota Exceeded). Coba lagi beberapa saat.",
+          error: "Permintaan AI sedang dibatasi (Rate Limit / High Demand). Coba lagi beberapa saat.",
           isRateLimit: true,
           retryAfterSeconds: 30,
           details: errMsg

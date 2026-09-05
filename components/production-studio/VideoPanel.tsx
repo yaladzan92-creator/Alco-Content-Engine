@@ -1,3 +1,4 @@
+'use client';
 import React from 'react';
 import {
   Sparkles,
@@ -16,10 +17,12 @@ import {
   MessageSquare,
   ChevronDown,
   Image as ImageIcon,
+  FileText,
 } from 'lucide-react';
 import { Json2VideoApiKeyControl } from '@/components/Json2VideoApiKeyControl';
 import { VideoAssetUrlInput } from '@/components/VideoAssetUrlInput';
 import { PromptNextStepLinks } from './PromptNextStepLinks';
+import { countWords } from '@/lib/funnel-rules';
 
 export default function VideoPanel(props: any) {
   const {
@@ -35,7 +38,7 @@ export default function VideoPanel(props: any) {
     normalizeFunnelStage,
     getFunnelRules,
     selectedVideoId,
-    handleSelectany,
+    handleSelectVideoStyle,
     videoMode,
     setVideoMode,
     characterImageUrl,
@@ -63,17 +66,11 @@ export default function VideoPanel(props: any) {
     getGoogleFlowVideoPack,
   } = props;
 
-  if (!videoOutput) {
-    return (
-      <div className="whitespace-pre-wrap font-sans text-stone-800 text-xs leading-relaxed">
-        {videoOutput || getInitialDraft('video', activeItem, activeContext)}
-      </div>
-    );
-  }
+  const effectiveVideoOutput = videoOutput || (getInitialDraft ? getInitialDraft('video', activeItem, activeContext) : '');
 
   let videoStyles: any[] | null = null;
   try {
-    const parsed = tryParseJSON(videoOutput);
+    const parsed = tryParseJSON(effectiveVideoOutput);
     if (Array.isArray(parsed) && parsed.length > 0) {
       videoStyles = parsed as any[];
     }
@@ -84,7 +81,7 @@ export default function VideoPanel(props: any) {
   if (!videoStyles) {
     return (
       <div className="whitespace-pre-wrap font-sans text-stone-800 text-xs leading-relaxed">
-        {videoOutput}
+        {effectiveVideoOutput}
       </div>
     );
   }
@@ -113,7 +110,7 @@ export default function VideoPanel(props: any) {
               {videoStyles.map((style) => (
                 <button
                   key={style.id}
-                  onClick={() => handleSelectany(style.id)}
+                  onClick={() => handleSelectVideoStyle(style.id)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
                     selectedVideoId === style.id
                       ? 'bg-[#0f766e] text-white shadow-xs'
@@ -194,6 +191,40 @@ export default function VideoPanel(props: any) {
             </button>
           </div>
         </div>
+
+        {/* Caption / Keterangan Postingan Video (Siap Posting) */}
+        {(activeVideo.captionForPost || activeItem?.caption) && (
+          <div className="bg-[#fffdf8] border border-[#e7e0d4] p-4.5 rounded-2xl space-y-2.5 shadow-xs">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText size={14} className="text-[#0f766e]" />
+                <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">Caption / Keterangan Postingan Video (Siap Posting)</span>
+              </div>
+              <button
+                onClick={() => handleCopyText(`video_caption_${activeVideo.id}`, activeVideo.captionForPost || activeItem?.caption, 'captionCopied')}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-[#1f2933] text-xs font-bold rounded-xl transition cursor-pointer border border-[#e7e0d4]"
+              >
+                {copiedStates[`video_caption_${activeVideo.id}`] ? (
+                  <>
+                    <Check size={13} className="text-[#0f766e]" />
+                    <span className="text-[#0f766e]">Caption Tersalin!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={13} />
+                    <span>Salin Caption</span>
+                  </>
+                )}
+              </button>
+            </div>
+            <div className="text-[11px] text-stone-500 font-medium">
+              {activeVideo.captionInstruction || "Paste teks ini di caption/keterangan postingan setelah aset dibuat."}
+            </div>
+            <div className="p-3.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-stone-900 font-sans text-xs leading-relaxed select-all whitespace-pre-wrap">
+              {activeVideo.captionForPost || activeItem?.caption}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -232,7 +263,7 @@ export default function VideoPanel(props: any) {
           {videoStyles.map((style) => (
             <button
               key={style.id}
-              onClick={() => handleSelectany(style.id)}
+              onClick={() => handleSelectVideoStyle(style.id)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
                 selectedVideoId === style.id
                   ? 'bg-[#0f766e] text-white shadow-xs'
@@ -245,6 +276,40 @@ export default function VideoPanel(props: any) {
           ))}
         </div>
       </div>
+
+      {/* Caption / Keterangan Postingan Video (Siap Posting) */}
+      {(activeVideo.captionForPost || activeItem?.caption) && (
+        <div className="bg-[#fffdf8] border border-[#e7e0d4] p-4.5 rounded-2xl space-y-2.5 shadow-xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText size={14} className="text-[#0f766e]" />
+              <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">Caption / Keterangan Postingan Video (Siap Posting)</span>
+            </div>
+            <button
+              onClick={() => handleCopyText(`video_caption_${activeVideo.id}`, activeVideo.captionForPost || activeItem?.caption, 'captionCopied')}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-[#1f2933] text-xs font-bold rounded-xl transition cursor-pointer border border-[#e7e0d4]"
+            >
+              {copiedStates[`video_caption_${activeVideo.id}`] ? (
+                <>
+                  <Check size={13} className="text-[#0f766e]" />
+                  <span className="text-[#0f766e]">Caption Tersalin!</span>
+                </>
+              ) : (
+                <>
+                  <Copy size={13} />
+                  <span>Salin Caption</span>
+                </>
+              )}
+            </button>
+          </div>
+          <div className="text-[11px] text-stone-500 font-medium">
+            {activeVideo.captionInstruction || "Paste teks ini di caption/keterangan postingan setelah aset dibuat."}
+          </div>
+          <div className="p-3.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-stone-900 font-sans text-xs leading-relaxed select-all whitespace-pre-wrap">
+            {activeVideo.captionForPost || activeItem?.caption}
+          </div>
+        </div>
+      )}
 
       {/* ALUR 1: GOOGLE FLOW PROMPT WORKFLOW */}
       {videoOutputMode === 'google_flow' && (
@@ -416,11 +481,16 @@ export default function VideoPanel(props: any) {
 
                         {/* Dialogue Field */}
                         <div className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-1.5">
-                          <div className="flex items-center justify-between text-[11px]">
+                          <div className="flex items-center justify-between text-[11px] flex-wrap gap-1">
                             <span className="font-bold text-stone-600 flex items-center gap-1">
                               <MessageSquare size={12} className="text-[#0f766e]" /> Naskah Dialog Audio (Bahasa Indonesia):
                             </span>
-                            <span className="text-[10px] text-stone-500">{scene.role}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-stone-200/80 text-stone-700 font-mono font-medium">
+                                {countWords(scene.dialogue)} kata &bull; ~8 dtk
+                              </span>
+                              <span className="text-[10px] text-stone-500">{scene.role}</span>
+                            </div>
                           </div>
                           <p className="text-xs text-stone-900 font-medium leading-relaxed italic bg-[#fffdf8] p-2.5 rounded-lg border border-[#e7e0d4]/80">
                             &ldquo;{scene.dialogue}&rdquo;
@@ -447,7 +517,7 @@ export default function VideoPanel(props: any) {
                             <button
                               type="button"
                               onClick={() =>
-                                handleCopyText(`gflow_img_${scene.sceneNumber}_${activeVideo.id}`, scene.imagePrompt)
+                                handleCopyText(`gflow_img_${scene.sceneNumber}_${activeVideo.id}`, scene.imagePrompt, 'promptCopied')
                               }
                               className={`w-full py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer border ${
                                 isImgCopied
@@ -489,7 +559,8 @@ export default function VideoPanel(props: any) {
                               onClick={() =>
                                 handleCopyText(
                                   `gflow_prompt_${scene.sceneNumber}_${activeVideo.id}`,
-                                  scene.googleFlowPrompt
+                                  scene.googleFlowPrompt,
+                                  'promptCopied'
                                 )
                               }
                               className={`w-full py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer border ${
@@ -676,7 +747,7 @@ export default function VideoPanel(props: any) {
                   </p>
                   <button
                     type="button"
-                    onClick={() => handleCopyText(`json2video_${activeVideo.id}`, json2VideoPayload.text)}
+                    onClick={() => handleCopyText(`json2video_${activeVideo.id}`, json2VideoPayload.text, 'none')}
                     className="px-3 py-1.5 bg-[#f6f3ee] hover:bg-stone-200 text-stone-800 border border-[#e7e0d4] rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer"
                   >
                     {copiedStates[`json2video_${activeVideo.id}`] ? (

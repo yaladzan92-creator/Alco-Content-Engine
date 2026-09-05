@@ -1,8 +1,9 @@
+'use client';
 import React from 'react';
 import { 
   Sparkles, Copy, Check, Sliders, CheckCircle2, AlertCircle,
   Layers, ArrowRight, Palette, Compass, Camera, BarChart3,
-  Layers2, Eye, ShieldCheck, ChevronDown
+  Layers2, Eye, ShieldCheck, ChevronDown, FileText
 } from 'lucide-react';
 import { PromptNextStepLinks } from './PromptNextStepLinks';
 
@@ -169,7 +170,7 @@ ${s.production_prompt || '-'}`;
             onClick={() => {
               const combinedText = `[CAROUSEL 3-LAYER STRATEGY BLUEPRINT]\nFunnel Stage: ${funnelStage}\nGoal: ${plan.content_goal || '-'}\nCore Promise: ${plan.core_promise || '-'}\nPrimary CTA: ${plan.primary_cta_text || '-'} (${plan.primary_cta_type || '-'})\nSlide Count Reason: ${plan.slide_count_reason || '-'}\n\n` +
                 slides.map((s: any) => formatSlideFullText(s)).join('\n\n========================================\n\n');
-              handleCopyText('carousel_plan_all', combinedText);
+              handleCopyText('carousel_plan_all', combinedText, 'none');
             }}
             className="px-3.5 py-1.5 bg-[#fffdf8] hover:bg-stone-100 text-[#1f2933] border border-[#e7e0d4] rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
           >
@@ -265,6 +266,40 @@ ${s.production_prompt || '-'}`;
           </div>
         </div>
       </div>
+
+      {/* Caption / Keterangan Postingan Carousel */}
+      {(plan.captionForPost || activeItem?.caption) && (
+        <div className="bg-[#fffdf8] border border-[#e7e0d4] p-4 rounded-2xl space-y-2.5 shadow-xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText size={14} className="text-[#0f766e]" />
+              <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">Caption / Keterangan Postingan (Siap Posting)</span>
+            </div>
+            <button
+              onClick={() => handleCopyText('carousel_caption_post', plan.captionForPost || activeItem?.caption, 'captionCopied')}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-[#1f2933] text-xs font-bold rounded-xl transition cursor-pointer border border-[#e7e0d4]"
+            >
+              {copiedStates['carousel_caption_post'] ? (
+                <>
+                  <Check size={13} className="text-[#0f766e]" />
+                  <span className="text-[#0f766e]">Caption Tersalin!</span>
+                </>
+              ) : (
+                <>
+                  <Copy size={13} />
+                  <span>Salin Caption</span>
+                </>
+              )}
+            </button>
+          </div>
+          <div className="text-[11px] text-stone-500 font-medium">
+            {plan.captionInstruction || "Paste teks ini di caption/keterangan postingan setelah aset dibuat."}
+          </div>
+          <div className="p-3.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-stone-900 font-sans text-xs leading-relaxed select-all whitespace-pre-wrap">
+            {plan.captionForPost || activeItem?.caption}
+          </div>
+        </div>
+      )}
 
       {/* 3. Horizontal Slide Timeline Navigator */}
       <div className="bg-[#fffdf8] p-3.5 rounded-2xl border border-[#e7e0d4] shadow-xs">
@@ -363,7 +398,7 @@ ${s.production_prompt || '-'}`;
             <button
               onClick={() => {
                 const slideCopy = formatSlideFullText(activeSlide);
-                handleCopyText(`slide_main_copy_${activeSlideNum}`, slideCopy);
+                handleCopyText(`slide_main_copy_${activeSlideNum}`, slideCopy, 'promptCopied');
               }}
               className="px-3.5 py-1.5 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
             >
@@ -393,7 +428,7 @@ ${s.production_prompt || '-'}`;
               <div className="flex items-center justify-between">
                 <span className="text-[10px] text-stone-500 font-bold uppercase tracking-wider">Headline Slide</span>
                 <button
-                  onClick={() => handleCopyText(`slide_hl_${activeSlide.slide}`, activeSlide.headline)}
+                  onClick={() => handleCopyText(`slide_hl_${activeSlide.slide}`, activeSlide.headline, 'none')}
                   className="text-[10px] font-bold text-stone-600 hover:text-[#0f766e] flex items-center gap-1 transition-colors"
                 >
                   {copiedStates[`slide_hl_${activeSlide.slide}`] ? <Check size={11} className="text-[#0f766e]" /> : <Copy size={11} />}
@@ -409,7 +444,7 @@ ${s.production_prompt || '-'}`;
               <div className="flex items-center justify-between">
                 <span className="text-[10px] text-stone-500 font-bold uppercase tracking-wider">Isi Naskah / Body Copy</span>
                 <button
-                  onClick={() => handleCopyText(`slide_body_${activeSlide.slide}`, activeSlide.body)}
+                  onClick={() => handleCopyText(`slide_body_${activeSlide.slide}`, activeSlide.body, 'none')}
                   className="text-[10px] font-bold text-stone-600 hover:text-[#0f766e] flex items-center gap-1 transition-colors"
                 >
                   {copiedStates[`slide_body_${activeSlide.slide}`] ? <Check size={11} className="text-[#0f766e]" /> : <Copy size={11} />}
@@ -551,7 +586,7 @@ ${s.production_prompt || '-'}`;
                         <span>Prompt Image Saja &bull; Slide {activeSlide.slide} (4:5 Format)</span>
                       </div>
                       <button
-                        onClick={() => handleCopyText(`slide_img_prompt_only_${activeSlide.slide}`, activeSlide.slide_image_prompt)}
+                        onClick={() => handleCopyText(`slide_img_prompt_only_${activeSlide.slide}`, activeSlide.slide_image_prompt, 'promptCopied')}
                         className="px-2.5 py-1 bg-[#0f766e] hover:bg-[#0f766e]/85 text-white rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 shadow-xs cursor-pointer"
                       >
                         {copiedStates[`slide_img_prompt_only_${activeSlide.slide}`] ? (
@@ -582,7 +617,7 @@ ${s.production_prompt || '-'}`;
                         <span>Prompt Layout Saja &bull; Slide {activeSlide.slide}</span>
                       </div>
                       <button
-                        onClick={() => handleCopyText(`slide_layout_prompt_only_${activeSlide.slide}`, activeSlide.production_prompt)}
+                        onClick={() => handleCopyText(`slide_layout_prompt_only_${activeSlide.slide}`, activeSlide.production_prompt, 'promptCopied')}
                         className="px-2.5 py-1 bg-[#fffdf8] hover:bg-stone-200 text-stone-800 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 border border-[#e7e0d4] cursor-pointer"
                       >
                         {copiedStates[`slide_layout_prompt_only_${activeSlide.slide}`] ? (

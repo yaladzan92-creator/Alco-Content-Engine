@@ -1,7 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import dynamic from 'next/dynamic';
+import ImagePanel from '@/components/production-studio/ImagePanel';
+import CarouselPanel from '@/components/production-studio/CarouselPanel';
+import VideoPanel from '@/components/production-studio/VideoPanel';
+import UGCPanel from '@/components/production-studio/UGCPanel';
+import ReviewPanel from '@/components/production-studio/ReviewPanel';
 import { useRouter } from 'next/navigation';
 import { 
   ArrowLeft, Sparkles, FileText, Image as ImageIcon, Video, Layers, Users, Star, 
@@ -10,14 +14,34 @@ import {
   ChevronDown, ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ContentItem, SharedContentContext, CharacterDNA } from '@/lib/content-contract';
-import { buildFunnelPromptBlock, getFunnelRules, normalizeFunnelStage, sanitizeCtaForFunnel, getVoiceoverCtaForFunnel, FUNNEL_CONTENT_RULES, FunnelStage } from '@/lib/funnel-rules';
-import { getActiveProjectId, setActiveProjectId, loadProjectData, saveProjectData, removeProjectData, getProjectCharacterDNA, saveProjectCharacterDNA } from '@/lib/storage';
+import { ContentItem, SharedContentContext, CharacterDNA, ProductionProgress } from '@/lib/content-contract';
+import { 
+  buildFunnelPromptBlock, 
+  getFunnelRules, 
+  normalizeFunnelStage, 
+  sanitizeCtaForFunnel, 
+  getVoiceoverCtaForFunnel, 
+  FUNNEL_CONTENT_RULES, 
+  FunnelStage,
+  countWords,
+  normalizeGoogleFlowDialogue
+} from '@/lib/funnel-rules';
+import { getActiveProjectId, setActiveProjectId, loadProjectData, saveProjectData, removeProjectData, getProjectCharacterDNA, saveProjectCharacterDNA, updateItemInProject } from '@/lib/storage';
 import CharacterDNASection from '@/components/CharacterDNA';
+import ProductionProgressWidget from '@/components/calendar/ProductionProgressWidget';
 import { GeminiApiKeyControl } from '@/components/GeminiApiKeyControl';
-import { buildGeminiRequestHeaders } from '@/lib/client-gemini-key';
+import ContentEngineShell from '@/components/ContentEngineShell';
+import { buildGeminiRequestHeaders, useGeminiApiKey } from '@/lib/client-gemini-key';
 import { buildJson2VideoRequestHeaders } from '@/lib/client-json2video-key';
 import { validateJson2VideoPayload } from '@/lib/json2video-payload-validator';
+
+
+
+
+
+
+
+
 
 // Helper to copy to clipboard safely
 const safeCopyToClipboard = async (text: string) => {
@@ -139,6 +163,8 @@ interface ImageAngle {
   colorPsychology?: string;
   layoutStrategy?: string;
   textOverlay?: string;
+  captionForPost?: string;
+  captionInstruction?: string;
   ctaRecommendation?: string;
   strategyBrief?: StrategyBrief;
   messageAlignmentCheck?: MessageAlignmentCheck;
@@ -214,6 +240,8 @@ interface CarouselPlan {
   belief_journey_summary: string;
   messageAlignmentCheck?: CarouselMessageAlignmentCheck;
   visual_system_notes: string;
+  captionForPost?: string;
+  captionInstruction?: string;
   slides: CarouselSlide[];
 }
 
@@ -235,6 +263,8 @@ interface VideoStyle {
   script: VideoScript;
   videoPrompt: string;
   visualPlan: string;
+  captionForPost?: string;
+  captionInstruction?: string;
 }
 
 interface UgcPack {
@@ -331,7 +361,7 @@ const buildGoogleFlowPromptString = (
 };
 
 const getGoogleFlowVideoPack = (
-  stage: FunnelStage,
+  stageInput: FunnelStage,
   activeItem: ContentItem,
   activeContext: SharedContentContext,
   activeVideo: VideoStyle,
@@ -340,7 +370,8 @@ const getGoogleFlowVideoPack = (
   customSetting?: string,
   customDialogues?: { scene1?: string; scene2?: string; scene3?: string }
 ): GoogleFlowSceneItem[] => {
-  const brandName = activeContext.brand_context?.brand_name || 'ALCO Engine';
+  const stage = normalizeFunnelStage(stageInput);
+  const brandName = activeContext?.brand_context?.brand_name || 'ALCO Engine';
   const creator = customCreator?.trim() || 
     characterDNA?.prompt_assets?.dna_summary_prompt ||
     characterDNA?.identity?.display_name ||
@@ -348,93 +379,49 @@ const getGoogleFlowVideoPack = (
   const setting = customSetting?.trim() || 
     'in a modern minimalist room with natural ambient lighting';
 
-  // Funnel-specific dialogue & scenes
-  let scene1Dialogue = customDialogues?.scene1;
+  // Extract raw dialogue sources
+  const rawScene1 = customDialogues?.scene1 || activeVideo?.script?.hook || activeVideo?.script?.masalah || activeItem?.headline || '';
+  const rawScene2 = customDialogues?.scene2 || activeVideo?.script?.solusi || activeContext?.strategy_context?.main_offer || activeItem?.body || '';
+  const rawScene3 = customDialogues?.scene3 || activeVideo?.script?.cta || activeItem?.cta || '';
+
+  // Stabilize and normalize dialogues strictly to 24-30 words (22-32 words bounds)
+  const scene1Dialogue = normalizeGoogleFlowDialogue(1, stage, rawScene1, activeContext);
+  const scene2Dialogue = normalizeGoogleFlowDialogue(2, stage, rawScene2, activeContext);
+  const scene3Dialogue = normalizeGoogleFlowDialogue(3, stage, rawScene3, activeContext);
+
   let scene1Role = '';
   let scene1Image = '';
-
-  let scene2Dialogue = customDialogues?.scene2;
   let scene2Role = '';
   let scene2Image = '';
-
-  let scene3Dialogue = customDialogues?.scene3;
   let scene3Role = '';
   let scene3Image = '';
 
   if (stage === 'TOFU') {
-    // TOFU: Hook curiosity/problem ringan -> Insight edukatif -> CTA soft
     scene1Role = 'Hook Curiosity & Problem Ringan';
-    if (!scene1Dialogue) {
-      scene1Dialogue = activeVideo?.script?.hook 
-        ? `${activeVideo.script.hook.replace(/[".]/g, '')}. Kamu ngerasa relate juga gak sama masalah ini?`
-        : `Pernah gak ngerasa udah bikin konten tiap hari tapi views tetap sepi? Ternyata masalahnya bukan di seberapa sering kamu posting.`;
-    }
     scene1Image = `A 9:16 vertical realistic photo of ${creator} looking thoughtfully at the camera with an intriguing curious expression, ${setting}, natural indoor lighting, UGC style.`;
 
     scene2Role = 'Insight Edukatif & Paradigma Baru';
-    if (!scene2Dialogue) {
-      scene2Dialogue = activeVideo?.script?.solusi 
-        ? `${activeVideo.script.solusi.replace(/[".]/g, '')}. Kuncinya ada di hook 3 detik pertama yang langsung bikin audiens berhenti scroll.`
-        : `Kuncinya ada di 3 detik pertama: bangun rasa penasaran, berikan satu insight inti, dan sajikan dengan nada natural.`;
-    }
     scene2Image = `A 9:16 vertical realistic photo of ${creator} gesturing naturally while explaining an insightful concept to the camera, ${setting}, natural indoor lighting, UGC style.`;
 
     scene3Role = 'Soft CTA (Simpan, Follow, Baca Lanjut)';
-    if (!scene3Dialogue) {
-      scene3Dialogue = activeItem?.cta 
-        ? `Simpan video ini biar gak hilang, dan ${activeItem.cta.toLowerCase()}!`
-        : `Simpan video ini biar gak lupa pas kamu bikin konten nanti, dan follow akun ini untuk tips strategi harian!`;
-    }
     scene3Image = `A 9:16 vertical realistic photo of ${creator} giving a friendly warm smile and subtle thumbs up to the camera, ${setting}, natural indoor lighting, UGC style.`;
   } else if (stage === 'MOFU') {
-    // MOFU: Problem spesifik -> Framework/solusi -> CTA medium
     scene1Role = 'Problem Spesifik & Validasi Masalah';
-    if (!scene1Dialogue) {
-      scene1Dialogue = activeVideo?.script?.masalah || activeVideo?.script?.hook
-        ? `${(activeVideo.script.masalah || activeVideo.script.hook).replace(/[".]/g, '')}. Kalau dibiarin, audiens bakal terus skip tanpa pernah konversi.`
-        : `Banyak yang terjebak di views tinggi tapi zero conversion karena funnel kontennya bolong di tengah.`;
-    }
     scene1Image = `A 9:16 vertical realistic photo of ${creator} looking engaged and thoughtful, gesturing to explain a specific problem, ${setting}, natural indoor lighting, UGC style.`;
 
     scene2Role = 'Framework & Solusi Terstruktur';
-    if (!scene2Dialogue) {
-      scene2Dialogue = activeVideo?.script?.solusi 
-        ? `Solusinya pakai sistem ini: ${activeVideo.script.solusi.replace(/[".]/g, '')}. Alur konversi jadi jauh lebih terarah.`
-        : `Pakai sistem 3 langkah ini: petakan audience pain point, buat content blueprint terstruktur, dan arahkan ke penawaran utama.`;
-    }
     scene2Image = `A 9:16 vertical realistic photo of ${creator} holding a smartphone showing an organized dashboard with a satisfied expression, ${setting}, natural indoor lighting, UGC style.`;
 
     scene3Role = 'Medium CTA (Cek Panduan, Lihat Demo, Lead Magnet)';
-    if (!scene3Dialogue) {
-      scene3Dialogue = activeItem?.cta 
-        ? `Mau lihat alur lengkapnya? ${activeItem.cta} sekarang!`
-        : `Klik link di bio untuk download panduan gratisnya dan lihat demo lengkap cara kerjanya sekarang!`;
-    }
     scene3Image = `A 9:16 vertical realistic photo of ${creator} pointing towards the bio link with an encouraging, inviting expression, ${setting}, natural indoor lighting, UGC style.`;
   } else {
-    // BOFU: Objection/proof -> Offer/benefit -> CTA jelas
     scene1Role = 'Objection Handling & Social Proof';
-    if (!scene1Dialogue) {
-      scene1Dialogue = activeVideo?.script?.proof || activeVideo?.script?.hook
-        ? `Masih ragu coba ${brandName}? ${(activeVideo.script.proof || activeVideo.script.hook).replace(/[".]/g, '')}. Ini bukti nyatanya.`
-        : `Masih ragu apakah sistem ini beneran bisa naikin konversi kontenmu? Cek bukti dan hasil nyata bagaimana sistem ini bekerja.`;
-    }
     scene1Image = `A 9:16 vertical realistic photo of ${creator} smiling confidently directly at the camera with genuine conviction, ${setting}, natural indoor lighting, UGC style.`;
 
     scene2Role = 'Offer & Benefit Utama';
-    if (!scene2Dialogue) {
-      scene2Dialogue = activeVideo?.script?.solusi || activeContext?.strategy_context?.main_offer
-        ? `Dengan ${brandName}, kamu dapat ${activeVideo.script?.solusi || activeContext.strategy_context?.main_offer}. Eksekusi instan tanpa pusing.`
-        : `Dengan ${brandName}, seluruh naskah video, visual prompt, dan kalender kontenmu langsung siap tayang dalam hitungan menit.`;
-    }
     scene2Image = `A 9:16 vertical realistic photo of ${creator} presenting a clear offer on a digital device with a welcoming posture, ${setting}, natural indoor lighting, UGC style.`;
 
     scene3Role = 'Hard CTA (Daftar, Beli, Konsultasi)';
-    if (!scene3Dialogue) {
-      scene3Dialogue = activeItem?.cta 
-        ? `Tunggu apa lagi? ${activeItem.cta} hari ini juga!`
-        : `Amankan akses kamu sekarang lewat link di bio dan mulai tingkatkan konversi kontenmu hari ini sebelum penawaran berakhir!`;
-    }
     scene3Image = `A 9:16 vertical realistic photo of ${creator} making an inviting gesture with high energy and friendly authority, ${setting}, natural indoor lighting, UGC style.`;
   }
 
@@ -1077,11 +1064,121 @@ const extractPromptField = (field: string, text: string): string => {
   return match ? match[1].trim() : '';
 };
 
+// Helper to build a short, punchy image overlay without ellipsis (max 6-10 words)
+const buildShortImageOverlay = (headline: string, funnelStage: string = 'TOFU'): string => {
+  if (!headline || !headline.trim()) {
+    if (funnelStage === 'BOFU') return 'Ratusan Pemilik Bisnis Sudah Membuktikan Alurnya.';
+    if (funnelStage === 'MOFU') return 'Bukan kurang rajin, cuma belum punya sistem alur yang jelas.';
+    return 'Kok caption-nya terasa kaku?';
+  }
+
+  // 1. Remove all ellipses
+  let text = headline.replace(/\.{2,}/g, '').replace(/…/g, '').trim();
+
+  // 2. Specific transformation for the user example:
+  // "Alasan Kenapa Menulis Copy Ads Manual Perlahan Membunuh Bisnismu" -> "Copy Ads Manual Membunuh Bisnismu?"
+  const lower = text.toLowerCase();
+  if (lower.includes('copy ads manual') && lower.includes('membunuh bisnismu')) {
+    return 'Copy Ads Manual Membunuh Bisnismu?';
+  }
+
+  // 3. Normalize common rhetoric prefixes
+  text = text
+    .replace(/^(alasan\s+(kenapa|mengapa)|kenapa|mengapa|rahasia\s+(di\s*balik|tentang)?|tahukah\s+(kamu|anda)\s+bahwa|fakta\s+di\s*balik|cara\s+(mudah|cepat|praktis)\s+(untuk)?|tips\s+(bagaimana)?)\s+/i, '')
+    .replace(/\b(secara\s+perlahan|perlahan-lahan|perlahan)\b/gi, '')
+    .replace(/^menulis\s+(copy\s+ads\s+manual)/i, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Clean leading/trailing symbols
+  text = text.replace(/^[^a-zA-Z0-9\u00C0-\u024F"']+|[^a-zA-Z0-9\u00C0-\u024F"?!.']+$/g, '').trim();
+
+  // Word count check (max 6-10 words)
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length > 10) {
+    let selectedWords = words.slice(0, 8);
+    const lastWord = selectedWords[selectedWords.length - 1].toLowerCase();
+    if (['yang', 'dan', 'di', 'ke', 'dari', 'untuk', 'pada', 'dengan', 'agar', 'bisa', 'saat', 'ketika', 'atau', 'karena'].includes(lastWord)) {
+      selectedWords.pop();
+    }
+    text = selectedWords.join(' ');
+    if (!/[?!.]$/.test(text)) {
+      text += '?';
+    }
+  } else if (funnelStage === 'TOFU' && !/[?!.]$/.test(text)) {
+    if (/membunuh|hancur|kaku|rusak|gagal|mentok|sulit|susah|capek|lelah|bingung|rugi|hilang|bocor/i.test(text)) {
+      text += '?';
+    }
+  }
+
+  // Ensure no ellipsis exists
+  text = text.replace(/\.{2,}/g, '').replace(/…/g, '').trim();
+  return text || 'Kok caption-nya terasa kaku?';
+};
+
+const buildDefaultCaptionForImage = (headline: string, funnelStage: string, angleId: string, shortOverlay: string): string => {
+  const lowerH = (headline || '').toLowerCase();
+  if (lowerH.includes('copy ads manual') && lowerH.includes('membunuh bisnismu')) {
+    if (angleId === 'A') {
+      return "Menulis copy ads manual satu per satu sering memakan waktu berjam-jam dan hasilnya belum tentu konsisten. Saat bisnis mulai berkembang, proses manual ini perlahan menguras energi yang seharusnya dipakai untuk scale up. Simak bagaimana sistem alur pesan membantu kamu membuat materi iklan yang terarah dan konsisten.";
+    }
+    if (angleId === 'B') {
+      return "Pernah merasa begini? Menghabiskan seharian hanya untuk merangkai satu copy iklan, tapi performanya tidak sesuai harapan. Masalahnya bukan di kreativitasmu, tapi ketiadaan framework pesan yang teruji.";
+    }
+    return "Satu kesalahan fatal dalam scaling iklan adalah memaksakan penulisan manual tanpa formula terstruktur. Pelajari bagaimana sistem alur narasi memudahkan pembuatan variasi ad copy berkualitas tinggi.";
+  }
+
+  if (funnelStage === 'TOFU') {
+    if (angleId === 'A') {
+      return `Banyak kreator dan pemilik bisnis terjebak pada proses manual yang melelahkan saat memproduksi konten. ${headline ? `Topik seputar "${headline}"` : 'Masalah ini'} sering kali berakar dari belum adanya alur pesan yang jelas. Simak bagaimana menyederhanakan proses penulisan agar pesan tersampaikan dengan efektif.`;
+    }
+    if (angleId === 'B') {
+      return "Pernah merasa begini? Sudah luangkan waktu menyusun draf kalimat, tapi saat dibaca ulang rasanya kurang nendang. Biasanya masalahnya bukan pada pemilihan kata yang rumit, melainkan struktur pesan yang belum menargetkan rasa penasaran audiens.";
+    }
+    return "Satu kebiasaan kecil yang sering dilewatkan adalah menguji kejelasan hook sebelum mempublikasikan postingan. Luangkan waktu 30 detik untuk membaca dari sudut pandang audiens awam.";
+  } else if (funnelStage === 'MOFU') {
+    if (angleId === 'A') {
+      return "Konsistensi tanpa sistem yang rapi hanya akan berujung pada burnout. Saat kamu memiliki framework alur konten yang terstruktur, setiap ide bisa diubah menjadi materi edukasi yang bernilai tinggi.";
+    }
+    if (angleId === 'B') {
+      return "Memposting setiap hari tanpa narasi yang jelas seperti berbicara tanpa arah. Framework konten membantu menghubungkan masalah audiens dengan solusi yang kamu tawarkan secara logis.";
+    }
+    return "Berikut alur framework praktis yang bisa kamu terapkan: Tangkap perhatian dengan hook relevan, bedah masalah intinya, sajikan sudut pandang baru, dan tutup dengan langkah aksi konkret.";
+  } else {
+    // BOFU
+    if (angleId === 'A') {
+      return "Lebih dari ratusan kreator dan pemilik bisnis telah membuktikan efisiensi alur kerja konten terpadu. Dapatkan akses ke sistem lengkapnya dan mulai kembangkan aset bisnismu sekarang.";
+    }
+    if (angleId === 'B') {
+      return "Lihat bagaimana sistem otomatisasi dan framework prompt terstruktur memangkas waktu produksi konten secara signifikan. Cek alur kerjanya dan terapkan langsung.";
+    }
+    return "Siap membawa produksi konten bisnismu ke level berikutnya? Akses seluruh modul, kalender strategi, dan template workflow siap pakai hari ini.";
+  }
+};
+
+const getBrandVisualRulesBlock = (ctx?: any) => {
+  const brandVis = ctx?.brand_visual_context || ctx?.brandVisualContext;
+  if (!brandVis || typeof brandVis !== 'object') return '';
+  const vStyle = brandVis.visual_style || brandVis.visualStyle || '';
+  const cPalette = brandVis.color_palette || brandVis.colorPalette;
+  const tStyle = brandVis.typography_style || brandVis.typographyStyle || '';
+  const iRules = brandVis.image_style_rules || brandVis.imageStyleRules;
+  const dMood = brandVis.design_mood || brandVis.designMood || '';
+
+  if (!vStyle && !cPalette && !tStyle && !iRules && !dMood) return '';
+
+  const colorStr = Array.isArray(cPalette) ? cPalette.join(', ') : (cPalette || '-');
+  const rulesStr = Array.isArray(iRules) ? iRules.join('; ') : (iRules || '-');
+
+  return `\n\nBrand Visual Rules:\n- Visual Style: ${vStyle || '-'}\n- Color Palette: ${colorStr}\n- Typography Style: ${tStyle || '-'}\n- Image Style Rules: ${rulesStr}\n- Design Mood: ${dMood || '-'}`;
+};
+
 const sanitizeAndAlignImageAngle = (
   item: any,
   globalFunnelStage: string,
   coreHeadline: string,
-  angleIndex: number
+  angleIndex: number,
+  activeContext?: any
 ): ImageAngle => {
   const requiredIds: Array<'A' | 'B' | 'C'> = ['A', 'B', 'C'];
   const rawId = (item.id || requiredIds[angleIndex] || 'A').toString().toUpperCase().trim();
@@ -1276,6 +1373,10 @@ const sanitizeAndAlignImageAngle = (
   // DIMENSION 3: Text Overlay vs Funnel Stage
   // ==========================================
   let textOverlay = (rawTextOverlay || extractedOverlayInPrompt || rawHeadline).trim();
+  // Clean placeholders or ellipsis
+  if (textOverlay.includes('...') || textOverlay.includes('…') || textOverlay.includes('[Tulis hook')) {
+    textOverlay = '';
+  }
   let overlayLower = textOverlay.toLowerCase();
 
   if (funnelStage === 'TOFU') {
@@ -1287,9 +1388,15 @@ const sanitizeAndAlignImageAngle = (
         ? "Satu kebiasaan kecil sebelum posting yang sering dilewatkan."
         : id === 'B'
         ? "Udah nulis lama, tapi pas dibaca kok tetap hambar?"
-        : "Kok caption-nya terasa kaku pas dibaca ulang?";
+        : buildShortImageOverlay(rawHeadline, 'TOFU');
     } else if (!textOverlay || textOverlay.length < 5) {
-      textOverlay = "Kok caption-nya terasa kaku pas dibaca ulang?";
+      textOverlay = id === 'C'
+        ? "Satu kebiasaan kecil sebelum posting yang sering dilewatkan."
+        : id === 'B'
+        ? "Udah nulis lama, tapi pas dibaca kok tetap hambar?"
+        : buildShortImageOverlay(rawHeadline, 'TOFU');
+    } else {
+      textOverlay = buildShortImageOverlay(textOverlay, 'TOFU');
     }
   } else if (funnelStage === 'MOFU') {
     const hasHardBofu = ['beli sekarang', 'daftar sekarang', 'diskon 50%', 'slot terbatas'].some(t => overlayLower.includes(t));
@@ -1298,7 +1405,13 @@ const sanitizeAndAlignImageAngle = (
       issues.push("Text Overlay diselaraskan menjadi insight / perbandingan framework MOFU.");
       textOverlay = "Bukan kurang rajin, cuma belum punya sistem alur yang jelas.";
     } else if (!textOverlay || textOverlay.length < 5) {
-      textOverlay = "Masalahnya bukan rajin posting, tapi alur narasinya.";
+      textOverlay = id === 'C'
+        ? "Framework 4 langkah agar pesan konten langsung kena ke audiens."
+        : id === 'B'
+        ? "Masalahnya bukan rajin posting, tapi alur narasinya."
+        : "Bukan kurang rajin, cuma belum punya sistem alur yang jelas.";
+    } else {
+      textOverlay = textOverlay.replace(/\.{2,}/g, '').replace(/…/g, '').trim();
     }
   } else {
     // BOFU
@@ -1307,11 +1420,19 @@ const sanitizeAndAlignImageAngle = (
       isAligned = false;
       issues.push("Text Overlay awal menggunakan pertanyaan problem awareness TOFU; diselaraskan ke pesan bukti/penawaran BOFU.");
       textOverlay = isSocialProofHeadline
-        ? (rawHeadline.length > 55 ? rawHeadline.slice(0, 52) + '...' : rawHeadline)
+        ? rawHeadline
         : (id === 'A' ? "Ratusan Pemilik Bisnis Sudah Membuktikan Alurnya." : id === 'B' ? "Lihat hasil nyata alurnya sekarang." : "Siap pakai untuk pertumbuhan konten bisnismu.");
     } else if (!textOverlay || textOverlay.length < 5) {
-      textOverlay = isSocialProofHeadline ? rawHeadline : "Lihat hasil nyata alurnya sekarang.";
+      textOverlay = isSocialProofHeadline ? rawHeadline : (id === 'A' ? "Ratusan Pemilik Bisnis Sudah Membuktikan Alurnya." : id === 'B' ? "Lihat hasil nyata alurnya sekarang." : "Siap pakai untuk pertumbuhan konten bisnismu.");
+    } else {
+      textOverlay = textOverlay.replace(/\.{2,}/g, '').replace(/…/g, '').trim();
     }
+  }
+
+  // Ensure clean captionForPost
+  let captionForPost = String(item.captionForPost || item.caption_for_post || '').trim();
+  if (!captionForPost || captionForPost === '...' || captionForPost === '…' || captionForPost.includes('[Tulis caption')) {
+    captionForPost = buildDefaultCaptionForImage(rawHeadline, funnelStage, id, textOverlay);
   }
 
   // ==========================================
@@ -1330,8 +1451,8 @@ Lighting: ${lighting}
 Camera: ${camera}
 Visual Style: ${visualStyle}
 Typography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.
-Text Overlay: "${textOverlay}"
-Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliché, overdesigned graphic.`;
+Text Overlay: "${textOverlay}"${getBrandVisualRulesBlock(activeContext)}
+Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliche, overdesigned graphic.`;
 
   const reason = isAligned
     ? `Selaras 100% dengan corong ${funnelStage}: Visual Objective, Action, Expression, dan Text Overlay terbukti sinkron tanpa konflik.`
@@ -1348,7 +1469,7 @@ Negative Prompt: hard selling ads, cluttered poster, too much text, generic stoc
   const strategyBrief: StrategyBrief = {
     funnelStage,
     tujuanKonten: String(rawBrief.tujuanKonten || rawBrief.tujuan_konten || (funnelStage === 'TOFU' ? 'Membangun awareness alami' : funnelStage === 'MOFU' ? 'Membangun pemahaman & trust' : 'Mendorong keputusan & validasi')).trim(),
-    ideUtama: String(rawBrief.ideUtama || rawBrief.ide_utama || coreHeadline || name).trim(),
+    ideUtama: String(rawBrief.ideUtama || rawBrief.ide_utama || coreHeadline || rawHeadline || name).trim(),
     audienceContext: String(rawBrief.audienceContext || rawBrief.audience_context || (funnelStage === 'BOFU' ? 'Target pembeli siap mengambil keputusan' : 'Kreator & Pemilik Bisnis')).trim(),
     angle: name,
     emosiUtama: String(rawBrief.emosiUtama || rawBrief.emosi_utama || (funnelStage === 'TOFU' ? 'Merasa relate, penasaran' : funnelStage === 'MOFU' ? 'Tersadar, momen Aha!' : 'Percaya, yakin, mantap')).trim(),
@@ -1366,6 +1487,8 @@ Negative Prompt: hard selling ads, cluttered poster, too much text, generic stoc
     hookStrategy: String(item.hookStrategy || item.hook_strategy || `Gunakan pendekatan visual ${name} yang otentik.`).trim(),
     layoutStrategy: composition,
     textOverlay,
+    captionForPost,
+    captionInstruction: item.captionInstruction || item.caption_instruction || 'Paste teks ini di caption/keterangan postingan setelah gambar dibuat.',
     colorPsychology: String(item.colorPsychology || item.color_psychology || (funnelStage === 'TOFU' ? 'Warm earth tones & soft natural light' : funnelStage === 'MOFU' ? 'Refined slate & crisp teal' : 'Deep emerald & warm golden amber')).trim(),
     ctaRecommendation: String(item.ctaRecommendation || item.cta_recommendation || (funnelStage === 'BOFU' ? 'Daftar sekarang / Hubungi kami' : funnelStage === 'MOFU' ? 'Cek framework ini' : 'Simpan postingan ini')).trim(),
     strategyBrief,
@@ -1376,7 +1499,8 @@ Negative Prompt: hard selling ads, cluttered poster, too much text, generic stoc
 
 const validateAndNormalizeImageAngles = (
   rawText: string,
-  activeItem?: any
+  activeItem?: any,
+  activeContext?: any
 ): string | null => {
   if (!rawText) return null;
   const parsed = tryParseJSON(rawText);
@@ -1423,7 +1547,7 @@ const validateAndNormalizeImageAngles = (
     const item = anglesArray[i];
     if (!item || typeof item !== 'object') continue;
 
-    const alignedAngle = sanitizeAndAlignImageAngle(item, funnelStage, coreHeadline, validAngles.length);
+    const alignedAngle = sanitizeAndAlignImageAngle(item, funnelStage, coreHeadline, validAngles.length, activeContext);
     validAngles.push(alignedAngle);
   }
 
@@ -1434,7 +1558,7 @@ const validateAndNormalizeImageAngles = (
   // Ensure we have 3 angles if at least 1 valid angle was found
   while (validAngles.length < 3) {
     const nextIndex = validAngles.length;
-    const placeholder = sanitizeAndAlignImageAngle({}, funnelStage, coreHeadline, nextIndex);
+    const placeholder = sanitizeAndAlignImageAngle({}, funnelStage, coreHeadline, nextIndex, activeContext);
     validAngles.push(placeholder);
   }
 
@@ -1461,7 +1585,8 @@ const sanitizeAndGenerateSlideImagePrompt = (
   headline: string,
   funnelStage: 'TOFU' | 'MOFU' | 'BOFU',
   visualIntent?: string,
-  visualFormat?: VisualFormatType
+  visualFormat?: VisualFormatType,
+  activeContext?: any
 ): string => {
   const normRole = (role || 'hook').toLowerCase().trim();
   let capitalizedRole = 'Hook';
@@ -1581,7 +1706,7 @@ const sanitizeAndGenerateSlideImagePrompt = (
     : "Clean editorial Instagram photography, natural, otentik, tidak seperti iklan komersial kaku.";
   let negativePrompt = format === 'infographic'
     ? "photography, realistic person, complex faces, human hands, messy sketch, stock photo, blurry text, cluttered layout, hard selling ads, 3d glossy render."
-    : "hard selling ads, cluttered poster, too much text, generic stock photo, unreadable typography, distorted face, extra fingers, corporate cliché, overdesigned graphic.";
+    : "hard selling ads, cluttered poster, too much text, generic stock photo, unreadable typography, distorted face, extra fingers, corporate cliche, overdesigned graphic.";
 
   // Sanitize / build based on role & funnel & format
   if (normRole === 'hook' || slideNumber === 1) {
@@ -1909,7 +2034,7 @@ Lighting: ${lighting}
 Camera/Graphic Style: ${cameraGraphicStyle}
 Visual Style: ${visualStyle}
 Typography: Headline besar 3-5 baris di kiri atas, high contrast, tidak ada teks kecil lain.
-Text Overlay: '${textOverlay}'
+Text Overlay: '${textOverlay}'${getBrandVisualRulesBlock(activeContext)}
 Negative Prompt: ${negativePrompt}`;
 };
 
@@ -2183,7 +2308,7 @@ const validateAndNormalizeCarouselPlan = (
     const defaultColorMood = `Nuansa profesional hangat (${funnelStage === 'TOFU' ? 'Sage Green & Warm Cream' : funnelStage === 'MOFU' ? 'Teal & Crisp Slate' : 'Deep Emerald & Champagne Gold'}).`;
     const defaultNegativePrompt = visualFormat === 'infographic'
       ? 'photography, realistic person, complex faces, human hands, messy sketch, stock photo, blurry text, cluttered layout, hard selling ads.'
-      : 'hard selling ads, cluttered poster, too much text, generic stock photo, unreadable typography, distorted face, extra fingers, corporate cliché, overdesigned graphic.';
+      : 'hard selling ads, cluttered poster, too much text, generic stock photo, unreadable typography, distorted face, extra fingers, corporate cliche, overdesigned graphic.';
 
     const visualProduction: SlideVisualProduction = {
       subject: s.visual_production?.subject || defaultSubject,
@@ -2218,7 +2343,8 @@ Image/Illustration Direction: ${visualFormat === 'infographic' ? 'Clean modern e
       headline,
       funnelStage,
       visualIntent,
-      visualFormat
+      visualFormat,
+      activeContext
     );
 
     return {
@@ -2268,6 +2394,13 @@ Image/Illustration Direction: ${visualFormat === 'infographic' ? 'Clean modern e
     ? appliedFixes.join(' | ')
     : `Penyelarasan pesan dan alur narasi telah divalidasi sesuai corong ${funnelStage}.`;
 
+  const defaultCaptionInstruction = "Paste teks ini di caption/keterangan postingan setelah aset dibuat.";
+  let captionForPost = String(targetObj.captionForPost || targetObj.caption_for_post || '').trim();
+  if (!captionForPost || captionForPost.length < 25 || captionForPost.includes('[Tulis caption') || captionForPost.includes('...')) {
+    captionForPost = buildFunnelAlignedCarouselCaption(funnelStage, activeItem, normalizedSlides, primaryCtaText);
+  }
+  const captionInstruction = String(targetObj.captionInstruction || targetObj.caption_instruction || defaultCaptionInstruction).trim() || defaultCaptionInstruction;
+
   const canonicalPlan: CarouselPlan = {
     content_goal: rawGoal,
     funnel_stage: funnelStage,
@@ -2279,6 +2412,8 @@ Image/Illustration Direction: ${visualFormat === 'infographic' ? 'Clean modern e
     slide_count: slideCount,
     slide_count_reason: slideCountReason,
     belief_journey_summary: beliefJourneySummary,
+    captionForPost,
+    captionInstruction,
     messageAlignmentCheck: {
       isAligned,
       issue: alignmentIssue || undefined,
@@ -2290,6 +2425,179 @@ Image/Illustration Direction: ${visualFormat === 'infographic' ? 'Clean modern e
 
   return JSON.stringify(canonicalPlan, null, 2);
 };
+
+// Funnel-aligned caption generator for Carousel summarizing all slides
+function buildFunnelAlignedCarouselCaption(
+  funnelStage: string,
+  item?: ContentItem | null,
+  slides?: CarouselSlide[],
+  ctaText?: string
+): string {
+  const existingCaption = (item?.caption || '').trim();
+  const headline = item?.headline?.trim() || (slides && slides[0]?.headline) || 'Strategi Alur Konten';
+  const cta = ctaText || item?.cta?.trim() || (funnelStage === 'BOFU' ? 'Cek link di bio untuk mulai' : funnelStage === 'MOFU' ? 'Simpan postingan ini untuk panduan alurmu' : 'Save postingan ini biar gak lupa');
+
+  if (existingCaption && existingCaption.length >= 40 && !existingCaption.includes('...') && !existingCaption.toLowerCase().includes('lorem')) {
+    return existingCaption;
+  }
+
+  if (funnelStage === 'TOFU') {
+    return `${headline}
+
+Pernah ngerasa draf tulisan udah disusun rapi, tapi pas dibaca ulang kok rasanya masih kaku atau kurang ngena?
+
+Ternyata masalahnya sering bukan di seberapa panjang tulisan kita, melainkan di cara kita menyusun hierarki pesan dari awal. Saat pembaca langsung dihadapkan sama kalimat yang terlalu padat tanpa jembatan empati, mereka cenderung scroll lewat begitu aja.
+
+Geser slide di atas untuk lihat evaluasi sederhana yang bisa langsung kamu terapkan saat nulis konten berikutnya.
+
+${cta}`;
+  } else if (funnelStage === 'MOFU') {
+    return `${headline}
+
+Bukan kurang rajin posting, tapi kuncinya ada di kejelasan alur narasi yang menghubungkan masalah ke pemahaman solusi.
+
+Di carousel ini, kita bedah framework langkah demi langkah:
+1. Identifikasi titik hambatan utama audiens
+2. Reframe metode lama yang kurang efisien
+3. Terapkan alur kerja terstruktur dari ide sampai eksekusi
+
+Geser seluruh slide untuk pelajari visual framework lengkapnya.
+
+${cta}`;
+  } else {
+    // BOFU
+    return `${headline}
+
+Konsistensi dan efisiensi produksi konten bukan lagi soal tebak-tebakan saat kamu punya sistem yang terintegrasi.
+
+Dengan alur kerja terstruktur:
+- Waktu riset dan penyusunan draf terpangkas drastis
+- Pesan setiap postingan selalu selaras dengan tujuan bisnismu
+- Eksekusi harian jadi lebih ringan dan terarah
+
+Sudah siap merapikan alur produksi kontenmu ke level berikutnya?
+
+${cta}`;
+  }
+}
+
+// Funnel-aligned caption generator for Video summarizing full video
+function buildFunnelAlignedVideoCaption(
+  funnelStage: string,
+  item?: ContentItem | null,
+  style?: VideoStyle | any,
+  ctaText?: string
+): string {
+  const existingCaption = (item?.caption || '').trim();
+  const scriptHook = style?.script?.hook || item?.headline || 'Strategi Alur Konten';
+  const scriptSolusi = style?.script?.solusi || '';
+  const cta = ctaText || style?.script?.cta || (funnelStage === 'BOFU' ? 'Akses panduan lengkapnya via link di bio' : funnelStage === 'MOFU' ? 'Simpan video ini untuk referensi alurmu' : 'Follow & save untuk tips konten lainnya');
+
+  if (existingCaption && existingCaption.length >= 40 && !existingCaption.includes('...') && !existingCaption.toLowerCase().includes('lorem')) {
+    return existingCaption;
+  }
+
+  if (funnelStage === 'TOFU') {
+    return `${scriptHook}
+
+Banyak yang ngira bikin konten yang engage itu harus rumit. Padahal, kuncinya cuma ada di cara kita menyampaikan masalah relatable yang beneran dialami audiens sehari-hari tanpa terkesan menggurui.
+
+Tonton videonya sampai habis untuk penjelasan lengkapnya!
+
+${cta}`;
+  } else if (funnelStage === 'MOFU') {
+    return `${scriptHook}
+
+Kenapa hasil postingan sering terasa stagnan? Karena audiens butuh kejelasan metode dan framework, bukan sekadar teori acak.
+
+${scriptSolusi ? `${scriptSolusi}\n\n` : ''}Di video ini kita ringkas alur kerja praktis yang bisa langsung kamu terapkan untuk menyusun pesan yang lebih terarah.
+
+${cta}`;
+  } else {
+    // BOFU
+    return `${scriptHook}
+
+Saatnya tinggalkan cara manual yang memakan waktu dan beralih ke alur produksi terintegrasi.
+
+${scriptSolusi ? `${scriptSolusi}\n\n` : ''}Dapatkan hasil konten yang lebih terstruktur, konsisten, dan siap mendukung pertumbuhan bisnismu.
+
+${cta}`;
+  }
+}
+
+// Normalize & validate incoming Video AI output
+function validateAndNormalizeVideoStyles(
+  rawText: string,
+  activeItem?: ContentItem | null,
+  activeContext?: SharedContentContext | null
+): string | null {
+  try {
+    let parsed = tryParseJSON(rawText);
+    if (!parsed) return null;
+    let rawList: any[] = [];
+    if (Array.isArray(parsed)) {
+      rawList = parsed;
+    } else if (typeof parsed === 'object' && parsed !== null) {
+      if (Array.isArray(parsed.styles)) rawList = parsed.styles;
+      else if (Array.isArray(parsed.videos)) rawList = parsed.videos;
+      else rawList = [parsed];
+    }
+    if (rawList.length === 0) return null;
+
+    const funnelStage = normalizeFunnelStage(activeItem?.jenis);
+    const funnelRules = getFunnelRules(activeItem?.jenis);
+    const rawCta = activeItem?.cta || (funnelStage === 'BOFU' ? 'Lihat demo' : funnelStage === 'MOFU' ? 'Cek framework ini' : 'Simpan ide ini');
+    const safeCta = sanitizeCtaForFunnel(rawCta, funnelStage);
+    const voiceoverCta = getVoiceoverCtaForFunnel(rawCta, funnelStage);
+    const defaultCaptionInstruction = "Paste teks ini di caption/keterangan postingan setelah aset dibuat.";
+
+    const normalizedStyles: VideoStyle[] = rawList.map((v: any, idx: number) => {
+      const id = (v.id === 'A' || v.id === 'B' || v.id === 'C') ? v.id : (idx === 0 ? 'A' : idx === 1 ? 'B' : 'C');
+      const name = String(v.name || `Style ${id}`).trim();
+      const hookStyle = String(v.hookStyle || v.hook_style || 'Hook pembuka menarik').trim();
+      const pacingStyle = String(v.pacingStyle || v.pacing_style || 'Dinamis').trim();
+      const audioDirection = String(v.audioDirection || v.audio_direction || 'Natural voiceover & background music').trim();
+      const voiceoverOutline = String(v.voiceoverOutline || v.voiceover_outline || '').trim();
+      
+      const rawScript = v.script || {};
+      const script: VideoScript = {
+        hook: String(rawScript.hook || activeItem?.headline || 'Pernah merasa begini?').trim(),
+        masalah: String(rawScript.masalah || activeItem?.body || 'Banyak yang belum menyadari hambatan ini.').trim(),
+        solusi: String(rawScript.solusi || 'Solusi terstruktur memudahkan alur kerjamu.').trim(),
+        proof: String(rawScript.proof || 'Hasil lebih konsisten dan terarah.').trim(),
+        cta: String(rawScript.cta || voiceoverCta).trim(),
+      };
+
+      const videoPrompt = String(v.videoPrompt || v.video_prompt || '').trim();
+      const visualPlan = String(v.visualPlan || v.visual_plan || '').trim();
+
+      let captionForPost = String(v.captionForPost || v.caption_for_post || '').trim();
+      if (!captionForPost || captionForPost.length < 25 || captionForPost.includes('[Tulis caption') || captionForPost.includes('...')) {
+        captionForPost = buildFunnelAlignedVideoCaption(funnelStage, activeItem, { script }, voiceoverCta);
+      }
+
+      const captionInstruction = String(v.captionInstruction || v.caption_instruction || defaultCaptionInstruction).trim() || defaultCaptionInstruction;
+
+      return {
+        id,
+        name,
+        hookStyle,
+        pacingStyle,
+        audioDirection,
+        voiceoverOutline,
+        script,
+        videoPrompt,
+        visualPlan,
+        captionForPost,
+        captionInstruction,
+      };
+    });
+
+    return JSON.stringify(normalizedStyles, null, 2);
+  } catch (e) {
+    return null;
+  }
+}
 
 // Pure top-level function for building high-converting initial drafts for instant feedback
 const getInitialDraft = (
@@ -2384,7 +2692,7 @@ Camera: 50mm f/2.0 lens photography feel, eye-level, depth of field halus dengan
 Visual Style: Clean editorial Instagram photography, otentik bergaya dokumenter estetis, warna natural hangat, bukan poster iklan ramai atau foto stok generik.
 Typography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.
 Text Overlay: "${bofuHeadlineA}"
-Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliché, overdesigned graphic.`
+Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliche, overdesigned graphic.`
           },
           {
             id: "B",
@@ -2426,7 +2734,7 @@ Camera: 35mm lens photography feel, fokus tajam pada gestur subjek dan laptop, b
 Visual Style: Clean editorial Instagram photography, otentik bergaya dokumenter estetis, warna natural hangat, bukan poster iklan ramai atau foto stok generik.
 Typography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.
 Text Overlay: "${bofuHeadlineB}"
-Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliché, overdesigned graphic.`
+Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliche, overdesigned graphic.`
           },
           {
             id: "C",
@@ -2468,7 +2776,7 @@ Camera: 50mm f/1.8 lens feel, fokus selektif tajam pada subjek, kedalaman visual
 Visual Style: Clean editorial Instagram photography, otentik bergaya dokumenter estetis, warna natural hangat, bukan poster iklan ramai atau foto stok generik.
 Typography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.
 Text Overlay: "${bofuHeadlineC}"
-Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliché, overdesigned graphic.`
+Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliche, overdesigned graphic.`
           }
         ];
       } else if (funnelStage === 'MOFU') {
@@ -2513,7 +2821,7 @@ Camera: Close-up 35mm angle, tajam pada permukaan kertas dan layar, latar meja b
 Visual Style: Clean editorial Instagram photography, otentik bergaya dokumenter estetis, warna natural hangat, bukan poster iklan ramai atau foto stok generik.
 Typography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.
 Text Overlay: "Bukan kurang rajin, cuma belum punya sistem alur yang jelas."
-Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliché, overdesigned graphic.`
+Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliche, overdesigned graphic.`
           },
           {
             id: "B",
@@ -2555,7 +2863,7 @@ Camera: 50mm f/2.0 lens, fokus tajam pada ekspresi dan gesture analisis subjek.
 Visual Style: Clean editorial Instagram photography, otentik bergaya dokumenter estetis, warna natural hangat, bukan poster iklan ramai atau foto stok generik.
 Typography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.
 Text Overlay: "Masalahnya bukan rajin posting, tapi alur narasinya."
-Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliché, overdesigned graphic.`
+Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliche, overdesigned graphic.`
           },
           {
             id: "C",
@@ -2597,16 +2905,12 @@ Camera: 35mm lens, depth of field teratur dengan latar bokeh halus.
 Visual Style: Clean editorial Instagram photography, otentik bergaya dokumenter estetis, warna natural hangat, bukan poster iklan ramai atau foto stok generik.
 Typography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.
 Text Overlay: "Framework 4 langkah agar pesan konten langsung kena ke audiens."
-Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliché, overdesigned graphic.`
+Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliche, overdesigned graphic.`
           }
         ];
       } else {
         // TOFU
-        let tofuHeadline = activeHeadline.length > 50 ? activeHeadline.slice(0, 48) + '...' : activeHeadline;
-        const lowerH = tofuHeadline.toLowerCase();
-        if (['beli', 'diskon', 'promo', 'order', 'eksklusif', 'terakhir', 'bonus', 'daftar sekarang', 'ratusan', 'pemilik bisnis'].some(t => lowerH.includes(t))) {
-          tofuHeadline = "Kok caption-nya terasa kaku?";
-        }
+        const tofuHeadline = buildShortImageOverlay(activeHeadline, 'TOFU');
 
         initialAngles = [
           {
@@ -2649,7 +2953,7 @@ Camera: 50mm f/2.0 lens photography feel, eye-level, depth of field halus dengan
 Visual Style: Clean editorial Instagram photography, otentik bergaya dokumenter estetis, warna natural hangat, bukan poster iklan ramai atau foto stok generik.
 Typography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.
 Text Overlay: "${tofuHeadline}"
-Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliché, overdesigned graphic.`
+Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliche, overdesigned graphic.`
           },
           {
             id: "B",
@@ -2691,7 +2995,7 @@ Camera: 50mm f/1.8 lens, kedalaman bidang halus, latar belakang kafe sedikit bok
 Visual Style: Clean editorial Instagram photography, otentik bergaya dokumenter estetis, warna natural hangat, bukan poster iklan ramai atau foto stok generik.
 Typography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.
 Text Overlay: "Udah nulis lama, tapi pas dibaca kok tetap hambar?"
-Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliché, overdesigned graphic.`
+Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliche, overdesigned graphic.`
           },
           {
             id: "C",
@@ -2733,7 +3037,7 @@ Camera: 50mm f/1.8 cinematic photography lens, fokus tajam pada mata dan gestur 
 Visual Style: Clean editorial Instagram photography, visual storytelling autentik, tone warna hangat sinematik, bebas dari kesan iklan komersial kaku.
 Typography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.
 Text Overlay: "Satu kebiasaan kecil sebelum posting yang sering dilewatkan."
-Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliché, overdesigned graphic.`
+Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliche, overdesigned graphic.`
           }
         ];
       }
@@ -2806,7 +3110,7 @@ Negative Prompt: hard selling ads, cluttered poster, too much text, generic stoc
               background: 'Ruang kerja minimalis hangat dengan pencahayaan jendela alami lembut (#F9F8F6).',
               color_mood: `Nuansa profesional hangat (${funnelStage === 'TOFU' ? 'Sage Green & Warm Cream' : funnelStage === 'MOFU' ? 'Teal & Crisp Slate' : 'Deep Emerald'}).`,
               negative_space: 'Ruang lega 40% di area kiri atas untuk headline.',
-              negative_prompt: 'hard selling ads, cluttered poster, too much text, generic stock photo, unreadable typography, distorted face, extra fingers, corporate cliché, overdesigned graphic.'
+              negative_prompt: 'hard selling ads, cluttered poster, too much text, generic stock photo, unreadable typography, distorted face, extra fingers, corporate cliche, overdesigned graphic.'
             },
             production_prompt: `Layout: Format carousel Instagram 4:5 vertical, komposisi bersih dengan teks headline besar di kiri atas.
 Subject/Object Utama: Kreator / praktisi profesional sedang duduk di meja kerja kayu minimalis, menatap laptop dengan tatapan berpikir reflektif.
@@ -3034,7 +3338,9 @@ Image/Illustration Direction: Clean minimalist social media closing card.`,
               'infographic'
             )
           }
-        ]
+        ],
+        captionForPost: buildFunnelAlignedCarouselCaption(funnelStage, activeItem, undefined, safeCta),
+        captionInstruction: "Paste teks ini di caption/keterangan postingan setelah aset dibuat."
       };
       return JSON.stringify(initialPlan, null, 2);
     }
@@ -3056,7 +3362,9 @@ Image/Illustration Direction: Clean minimalist social media closing card.`,
             cta: voiceoverCta
           },
           videoPrompt: "A friendly creator looking at their laptop screen, showing surprise and happiness, warm aesthetic home office, soft background, vertical 9:16.",
-          visualPlan: `0-5s: Talent close-up penasaran. 5-15s: Tampilkan rekaman layar dasbor alur konten ${funnelStage}. 15-25s: Penjelasan visual strategi. 25-30s: Tampilan CTA ${safeCta}.`
+          visualPlan: `0-5s: Talent close-up penasaran. 5-15s: Tampilkan rekaman layar dasbor alur konten ${funnelStage}. 15-25s: Penjelasan visual strategi. 25-30s: Tampilan CTA ${safeCta}.`,
+          captionForPost: buildFunnelAlignedVideoCaption(funnelStage, activeItem, { script: { hook: `Pernah merasa konten kamu sudah dibuat maksimal tapi hasilnya stagnan?`, solusi: `Dengan ${activeContext.brand_context?.brand_name || 'ALCO Engine'}, kamu bisa menyusun alur konten ${funnelStage} secara otomatis.`, cta: voiceoverCta } }, voiceoverCta),
+          captionInstruction: "Paste teks ini di caption/keterangan postingan setelah aset dibuat."
         },
         {
           id: "B",
@@ -3073,7 +3381,9 @@ Image/Illustration Direction: Clean minimalist social media closing card.`,
             cta: `${voiceoverCta}`
           },
           videoPrompt: "Satisfying looping motion graphic of abstract futuristic clockwork gears spinning seamlessly on a clean minimalist gray background, 3D render vertical 9:16.",
-          visualPlan: "0-5s: Teks tebal kontras tinggi berkedip cepat di layar. 5-15s: Animasi transisi corong warna neon. 15-25s: Grafik panah menanjak cepat. 25-30s: Layar meredup cepat bersiap menyambung ke awal loop."
+          visualPlan: "0-5s: Teks tebal kontras tinggi berkedip cepat di layar. 5-15s: Animasi transisi corong warna neon. 15-25s: Grafik panah menanjak cepat. 25-30s: Layar meredup cepat bersiap menyambung ke awal loop.",
+          captionForPost: buildFunnelAlignedVideoCaption(funnelStage, activeItem, { script: { hook: `Inilah alasan kenapa alur konten kamu belum efektif...`, solusi: `${activeContext.brand_context?.brand_name || 'ALCO Engine'} membantu merapikan alur ${funnelStage} secara instan.`, cta: voiceoverCta } }, voiceoverCta),
+          captionInstruction: "Paste teks ini di caption/keterangan postingan setelah aset dibuat."
         },
         {
           id: "C",
@@ -3090,7 +3400,9 @@ Image/Illustration Direction: Clean minimalist social media closing card.`,
             cta: `${voiceoverCta}`
           },
           videoPrompt: "Cinematic slow motion shot of a professional looking relaxed in a beautiful plant-filled cafe, soft golden hour sunlight filtering through glass windows, 8k vertical 9:16.",
-          visualPlan: "0-10s: Slow motion talent menikmati minumannya dengan tenang. 10-20s: Close-up tablet menampilkan kurva grafik melesat naik. 20-30s: Teks estetik berukuran sedang muncul perlahan di layar kafe yang asri."
+          visualPlan: "0-10s: Slow motion talent menikmati minumannya dengan tenang. 10-20s: Close-up tablet menampilkan kurva grafik melesat naik. 20-30s: Teks estetik berukuran sedang muncul perlahan di layar kafe yang asri.",
+          captionForPost: buildFunnelAlignedVideoCaption(funnelStage, activeItem, { script: { hook: `Berapa banyak waktu yang dihemat ketika strategi komunikasi tersusun rapi?`, solusi: `Saat alur ${funnelStage} ditata dengan baik, pesan kamu terasa jauh lebih kuat.`, cta: voiceoverCta } }, voiceoverCta),
+          captionInstruction: "Paste teks ini di caption/keterangan postingan setelah aset dibuat."
         }
       ];
       return JSON.stringify(vStyles, null, 2);
@@ -3098,29 +3410,25 @@ Image/Illustration Direction: Clean minimalist social media closing card.`,
 
     case 'ugc': {
       const brandName = activeContext.brand_context?.brand_name || 'ALCO Engine';
-      let scene1Script = `Kalian pernah merasa capek bikin konten tapi views-nya biasa aja dan bingung mulai dari mana?`;
-      let scene2Script = `Ternyata kuncinya ada di pendekatan yang relatable. Dengan ${brandName}, ide konten disajikan secara alami tanpa paksaan.`;
+      const creator = 'a 26-year-old Indonesian content creator wearing a casual beige shirt';
+      const setting = 'in a modern minimalist room with natural ambient lighting';
 
-      if (funnelStage === 'MOFU') {
-        scene1Script = `Banyak yang posting rajin tapi audiens masih bingung nilai produknya apa. Kalian ngerasa gini juga?`;
-        scene2Script = `Jawabannya ada di framework terstruktur. Dengan ${brandName}, kamu bisa susun perbandingan dan checklist solusi dengan rapi!`;
-      } else if (funnelStage === 'BOFU') {
-        scene1Script = `Lagi cari cara praktis biar alur konversi produkmu langsung rapi dan siap jualan?`;
-        scene2Script = `Solusinya pakai sistem dari ${brandName}. Draf naskah hingga penawaran utama langsung siap pakai dalam hitungan detik!`;
-      }
+      const scene1Script = normalizeGoogleFlowDialogue(1, funnelStage, activeItem?.headline || '', activeContext);
+      const scene2Script = normalizeGoogleFlowDialogue(2, funnelStage, activeItem?.body || '', activeContext);
+      const scene3Script = normalizeGoogleFlowDialogue(3, funnelStage, activeItem?.cta || voiceoverCta || '', activeContext);
 
       const ugcData = {
         characterProfile: `Berusia 22-35 tahun, percaya diri di depan kamera, berpenampilan rapi, bergaya kasual-profesional. Nada bicara antusias, energik, dan bersahabat seolah-olah merekomendasikan solusi rahasia ke sahabat dekat.`,
         characterReferenceImagePrompt: `A highly detailed commercial portrait of a 28-year-old Indonesian content creator smiling warmly, wearing a casual beige blazer over a white t-shirt, clean aesthetic minimal background, soft studio lighting, 85mm lens, photorealistic.`,
-        scene1_image_prompt: `Close-up shot of a content creator looking thoughtful in front of a glowing laptop screen, cozy home office, warm natural lighting, 9:16 aspect ratio.`,
-        scene2_image_prompt: `A close-up of clean hands holding a smartphone displaying a beautifully organized digital marketing calendar dashboard, clean modern desk setup, bright morning light, 9:16 aspect ratio.`,
-        scene3_image_prompt: `A smiling young creator holding up a smartphone showing a clean dashboard interface, standing in a bright minimalist room, warm lighting, 9:16 aspect ratio.`,
-        scene1_google_flow_prompt: `A creator reviewing content strategy on screen in a bright room, slow camera push-in, photorealistic cinematic video, 9:16 format.`,
-        scene2_google_flow_prompt: `Smooth screen capture animation of a content calendar interface where tasks automatically organize themselves with clean fluid line animations.`,
-        scene3_google_flow_prompt: `A joyful person looking at the camera, giving a friendly thumbs up with a warm background, soft cinematic panning.`,
+        scene1_image_prompt: `A 9:16 vertical realistic photo of ${creator} looking thoughtfully at the camera with an intriguing curious expression, ${setting}, natural indoor lighting, UGC style.`,
+        scene2_image_prompt: `A 9:16 vertical realistic photo of ${creator} gesturing naturally while explaining an insightful concept to the camera, ${setting}, natural indoor lighting, UGC style.`,
+        scene3_image_prompt: `A 9:16 vertical realistic photo of ${creator} making an inviting gesture with high energy and friendly authority, ${setting}, natural indoor lighting, UGC style.`,
+        scene1_google_flow_prompt: buildGoogleFlowPromptString('close-up', creator, setting, scene1Script),
+        scene2_google_flow_prompt: buildGoogleFlowPromptString('medium close-up', creator, setting, scene2Script),
+        scene3_google_flow_prompt: buildGoogleFlowPromptString('medium', creator, setting, scene3Script),
         script_scene_1: scene1Script,
         script_scene_2: scene2Script,
-        script_scene_3: voiceoverCta
+        script_scene_3: scene3Script
       };
       return JSON.stringify(ugcData, null, 2);
     }
@@ -3133,14 +3441,9 @@ const isErrorContent = (str: string | null | undefined): boolean => {
   return upper.includes('RATE LIMIT') || upper.includes('QUOTA EXCEEDED') || upper.includes('PERMINTAAN AI SEDANG DIBATASI');
 };
 
-const ImagePanel = dynamic(() => import('@/components/production-studio/ImagePanel'), { ssr: false });
-const CarouselPanel = dynamic(() => import('@/components/production-studio/CarouselPanel'), { ssr: false });
-const VideoPanel = dynamic(() => import('@/components/production-studio/VideoPanel'), { ssr: false });
-const UGCPanel = dynamic(() => import('@/components/production-studio/UGCPanel'), { ssr: false });
-const ReviewPanel = dynamic(() => import('@/components/production-studio/ReviewPanel'), { ssr: false });
-
 export default function ProductionStudioPage() {
   const router = useRouter();
+  const { hasCustomKey } = useGeminiApiKey();
 
   // State structure for the Production Studio
   const [sourceItem, setSourceItem] = useState<ContentItem | null>(null);
@@ -3343,6 +3646,11 @@ export default function ProductionStudioPage() {
   const [imageGenerateError, setImageGenerateError] = useState<string | null>(null);
 
   const handleGenerateImage = async (promptText: string, angleId: string) => {
+    if (!hasCustomKey) {
+      showToast('Hubungkan Gemini API Key dulu untuk menggunakan fitur generate visual.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     if (!promptText || !promptText.trim() || !!imageGeneratingKey) return;
     const itemNo = sourceItem?.no || 1;
     const key = `${itemNo}_${angleId}`;
@@ -3628,13 +3936,57 @@ export default function ProductionStudioPage() {
     setNextStepVisibleKeys(prev => ({ ...prev, [key]: false }));
   };
 
-  const handleCopyText = (key: string, text: string) => {
+  const handleUpdateProgress = (newProgress: Partial<ProductionProgress>) => {
+    const current = sourceItem || itemFallback;
+    if (!current) return;
+    const updated: ContentItem = {
+      ...current,
+      productionProgress: {
+        ...(current.productionProgress || {
+          briefReady: true,
+          promptCopied: false,
+          assetCreated: false,
+          captionCopied: false,
+          readyToPost: false,
+          alreadyPosted: false,
+        }),
+        ...newProgress,
+      },
+    };
+    setSourceItem(updated);
+    try {
+      localStorage.setItem('alco_selected_item', JSON.stringify(updated));
+      localStorage.setItem('alco_selected_content_item', JSON.stringify(updated));
+    } catch (e) {
+      console.error('Failed to sync item to localStorage', e);
+    }
+    const pid = effectiveProjectId || activeProjectIdState || getActiveProjectId() || '';
+    if (pid) {
+      saveProjectData(pid, 'selectedContentItem', updated);
+      updateItemInProject(pid, updated);
+    }
+  };
+
+  const handleCopyText = (
+    key: string,
+    text: string,
+    actionType?: 'promptCopied' | 'captionCopied' | 'none'
+  ) => {
     void (async () => {
       const success = await safeCopyToClipboard(text);
       if (success) {
         setCopiedStates(prev => ({ ...prev, [key]: true }));
         setNextStepVisibleKeys(prev => ({ ...prev, [key]: true }));
         showToast('Teks berhasil disalin ke clipboard!');
+
+        // Update production progress ONLY when explicit actionType is provided
+        if (actionType === 'captionCopied') {
+          handleUpdateProgress({ captionCopied: true });
+        } else if (actionType === 'promptCopied') {
+          handleUpdateProgress({ promptCopied: true });
+        }
+        // If actionType is 'none' or omitted, do NOT modify production progress
+
         setTimeout(() => {
           setCopiedStates(prev => ({ ...prev, [key]: false }));
         }, 2000);
@@ -3646,6 +3998,12 @@ export default function ProductionStudioPage() {
 
   // Generate customized production asset using Gemini API
   const handleGenerateWithAI = async () => {
+    if (!hasCustomKey) {
+      showToast('Hubungkan Gemini API Key dulu untuk menggunakan fitur generate AI.');
+      window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top where key control is
+      return;
+    }
+
     if (isLoadingAI) return;
     setIsLoadingAI(true);
     showToast(`Gemini AI sedang memproses naskah ${activeTab.toUpperCase()}...`);
@@ -3664,36 +4022,41 @@ export default function ProductionStudioPage() {
         formatDirection = `Hasilkan 3 angle konten visual yang DIKENDALIKAN SEPENUHNYA OLEH CORONG ${funnelStage} dalam format JSON canonical murni (tanpa markdown).
 
 PRINSIP UTAMA: FUNNEL STAGE ADALAH PENGENDALI UTAMA SELURUH finalPrompt.
+DILARANG KERAS MEMOTONG IDE UTAMA MENJADI KATA TERPOTONG DENGAN "...".
+JIKA IDE UTAMA TERLALU PANJANG, UBAH MENJADI HOOK PENDEK YANG TETAP UTUH, MAKSIMAL 6-10 KATA.
 
 ATURAN CORONG ${funnelStage} (SANGAT KETAT):
 ${funnelStage === 'TOFU' ? `
 - Visual Objective: Membangun awareness alami, relatable problem sehari-hari, dan curiosity tanpa pesan jualan.
 - Action: Audiens/kreator mengalami masalah sehari-hari (contoh: membaca ulang draf caption di laptop sambil menopang dagu heran, ragu menekan tombol posting).
 - Expression: Bingung ringan, penasaran, merasa relate, senyum kecut reflektif, frustrasi kecil (reflektif terhadap kesulitan sehari-hari).
-- Text Overlay: Pertanyaan atau problem awareness relatable (contoh: "Kok caption-nya terasa kaku?", "Udah nulis lama, tetap hambar?").
+- Text Overlay: Pertanyaan atau problem awareness relatable utuh tanpa terpotong (contoh: "Kok caption-nya terasa kaku?", "Udah nulis lama, tetap hambar?").
+- Caption For Post: Menjelaskan masalah dan insight ringan.
 - DILARANG KERAS DI TOFU: Social proof ("ratusan pemilik bisnis", "klien terbukti"), urgency, bonus, daftar sekarang, beli sekarang, hard selling.
 ` : funnelStage === 'MOFU' ? `
 - Visual Objective: Membangun pemahaman mendalam, framework solusi terstruktur, perbandingan metode, dan trust edukatif.
 - Action: Talent menganalisis, membandingkan diagram alur/checklist di notebook/tablet di samping laptop, menemukan metode teratur.
 - Expression: Fokus, mulai paham, tatapan 'aha moment' yang tenang saat menyadari kejelasan solusi baru.
-- Text Overlay: Insight, framework, comparison (contoh: "Bukan kurang rajin, cuma belum punya sistem alur yang jelas", "Masalahnya bukan di ide, tapi alurnya").
+- Text Overlay: Insight, framework, comparison utuh tanpa terpotong (contoh: "Bukan kurang rajin, cuma belum sistematis", "Masalahnya bukan di ide, tapi alurnya").
+- Caption For Post: Menjelaskan solusi/metode edukatif secara terstruktur.
 - DILARANG KERAS DI MOFU: Hard closing, FOMO berlebihan, adegan kebingungan mentah tanpa solusi.
 ` : `
 - Visual Objective: Membangun kepercayaan mendalam dan mendorong keputusan akhir melalui social proof kredibel, demonstrasi hasil nyata, dan validasi produk.
 - Action: Talent meninjau dashboard statistik anggota komunitas / laporan analitik pertumbuhan nyata / demo alur otomatis di laptop bersama tim.
 - Expression: Ekspresi yakin, bangga, dan percaya dengan senyum subtle puas (subtle confident smile), siap mengambil keputusan/bergabung.
-- Text Overlay: Proof, benefit nyata, social proof, atau decision CTA (contoh: "${activeItem.headline || 'Ratusan Pemilik Bisnis Sudah Bergabung'}", "Lihat hasil nyata alurnya sekarang").
+- Text Overlay: Proof, benefit nyata, atau decision CTA utuh tanpa terpotong (contoh: "100+ Bisnis Sudah Bergabung", "Lihat hasil nyata alurnya sekarang").
+- Caption For Post: Menguatkan trust, benefit nyata, dan dorongan Call to Action.
 - DILARANG KERAS DI BOFU: Adegan problem awareness TOFU (seperti: membaca ulang caption dengan ekspresi bingung, menopang dagu frustrasi kecil, masalah umum tanpa produk/hasil).
-- KHUSUS BOFU DENGAN SOCIAL PROOF (misal: "Ratusan Pemilik Bisnis Sudah Bergabung"): Visual wajib menggambarkan social proof nyata (dashboard komunitas/metrik), ekspresi percaya/bangga, dan keputusan akhir, dengan visual clean editorial yang tidak tampak seperti iklan hard-selling berlebihan.
+- KHUSUS BOFU DENGAN SOCIAL PROOF: Visual wajib menggambarkan social proof nyata (dashboard komunitas/metrik), ekspresi percaya/bangga, dan keputusan akhir, dengan visual clean editorial yang tidak tampak seperti iklan hard-selling berlebihan.
 `}
 
 VALIDASI INTERNAL WAJIB (messageAlignmentCheck):
 Lakukan evaluasi mandiri pada 4 dimensi:
 1. funnelStage vs Visual Objective
 2. Headline vs Action
-3. Text Overlay vs funnelStage
+3. Text Overlay vs funnelStage (TIDAK BOLEH ADA KATA TERPOTONG / "...")
 4. Expression vs Funnel Goal
-JIKA ADA KONFLIK (misal: corong BOFU tapi action/ekspresinya masih bingung TOFU, atau corong TOFU tapi teksnya ada unsur BOFU):
+JIKA ADA KONFLIK:
 - Set "isAligned": false
 - Tuliskan konfliknya di "issue"
 - WAJIB PERBAIKI "fixedTextOverlay", "visualObjective", "Action", "Expression", dan "finalPrompt" agar selaras 100% dengan corong ${funnelStage}.
@@ -3708,43 +4071,49 @@ STRUKTUR JSON CANONICAL WAJIB:
       "name": "${funnelStage === 'BOFU' ? 'Social Proof & Community Hook' : funnelStage === 'MOFU' ? 'Insight & Framework Hook' : 'Relatable Problem Hook'}",
       "funnelStage": "${funnelStage}",
       "visualObjective": "[Visual objective selaras corong ${funnelStage}]",
-      "textOverlay": "[Teks headline 3-5 baris pendek yang SINKRON 100% dengan fixedTextOverlay]",
+      "textOverlay": "[Teks hook 6-10 kata utuh tanpa '...']",
+      "captionForPost": "[Caption Instagram yang menjelaskan isi post/hook sesuai aturan funnel]",
+      "captionInstruction": "Paste teks ini di caption/keterangan postingan setelah gambar dibuat.",
       "messageAlignmentCheck": {
         "isAligned": true,
         "issue": "",
-        "fixedTextOverlay": "[Teks overlay yang sudah 100% selaras dengan aturan corong ${funnelStage}]",
+        "fixedTextOverlay": "[Teks hook utuh tanpa '...', selaras 100% dengan corong ${funnelStage}]",
         "reason": "[Penjelasan keselarasan corong ${funnelStage}]"
       },
       "strategyBrief": {
         "funnelStage": "${funnelStage}",
         "tujuanKonten": "${funnelRules.goal}",
-        "ideUtama": "${activeItem.headline || 'Topik Konten'}",
+        "ideUtama": "${activeItem.headline || 'Topik Konten'} (TETAP UTUH TANPA TERPOTONG)",
         "audienceContext": "${funnelRules.audienceState} - ${activeContext.audience_context?.primary_audience || 'Target Audiens'}",
         "angle": "[Nama angle visual]",
         "emosiUtama": "[Emosi spesifik sesuai corong ${funnelStage}]",
         "pesanVisual": "[Pesan yang tersampaikan lewat adegan visual]"
       },
-      "finalPrompt": "Buatkan saya image untuk konten Instagram (format 4:5 vertical editorial):\\n\\nFunnel Stage: ${funnelStage}\\nVisual Objective: [Tujuan visual konkret]\\nSubject: [Deskripsi subjek orang/objek nyata, usia, gender, pakaian kasual/smart-casual realistis]\\nAction: [Aktivitas fisik konkret yang SINKRON dengan corong ${funnelStage}]\\nExpression: [Ekspresi mikro wajah yang SINKRON dengan corong ${funnelStage}]\\nEnvironment: [Ruangan/latar nyata, meja kerja, laptop, notebook, suasana kerja hangat]\\nComposition: [Subjek di kanan tengah, ruang negatif lapang di kiri atas untuk teks headline]\\nLighting: [Cahaya alami lembut masuk dari jendela samping, soft warm ambient light]\\nCamera: [50mm / 35mm lens photography, eye-level, depth of field halus (subtle bokeh)]\\nVisual Style: [Clean editorial Instagram photography, otentik dokumenter estetis, bukan poster iklan ramai]\\nTypography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.\\nText Overlay: \\\"[Teks headline 3-5 baris yang SINKRON 100% dengan fixedTextOverlay]\\\"\\nNegative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliché, overdesigned graphic."
+      "finalPrompt": "Buatkan saya image untuk konten Instagram (format 4:5 vertical editorial):\\n\\nFunnel Stage: ${funnelStage}\\nVisual Objective: [Tujuan visual konkret]\\nSubject: [Deskripsi subjek orang/objek nyata, usia, gender, pakaian kasual/smart-casual realistis]\\nAction: [Aktivitas fisik konkret yang SINKRON dengan corong ${funnelStage}]\\nExpression: [Ekspresi mikro wajah yang SINKRON dengan corong ${funnelStage}]\\nEnvironment: [Ruangan/latar nyata, meja kerja, laptop, notebook, suasana kerja hangat]\\nComposition: [Subjek di kanan tengah, ruang negatif lapang di kiri atas untuk teks headline]\\nLighting: [Cahaya alami lembut masuk dari jendela samping, soft warm ambient light]\\nCamera: [50mm / 35mm lens photography, eye-level, depth of field halus (subtle bokeh)]\\nVisual Style: [Clean editorial Instagram photography, otentik dokumenter estetis, bukan poster iklan ramai]\\nTypography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.\\nText Overlay: \\\"[Teks hook utuh tanpa '...']\\\"\\nNegative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliche, overdesigned graphic."
     },
     {
       "id": "B",
       "name": "${funnelStage === 'BOFU' ? 'Product Demo & Results Hook' : funnelStage === 'MOFU' ? 'Solution Comparison Hook' : 'Everyday Creator Struggle'}",
       "funnelStage": "${funnelStage}",
-      "visualObjective": "...",
-      "textOverlay": "...",
-      "messageAlignmentCheck": { "isAligned": true, "issue": "", "fixedTextOverlay": "...", "reason": "..." },
-      "strategyBrief": { "funnelStage": "${funnelStage}", "tujuanKonten": "${funnelRules.goal}", "ideUtama": "${activeItem.headline || 'Topik Konten'}", "audienceContext": "...", "angle": "...", "emosiUtama": "...", "pesanVisual": "..." },
-      "finalPrompt": "Buatkan saya image untuk konten Instagram (format 4:5 vertical editorial):\\n\\nFunnel Stage: ${funnelStage}\\nVisual Objective: ...\\nSubject: ...\\nAction: ...\\nExpression: ...\\nEnvironment: ...\\nComposition: ...\\nLighting: ...\\nCamera: ...\\nVisual Style: ...\\nTypography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.\\nText Overlay: \\\"...\\\"\\nNegative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliché, overdesigned graphic."
+      "visualObjective": "[Visual objective selaras corong ${funnelStage}]",
+      "textOverlay": "[Tulis hook pendek utuh 6-10 kata, tanpa ellipsis]",
+      "captionForPost": "[Tulis caption Instagram yang menjawab hook image sesuai funnel]",
+      "captionInstruction": "Paste teks ini di caption/keterangan postingan setelah gambar dibuat.",
+      "messageAlignmentCheck": { "isAligned": true, "issue": "", "fixedTextOverlay": "[Tulis hook pendek utuh 6-10 kata, tanpa ellipsis]", "reason": "[Penjelasan keselarasan corong ${funnelStage}]" },
+      "strategyBrief": { "funnelStage": "${funnelStage}", "tujuanKonten": "${funnelRules.goal}", "ideUtama": "${activeItem.headline || 'Topik Konten'}", "audienceContext": "${funnelRules.audienceState} - ${activeContext.audience_context?.primary_audience || 'Target Audiens'}", "angle": "[Nama angle visual B]", "emosiUtama": "[Emosi spesifik]", "pesanVisual": "[Pesan visual]" },
+      "finalPrompt": "Buatkan saya image untuk konten Instagram (format 4:5 vertical editorial):\\n\\nFunnel Stage: ${funnelStage}\\nVisual Objective: [Tujuan visual konkret]\\nSubject: [Deskripsi subjek]\\nAction: [Aktivitas fisik konkret]\\nExpression: [Ekspresi wajah mikro]\\nEnvironment: [Ruangan/latar]\\nComposition: [Subjek di kanan tengah, ruang negatif lapang di kiri atas]\\nLighting: [Cahaya alami lembut]\\nCamera: [50mm lens photography]\\nVisual Style: [Clean editorial Instagram photography]\\nTypography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.\\nText Overlay: \\\"[hook pendek utuh tanpa ellipsis]\\\"\\nNegative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliche, overdesigned graphic."
     },
     {
       "id": "C",
       "name": "${funnelStage === 'BOFU' ? 'Direct Value & Decision Hook' : funnelStage === 'MOFU' ? 'Structured Workflow Hook' : 'Curiosity Hook'}",
       "funnelStage": "${funnelStage}",
-      "visualObjective": "...",
-      "textOverlay": "...",
-      "messageAlignmentCheck": { "isAligned": true, "issue": "", "fixedTextOverlay": "...", "reason": "..." },
-      "strategyBrief": { "funnelStage": "${funnelStage}", "tujuanKonten": "${funnelRules.goal}", "ideUtama": "${activeItem.headline || 'Topik Konten'}", "audienceContext": "...", "angle": "...", "emosiUtama": "...", "pesanVisual": "..." },
-      "finalPrompt": "Buatkan saya image untuk konten Instagram (format 4:5 vertical editorial):\\n\\nFunnel Stage: ${funnelStage}\\nVisual Objective: ...\\nSubject: ...\\nAction: ...\\nExpression: ...\\nEnvironment: ...\\nComposition: ...\\nLighting: ...\\nCamera: ...\\nVisual Style: ...\\nTypography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.\\nText Overlay: \\\"...\\\"\\nNegative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliché, overdesigned graphic."
+      "visualObjective": "[Visual objective selaras corong ${funnelStage}]",
+      "textOverlay": "[Tulis hook pendek utuh 6-10 kata, tanpa ellipsis]",
+      "captionForPost": "[Tulis caption Instagram yang menjawab hook image sesuai funnel]",
+      "captionInstruction": "Paste teks ini di caption/keterangan postingan setelah gambar dibuat.",
+      "messageAlignmentCheck": { "isAligned": true, "issue": "", "fixedTextOverlay": "[Tulis hook pendek utuh 6-10 kata, tanpa ellipsis]", "reason": "[Penjelasan keselarasan corong ${funnelStage}]" },
+      "strategyBrief": { "funnelStage": "${funnelStage}", "tujuanKonten": "${funnelRules.goal}", "ideUtama": "${activeItem.headline || 'Topik Konten'}", "audienceContext": "${funnelRules.audienceState} - ${activeContext.audience_context?.primary_audience || 'Target Audiens'}", "angle": "[Nama angle visual C]", "emosiUtama": "[Emosi spesifik]", "pesanVisual": "[Pesan visual]" },
+      "finalPrompt": "Buatkan saya image untuk konten Instagram (format 4:5 vertical editorial):\\n\\nFunnel Stage: ${funnelStage}\\nVisual Objective: [Tujuan visual konkret]\\nSubject: [Deskripsi subjek]\\nAction: [Aktivitas fisik konkret]\\nExpression: [Ekspresi wajah mikro]\\nEnvironment: [Ruangan/latar]\\nComposition: [Subjek di kanan tengah, ruang negatif lapang di kiri atas]\\nLighting: [Cahaya alami lembut]\\nCamera: [50mm lens photography]\\nVisual Style: [Clean editorial Instagram photography]\\nTypography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.\\nText Overlay: \\\"[hook pendek utuh tanpa ellipsis]\\\"\\nNegative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliche, overdesigned graphic."
     }
   ]
 }
@@ -3761,8 +4130,8 @@ URUTAN WAJIB STRUKTUR finalPrompt:
 9. Camera: [50mm / 35mm lens photography, eye-level atau 45-degree angle, depth of field halus (subtle bokeh)]
 10. Visual Style: [Clean editorial Instagram photography, otentik dokumenter estetis, bukan poster iklan ramai]
 11. Typography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.
-12. Text Overlay: "[Teks headline 3-5 baris yang SINKRON 100% dengan fixedTextOverlay]"
-13. Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliché, overdesigned graphic.
+12. Text Overlay: "[Teks hook utuh tanpa '...', maksimal 6-10 kata]"
+13. Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliche, overdesigned graphic.
 
 HINDARI: ${funnelRules.avoid}
 Kembalikan HANYA JSON murni tanpa markdown pembungkus tambahan di luar JSON.`;
@@ -4090,7 +4459,9 @@ WAJIB KEMBALIKAN HANYA JSON OBJECT TUNGGAL MURNI DENGAN SCHEMA CANONICAL INI (TA
       "production_prompt": "Layout: Clean closing card layout with prominent CTA pill button...\\nSubject/Object Utama: ...\\nVisual Metaphor: ...\\nTypography Hierarchy: Headline 28pt, CTA text 18pt bold.\\nBackground: Subtle gradient matching funnel theme.\\nColor Mood: Action-oriented & trustworthy.\\nNegative Space: Generous negative space around CTA button.\\nImage/Illustration Direction: Clean minimalist social media closing card.",
       "slide_image_prompt": "Buatkan saya image untuk slide carousel Instagram 4:5.\\n\\nFunnel Stage: ${funnelStage}\\nSlide Role: Value-Based CTA\\nVisual Objective: Mengajak audiens mengambil langkah nyata berdasarkan value yang telah dipelajari.\\nSubject/Object: Kartu ajakan tindakan penutup bernuansa value dengan tombol CTA pill menonjol di tengah.\\nAction/Scene: Desain penutup terpusat yang elegan dengan tombol aksi kontras tinggi dan instruksi pendukung di bio.\\nExpression/Emotion: Ketegasan bertindak, rasa percaya diri, dan apresiasi terhadap nilai konten.\\nEnvironment: Kanvas grafis bergradasi lembut (#F0FDF4 ke #FFFFFF).\\nComposition: Center card layout, ruang bernapas luas di sekeliling tombol aksi utama.\\nLighting: Soft ambient studio light bersih dan terang.\\nCamera/Graphic Style: Clean minimalist UI infographic diagram, flat editorial graphic system.\\nVisual Style: Clean editorial Instagram content, natural, tidak seperti iklan.\\nTypography: Headline besar 3-5 baris di kiri atas, high contrast, tidak ada teks kecil lain.\\nText Overlay: '${funnelStage === 'BOFU' ? 'Mulai Bangun Sistem Kontenmu Hari Ini.' : funnelStage === 'MOFU' ? 'Rapikan Alur Kontenmu Mulai Sekarang.' : 'Simpan & Terapkan Pola Ini Saat Menulis.'}'\\nNegative Prompt: photography, realistic person, complex faces, human hands, messy sketch, stock photo, blurry text, cluttered layout, hard selling ads."
     }
-  ]
+  ],
+  "captionForPost": "[Tulis caption Instagram yang merangkum isi seluruh slide sesuai funnel ${funnelStage}]",
+  "captionInstruction": "Paste teks ini di caption/keterangan postingan setelah aset dibuat."
 }`;
       } else if (activeTab === 'video') {
         promptTitle = `3 VIDEO STYLE OPTIONS - FUNNEL ${funnelStage} (JSON ARRAY)`;
@@ -4114,7 +4485,9 @@ WAJIB kembalikan HANYA array JSON murni (tanpa markdown):
     "voiceoverOutline": "...",
     "script": { "hook": "...", "masalah": "...", "solusi": "...", "proof": "...", "cta": "..." },
     "videoPrompt": "Prompt deskriptif (Inggris, 9:16)",
-    "visualPlan": "..."
+    "visualPlan": "...",
+    "captionForPost": "[Tulis caption Instagram yang merangkum video sesuai funnel ${funnelStage}]",
+    "captionInstruction": "Paste teks ini di caption/keterangan postingan setelah aset dibuat."
   }
 ]`;
       } else if (activeTab === 'review') {
@@ -4130,6 +4503,15 @@ Pastikan evaluasi memeriksa kepatuhan aturan funnel ${funnelStage}:
       const revisionDirective = revisionNotes.trim() 
         ? `\n\n### CATATAN REVISI KHUSUS DARI USER (WAJIB DIIKUTI):\n- ${revisionNotes.trim()}`
         : '';
+
+      const brandVis = activeContext.brand_visual_context;
+      const visualIdentityBlock = brandVis ? `
+### BRAND VISUAL IDENTITY & STYLE RULES:
+- Visual Style: ${brandVis.visual_style || '-'}
+- Color Palette: ${Array.isArray(brandVis.color_palette) ? brandVis.color_palette.join(', ') : (brandVis.color_palette || '-')}
+- Typography Style: ${brandVis.typography_style || '-'}
+- Image Style Rules: ${Array.isArray(brandVis.image_style_rules) ? brandVis.image_style_rules.join('; ') : (brandVis.image_style_rules || '-')}
+- Design Mood: ${brandVis.design_mood || '-'}` : '';
 
       const systemPrompt = `Buatkan ${promptTitle} (Bahasa Indonesia, profesional).
 
@@ -4151,7 +4533,7 @@ Summary: ${activeContext.brand_context?.brand_summary}
 Voice: ${activeContext.brand_context?.brand_voice}
 Audience: ${activeContext.audience_context?.primary_audience}
 USP: ${activeContext.strategy_context?.usp?.join(', ')}
-Offer: ${activeContext.strategy_context?.main_offer}
+Offer: ${activeContext.strategy_context?.main_offer}${visualIdentityBlock}
 
 ### OUTPUT FORMAT:
 ${formatDirection}${revisionDirective}`;
@@ -4183,7 +4565,7 @@ ${formatDirection}${revisionDirective}`;
           } catch (_) {}
 
           if (is429 || /dibatasi|rate.*limit|quota|429/i.test(errText)) {
-            setGenerationError("Permintaan AI sedang dibatasi (Rate Limit / Quota Exceeded). Coba lagi beberapa saat.");
+            setGenerationError("Permintaan AI sedang dibatasi (Rate Limit / High Demand). Coba lagi beberapa saat.");
             showToast("Permintaan AI sedang dibatasi. Coba lagi beberapa saat.");
           } else {
             setGenerationError(errText || "Gagal memproses permintaan AI. Silakan coba lagi.");
@@ -4197,7 +4579,7 @@ ${formatDirection}${revisionDirective}`;
         
         if (generatedText) {
           if (activeTab === 'image') {
-            const normalized = validateAndNormalizeImageAngles(generatedText, activeItem);
+            const normalized = validateAndNormalizeImageAngles(generatedText, activeItem, activeContext);
             if (normalized) {
               setGenerationError(null);
               saveImageOutput(normalized);
@@ -4218,10 +4600,20 @@ ${formatDirection}${revisionDirective}`;
               showToast("Gagal: Format respon AI tidak sesuai skema.");
               return;
             }
+          } else if (activeTab === 'video') {
+            const normalized = validateAndNormalizeVideoStyles(generatedText, activeItem, activeContext);
+            if (normalized) {
+              setGenerationError(null);
+              saveVideoOutput(normalized);
+              showToast(`Aset VIDEO (3 Style) berhasil dioptimalkan oleh Gemini AI!`);
+            } else {
+              setGenerationError(null);
+              saveVideoOutput(generatedText);
+              showToast(`Aset VIDEO berhasil dioptimalkan oleh Gemini AI!`);
+            }
           } else {
             setGenerationError(null);
-            if (activeTab === 'video') saveVideoOutput(generatedText);
-            else if (activeTab === 'review') saveReviewOutput(generatedText);
+            if (activeTab === 'review') saveReviewOutput(generatedText);
             showToast(`Aset ${activeTab.toUpperCase()} berhasil dioptimalkan oleh Gemini AI!`);
           }
         } else {
@@ -4239,9 +4631,9 @@ ${formatDirection}${revisionDirective}`;
         showToast("Permintaan AI melebihi batas waktu (Timeout 45s).");
       } else {
         const errMsg = err.message || '';
-        const isRateLimited = /dibatasi/i.test(errMsg) || /rate.*limit/i.test(errMsg) || /quota/i.test(errMsg) || /429/i.test(errMsg);
+        const isRateLimited = /dibatasi/i.test(errMsg) || /rate.*limit/i.test(errMsg) || /quota/i.test(errMsg) || /429/i.test(errMsg) || /503/i.test(errMsg) || /high.*demand/i.test(errMsg) || /unavailable/i.test(errMsg);
         if (isRateLimited) {
-          setGenerationError("Permintaan AI sedang dibatasi (Rate Limit / Quota Exceeded). Coba lagi beberapa saat.");
+          setGenerationError("Permintaan AI sedang dibatasi (Rate Limit / High Demand). Coba lagi beberapa saat.");
           showToast("Permintaan AI sedang dibatasi.");
         } else {
           setGenerationError(`Gagal memproses: ${errMsg || 'Error tidak diketahui'}`);
@@ -4275,7 +4667,7 @@ ${formatDirection}${revisionDirective}`;
   // Memoized parsed image angles package
   const imageAnglesPackage = useMemo<ImageAnglesPackage | null>(() => {
     const textToParse = imageOutput || getInitialDraft('image', activeItem, activeContext);
-    const normalizedJson = validateAndNormalizeImageAngles(textToParse, activeItem);
+    const normalizedJson = validateAndNormalizeImageAngles(textToParse, activeItem, activeContext);
     if (!normalizedJson) {
       const fallbackParsed = tryParseJSON(textToParse);
       if (!fallbackParsed) return null;
@@ -4337,12 +4729,12 @@ ${formatDirection}${revisionDirective}`;
   const getOptimizationButtonLabel = (tab: string, loading: boolean) => {
     if (loading) return 'Memproses...';
     switch (tab) {
-      case 'review': return 'Cek Kesiapan Konten';
-      case 'image': return 'Optimalkan Prompt Image';
-      case 'carousel': return 'Optimalkan Carousel';
-      case 'video': return 'Optimalkan Script Video';
+      case 'review': return 'Cek Rencana';
+      case 'image': return 'Buat Prompt Gambar';
+      case 'carousel': return 'Buat Carousel';
+      case 'video': return 'Buat Video';
       case 'dna': return 'Simpan & Validasi DNA';
-      default: return 'Optimalkan Konten';
+      default: return 'Buat Output';
     }
   };
 
@@ -4420,38 +4812,59 @@ ${formatDirection}${revisionDirective}`;
 
   if (isLoaded && !sourceItem) {
     return (
-      <main className="min-h-screen bg-[#f6f3ee] text-[#1f2933] flex flex-col font-sans">
-        <header className="border-b border-[#e7e0d4] bg-[#fffdf8]/90 backdrop-blur-md px-4 md:px-8 py-3.5 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-4">
+      <ContentEngineShell
+        title="ALCO Production Studio"
+        subtitle="Pusat produksi dan penyelarasan aset konten"
+        eyebrow="Studio Workspace"
+        actions={(
+          <button
+            onClick={() => router.push('/')}
+            className="flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3.5 text-xs font-bold text-primary-foreground shadow-sm transition hover:bg-primary/95"
+          >
+            <ArrowLeft size={13} />
+            Kembali ke Kalender
+          </button>
+        )}
+        mobileActions={(
+          <button
+            onClick={() => router.push('/')}
+            className="flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground shadow-sm"
+          >
+            <ArrowLeft size={13} />
+            Kalender
+          </button>
+        )}
+        footer={(
+          <footer className="shrink-0 border-t border-border bg-card px-6 py-4 text-center text-xs text-muted-foreground">
+            ALCO Production Studio - Memproduksi Konten Bernilai Konversi Tinggi
+          </footer>
+        )}
+      >
+        <div className="flex items-center justify-between border-b border-border bg-card/80 px-4 py-3 md:px-8">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => router.push('/')}
-              className="p-2 bg-[#fffdf8] hover:bg-stone-100 text-stone-600 hover:text-stone-900 rounded-xl border border-[#e7e0d4] transition flex items-center justify-center shadow-sm"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground"
               title="Kembali ke Kalender Konten"
             >
               <ArrowLeft size={16} />
             </button>
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-2xl bg-[#0f766e]/10 border border-[#0f766e]/25 flex items-center justify-center text-[#0f766e]">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
                 <BrainCircuit size={18} />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-sm font-bold tracking-tight text-[#1f2933]">ALCO PRODUCTION STUDIO</h1>
-                  <span className="px-2 py-0.5 rounded-full bg-[#0f766e]/10 border border-[#0f766e]/25 text-[#0f766e] text-[10px] font-semibold">
+                  <h1 className="text-sm font-black text-foreground">ALCO PRODUCTION STUDIO</h1>
+                  <span className="rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
                     Studio Workspace
                   </span>
                 </div>
-                <p className="text-xs text-stone-500">Pusat Produksi & Penyelarasan Strategi Aset Konten</p>
+                <p className="text-xs text-muted-foreground">Pusat Produksi & Penyelarasan Strategi Aset Konten</p>
               </div>
             </div>
           </div>
-          <button
-            onClick={() => router.push('/')}
-            className="px-4 py-1.5 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white font-semibold rounded-xl text-xs transition shadow-sm"
-          >
-            Kembali ke Kalender
-          </button>
-        </header>
+        </div>
 
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="max-w-md w-full bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl p-8 text-center space-y-5 shadow-sm">
@@ -4473,16 +4886,37 @@ ${formatDirection}${revisionDirective}`;
             </button>
           </div>
         </div>
-
-        <footer className="border-t border-[#e7e0d4] bg-[#fffdf8] py-4 px-6 text-center text-xs text-stone-500">
-          ALCO Production Studio - Memproduksi Konten Bernilai Konversi Tinggi
-        </footer>
-      </main>
+      </ContentEngineShell>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#f6f3ee] text-[#1f2933] flex flex-col font-sans">
+    <ContentEngineShell
+      title="ALCO Production Studio"
+      subtitle="Workspace produksi aset dari kalender Content Engine"
+      eyebrow={activeContext.brand_context?.brand_name || 'Studio'}
+      actions={(
+        <>
+          <GeminiApiKeyControl onToast={showToast} variant="compact" />
+          <button
+            onClick={() => router.push('/')}
+            className="flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3.5 text-xs font-bold text-primary-foreground shadow-sm transition hover:bg-primary/95"
+          >
+            <ArrowLeft size={13} />
+            Kembali ke Kalender
+          </button>
+        </>
+      )}
+      mobileActions={(
+        <button
+          onClick={() => router.push('/')}
+          className="flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground shadow-sm"
+        >
+          <ArrowLeft size={13} />
+          Kalender
+        </button>
+      )}
+    >
       {/* Toast Alert */}
       <AnimatePresence>
         {toastMessage && (
@@ -4497,47 +4931,6 @@ ${formatDirection}${revisionDirective}`;
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Studio Header */}
-      <header className="border-b border-[#e7e0d4] bg-[#fffdf8]/90 backdrop-blur-md sticky top-0 z-40 px-4 md:px-6 py-3 flex flex-wrap items-center justify-between gap-3 shadow-xs">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.push('/')}
-            className="p-2 bg-[#fffdf8] hover:bg-stone-100 text-stone-600 hover:text-stone-900 rounded-xl border border-[#e7e0d4] transition flex items-center justify-center shadow-xs cursor-pointer"
-            title="Kembali ke Kalender Konten"
-          >
-            <ArrowLeft size={16} />
-          </button>
-          
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#0f766e]/10 border border-[#0f766e]/25 flex items-center justify-center text-[#0f766e]">
-              <BrainCircuit size={17} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-sm font-bold tracking-tight text-[#1f2933]">ALCO Production Studio</h1>
-                <span className="hidden sm:inline-block px-2 py-0.5 rounded-md bg-[#0f766e]/10 text-[#0f766e] text-[10px] font-bold">
-                  {activeContext.brand_context?.brand_name || 'ALCO Engine'}
-                </span>
-              </div>
-              <p className="text-[11px] text-stone-500 hidden sm:block">Pusat Produksi Aset Konten Konversi Tinggi</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <GeminiApiKeyControl onToast={showToast} variant="compact" />
-          
-          <button
-            onClick={() => router.push('/')}
-            className="px-3.5 py-1.5 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white font-bold rounded-xl text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
-          >
-            <ArrowLeft size={13} className="sm:hidden" />
-            <span className="hidden sm:inline">Kembali ke Kalender</span>
-            <span className="sm:hidden">Kalender</span>
-          </button>
-        </div>
-      </header>
 
       {/* Multi-Project Warning Banner */}
       {selectedProjectId && activeProjectIdState && selectedProjectId !== activeProjectIdState && (
@@ -4568,6 +4961,11 @@ ${formatDirection}${revisionDirective}`;
         
         {/* LEFT COLUMN: ACTIVE CALENDAR ITEM & BRAND SUMMARY (lg:col-span-4) */}
         <div className="lg:col-span-4 space-y-4">
+          {/* Production Progress Checklist */}
+          <ProductionProgressWidget
+            item={sourceItem || activeItem}
+            onUpdateProgress={handleUpdateProgress}
+          />
           
           {/* Quick Context Reference Card - Compact on mobile, detailed on desktop */}
           <div className="bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl p-4.5 space-y-3.5 shadow-xs">
@@ -4745,35 +5143,35 @@ ${formatDirection}${revisionDirective}`;
         {/* RIGHT COLUMN: WORKSPACE TAB NAVIGATION & DYNAMIC WORKSHOP CONTENT (lg:col-span-8) */}
         <div className="lg:col-span-8 flex flex-col space-y-4">
           
-          {/* URUTAN KERJA (Workflow Steps Card) */}
+          {/* URUTAN KERJA (5-Step Visual Production Guide) */}
           <div className="bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl p-4 shadow-xs">
             <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-[#e7e0d4]">
               <div className="flex items-center gap-2">
                 <ListTodo size={15} className="text-[#0f766e]" />
                 <h3 className="text-xs font-bold text-[#1f2933]">Urutan Kerja Produksi Konten</h3>
               </div>
-              <span className="text-[11px] text-stone-500 font-medium">Panduan Alur Harian</span>
+              <span className="text-[11px] text-stone-500 font-medium">5 Langkah Praktis</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-xs">
               <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl p-2.5 flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-[#0f766e]/15 text-[#0f766e] font-bold text-[10px] flex items-center justify-center shrink-0">1</span>
-                <span className="text-stone-700 font-medium text-[11px] leading-tight">Cek rencana</span>
+                <span className="text-stone-700 font-medium text-[11px] leading-tight">Pilih format</span>
               </div>
               <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl p-2.5 flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-[#0f766e]/15 text-[#0f766e] font-bold text-[10px] flex items-center justify-center shrink-0">2</span>
-                <span className="text-stone-700 font-medium text-[11px] leading-tight">Pilih output</span>
+                <span className="text-stone-700 font-medium text-[11px] leading-tight">Klik Buat</span>
               </div>
               <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl p-2.5 flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-[#0f766e]/15 text-[#0f766e] font-bold text-[10px] flex items-center justify-center shrink-0">3</span>
-                <span className="text-stone-700 font-medium text-[11px] leading-tight">Optimalkan AI</span>
+                <span className="text-stone-700 font-medium text-[11px] leading-tight">Salin prompt/output</span>
               </div>
               <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl p-2.5 flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-[#0f766e]/15 text-[#0f766e] font-bold text-[10px] flex items-center justify-center shrink-0">4</span>
-                <span className="text-stone-700 font-medium text-[11px] leading-tight">Salin prompt/script</span>
+                <span className="text-stone-700 font-medium text-[11px] leading-tight">Buka tool lanjutan</span>
               </div>
               <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl p-2.5 flex items-center gap-2 col-span-2 sm:col-span-1">
                 <span className="w-5 h-5 rounded-full bg-[#0f766e]/15 text-[#0f766e] font-bold text-[10px] flex items-center justify-center shrink-0">5</span>
-                <span className="text-stone-700 font-medium text-[11px] leading-tight">Lanjut produksi</span>
+                <span className="text-stone-700 font-medium text-[11px] leading-tight">Paste &amp; produksi aset</span>
               </div>
             </div>
           </div>
@@ -4800,10 +5198,10 @@ ${formatDirection}${revisionDirective}`;
           <div className="bg-[#fffdf8] border border-[#e7e0d4] p-2 rounded-2xl flex flex-wrap items-center justify-between gap-2 shadow-xs">
             <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
               {[
-                { id: 'review', label: 'Review & Kesiapan', icon: Eye },
-                { id: 'image', label: 'Prompt Image', icon: ImageIcon },
+                { id: 'review', label: 'Cek Rencana', icon: Eye },
+                { id: 'image', label: 'Gambar', icon: ImageIcon },
                 { id: 'carousel', label: 'Carousel', icon: Layers },
-                { id: 'video', label: 'Script Video', icon: Video },
+                { id: 'video', label: 'Video', icon: Video },
                 { id: 'dna', label: 'DNA Karakter', icon: BrainCircuit },
               ].map((tab) => {
                 const Icon = tab.icon;
@@ -4907,7 +5305,7 @@ ${formatDirection}${revisionDirective}`;
                     </div>
 
                     <button
-                      onClick={() => handleCopyText(activeTab, currentOutputText)}
+                      onClick={() => handleCopyText(activeTab, currentOutputText, 'none')}
                       className="p-2 hover:bg-stone-100 text-stone-600 hover:text-stone-900 rounded-xl border border-[#e7e0d4] bg-[#fffdf8] transition-all shadow-xs cursor-pointer"
                       title="Salin Naskah"
                     >
@@ -4935,7 +5333,7 @@ ${formatDirection}${revisionDirective}`;
                         <div className="text-center space-y-1 px-4">
                           <p className="text-xs font-bold text-[#1f2933]">Gemini AI Membaca Strategi Anda...</p>
                           <p className="text-xs text-stone-500 max-w-xs leading-relaxed">
-                            Menerjemahkan pilar bisnis, headline, dan target pemosisian menjadi aset iklan siap pakai berkonversi tinggi...
+                            Menerjemahkan pilar bisnis, headline, dan target pemosisian menjadi aset konten siap pakai berkonversi tinggi...
                           </p>
                         </div>
                       </motion.div>
@@ -4956,11 +5354,20 @@ ${formatDirection}${revisionDirective}`;
                     </div>
                   )}
 
-                  {/* Bottom Stats inside Editor */}
-                  <div className="p-2.5 bg-[#f6f3ee] border-t border-[#e7e0d4] flex items-center justify-between text-[11px] text-stone-500">
-                    <span>Panjang Karakter: {currentOutputText?.length || 0}</span>
-                    <span>Mode: {isEditingMode ? 'Edit Langsung' : 'Pratinjau Terstruktur'}</span>
-                  </div>
+                  {/* Bottom Stats inside Editor - Advanced Collapsible */}
+                  <details className="text-[11px] text-stone-500 bg-[#f6f3ee] border-t border-[#e7e0d4] px-3 py-1.5 group select-none">
+                    <summary className="cursor-pointer font-medium hover:text-stone-700 flex items-center justify-between list-none">
+                      <span className="flex items-center gap-1">
+                        <Sliders size={11} className="text-stone-400" />
+                        <span>Advanced: Info Teknis Editor</span>
+                      </span>
+                      <ChevronDown size={12} className="group-open:rotate-180 transition-transform text-stone-400" />
+                    </summary>
+                    <div className="pt-1.5 pb-1 flex items-center justify-between text-[11px] text-stone-600 border-t border-[#e7e0d4]/50 mt-1">
+                      <span>Panjang Karakter: {currentOutputText?.length || 0}</span>
+                      <span>Mode: {isEditingMode ? 'Edit Langsung' : 'Pratinjau Terstruktur'}</span>
+                    </div>
+                  </details>
                 </div>
 
                 {/* REVISION NOTES INPUT BOX (Clean input without redundant second button) */}
@@ -4997,18 +5404,6 @@ ${formatDirection}${revisionDirective}`;
                 <AlertCircle size={13} className="text-stone-400 shrink-0" />
                 <span>Naskah siap eksekusi. Silakan salin prompt/naskah untuk platform desain atau produksi.</span>
               </div>
-              
-              {activeTab !== 'review' && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleCopyText(activeTab, currentOutputText)}
-                    className="flex items-center gap-1 px-3.5 py-2 bg-[#fffdf8] hover:bg-stone-100 text-stone-800 font-bold rounded-xl border border-[#e7e0d4] transition shadow-xs cursor-pointer"
-                  >
-                    <Clipboard size={12} />
-                    Salin Hasil
-                  </button>
-                </div>
-              )}
             </div>
 
           </div>
@@ -5024,6 +5419,6 @@ ${formatDirection}${revisionDirective}`;
           <span>Access Level: Full Enterprise</span>
         </div>
       </footer>
-    </main>
+    </ContentEngineShell>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Zap,
@@ -10,14 +10,19 @@ import {
   Mic2,
   Filter,
   Sparkles,
-  CheckCircle2,
   AlertCircle,
   X,
-  ChevronLeft,
-  ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Loader2,
+  CheckCircle2,
+  Sliders,
+  ShieldCheck,
+  Info,
+  ArrowRight,
+  Clock,
+  LayoutGrid
 } from 'lucide-react';
-import { CalecoAIRecommendation } from './CalecoAIRecommendation';
 import { ConfigDataProps } from './types';
 
 const InputField = ({
@@ -30,7 +35,7 @@ const InputField = ({
   children: React.ReactNode;
 }) => (
   <div className="space-y-2">
-    <label className="text-xs font-semibold text-stone-600 flex items-center gap-1.5">
+    <label className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
       <Icon size={14} className="text-[#0f766e]" />
       {label}
     </label>
@@ -56,380 +61,357 @@ interface CalendarConfigWizardProps {
 export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
   isOpen,
   onClose,
-  currentStep,
-  setCurrentStep,
   configData,
   accessStatus,
   isLoading,
-  recommendations,
-  isRecommending,
-  getAIRecommendation,
-  handleApplyRecommendation,
-  handleApplyAllRecommendations,
 }) => {
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+
+  if (!isOpen) return null;
+
+  const totalPosts = configData.ratio.tofu + configData.ratio.mofu + configData.ratio.bofu;
+  const projectName = configData.strategyBlueprint?.brand_identity?.brand_name 
+    || configData.sharedContentContext?.brand_context?.brand_name 
+    || configData.selectedProject 
+    || 'Project Aktif';
+
+  const formatList = configData.formats && configData.formats.length > 0 
+    ? configData.formats.join(', ') 
+    : 'Semua Format';
+
+  const formattedStartDate = configData.startDate
+    ? new Date(configData.startDate).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      })
+    : 'hari ini';
+
+  const isGenerateDisabled = 
+    isLoading ||
+    totalPosts > (accessStatus?.maxContent || 30) ||
+    totalPosts === 0 ||
+    configData.formats.length === 0 ||
+    (configData.formats.includes('Reels') && !configData.reelsDuration) ||
+    (configData.formats.includes('Carousel') && !configData.carouselSlides);
+
+  const handleStartGeneration = () => {
+    if (isGenerateDisabled) return;
+    configData.generateContent();
+  };
+
   return (
     <AnimatePresence>
-      {isOpen && (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/40 backdrop-blur-xs overflow-y-auto"
+        onClick={isLoading ? undefined : onClose}
+      >
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm"
-          onClick={onClose}
+          initial={{ scale: 0.96, y: 12 }}
+          animate={{ scale: 1, y: 0 }}
+          exit={{ scale: 0.96, y: 12 }}
+          onClick={(e) => e.stopPropagation()}
+          className="bg-[#fffdf8] border border-[#e7e0d4] rounded-3xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl font-sans my-auto"
         >
-          <motion.div
-            initial={{ scale: 0.96, y: 10 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.96, y: 10 }}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-[#fffdf8] border border-[#e7e0d4] rounded-3xl w-full max-w-5xl h-[86vh] flex flex-col md:flex-row overflow-hidden shadow-2xl font-sans"
-          >
-            {/* Sidebar Navigation */}
-            <div className="w-full md:w-80 bg-[#f6f3ee]/80 border-b md:border-b-0 md:border-r border-[#e7e0d4] flex flex-col justify-between shrink-0">
-              <div className="p-5 md:p-6">
-                <div className="mb-4 flex flex-col gap-1">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#0f766e]">
-                    <span className="w-2 h-2 rounded-full bg-[#0f766e]" />
-                    Panel Konfigurasi Kalender
-                  </div>
-                  {configData.connectionStatus === 'active' && configData.brandContext ? (
-                    <div className="bg-[#0f766e]/10 border border-[#0f766e]/20 p-2.5 rounded-xl flex items-center gap-2 mt-1">
-                      <Sparkles className="text-[#0f766e] shrink-0" size={13} />
-                      <div className="overflow-hidden">
-                        <p className="text-[11px] text-stone-500 font-medium">App 1 Terhubung</p>
-                        <p className="text-xs font-bold text-[#1f2933] truncate">
-                          {configData.brandContext.brandName}
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-[#fffdf8] border border-[#e7e0d4] p-2 rounded-xl flex items-center gap-2 mt-1">
-                      <AlertCircle className="text-stone-400 shrink-0" size={13} />
-                      <p className="text-xs font-medium text-stone-600">Sandbox Mode</p>
-                    </div>
-                  )}
-                </div>
+          {/* Header */}
+          <div className="px-5 sm:px-7 py-4 border-b border-[#e7e0d4] bg-[#f6f3ee]/80 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0f766e] shadow-xs shrink-0">
+                <Zap size={18} />
+              </div>
+              <div>
+                <h2 className="text-sm sm:text-base font-bold text-[#1f2933]">
+                  Konfigurasi Kalender Konten
+                </h2>
+                <p className="text-[11px] text-[#627d98]">
+                  Perencanaan konten terstruktur untuk membangun kepercayaan audiens (Instagram & Facebook)
+                </p>
+              </div>
+            </div>
+            {!isLoading && (
+              <button
+                onClick={onClose}
+                className="p-2 border border-[#e7e0d4] hover:bg-stone-200/60 rounded-xl text-stone-500 hover:text-stone-800 transition-all shrink-0"
+                title="Tutup Modal"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
 
-                <div className="space-y-1 overflow-y-auto max-h-[48vh] pr-1">
-                  {[
-                    { id: 0, title: 'Topik Utama', desc: 'Brief kampanye', icon: Zap },
-                    { id: 1, title: 'Jadwal Kalender', desc: 'Mulai & skip hari', icon: Calendar },
-                    { id: 2, title: 'Target Audiens', desc: 'Gender & umur', icon: Users },
-                    { id: 3, title: 'Alokasi & Format', desc: 'TOFU/MOFU & media', icon: Layers },
-                    { id: 4, title: 'Brand Voice', desc: 'Karakter pembawaan', icon: Mic2 },
-                    { id: 5, title: 'Hooks Mix', desc: 'Pemicu psikologis', icon: Filter },
-                    { id: 6, title: 'Formula Goals', desc: 'Tujuan & cta', icon: Sparkles },
-                    { id: 7, title: 'Konfirmasi', desc: 'Verifikasi strategi', icon: CheckCircle2 },
-                  ].map((step) => {
-                    const isActive = currentStep === step.id;
-                    const isCompleted = step.id < currentStep;
-                    const StepIcon = step.icon;
-                    return (
-                      <button
-                        key={step.id}
-                        onClick={() => setCurrentStep(step.id)}
-                        className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all ${
-                          isActive
-                            ? 'bg-[#0f766e] text-white font-semibold shadow-sm'
-                            : isCompleted
-                            ? 'bg-[#fffdf8] text-stone-800 hover:bg-stone-100 font-medium border border-[#e7e0d4]/60'
-                            : 'text-stone-600 hover:bg-stone-100 font-medium'
-                        }`}
-                      >
-                        <div
-                          className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${
-                            isActive
-                              ? 'bg-white/20 border-white/30 text-white'
-                              : isCompleted
-                              ? 'bg-[#0f766e]/10 border-[#0f766e]/20 text-[#0f766e]'
-                              : 'bg-stone-100 border-stone-200 text-stone-500'
-                          }`}
-                        >
-                          <StepIcon size={14} />
-                        </div>
-                        <div className="overflow-hidden flex-1 leading-none">
-                          <h4 className="text-xs font-semibold">
-                            {step.title}
-                          </h4>
-                          <p
-                            className={`text-[11px] truncate mt-0.5 ${
-                              isActive ? 'text-white/80' : 'text-stone-500'
-                            }`}
-                          >
-                            {step.desc}
-                          </p>
-                        </div>
-                        {isCompleted && !isActive && (
-                          <CheckCircle2 className="text-[#0f766e] shrink-0" size={13} />
-                        )}
-                      </button>
-                    );
-                  })}
+          {/* Body Content - Scrollable */}
+          <div className="flex-1 p-5 sm:p-7 overflow-y-auto custom-scrollbar space-y-6">
+            {/* 1. Project Aktif & Topik Utama */}
+            <div className="bg-white border border-[#e7e0d4] rounded-2xl p-4 sm:p-5 shadow-xs space-y-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e7e0d4]/80 pb-3">
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-stone-500 font-medium">Project Aktif:</span>
+                  <span className="font-bold text-[#0f766e] bg-teal-50 px-2.5 py-0.5 rounded-lg border border-teal-200">
+                    {projectName}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] text-stone-500">
+                  <ShieldCheck size={13} className="text-[#0f766e]" />
+                  <span>Trust-Building Formula</span>
                 </div>
               </div>
-              <div className="p-4 border-t border-[#e7e0d4] bg-[#fffdf8] flex justify-between text-xs text-stone-600">
-                <span>Progress Konfigurasi</span>
-                <span className="text-[#0f766e] font-bold bg-[#0f766e]/10 px-2 py-0.5 rounded">
-                  {Math.round(((currentStep + 1) / 8) * 100)}%
-                </span>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
+                  <Zap size={14} className="text-[#0f766e]" />
+                  Topik / Fokus Kampanye
+                </label>
+                <input
+                  type="text"
+                  value={configData.coreTopic || ''}
+                  onChange={(e) => configData.setCoreTopic(e.target.value)}
+                  placeholder="Contoh: Edukasi Funnel & Solusi Produk Digital"
+                  className="w-full bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-3.5 py-2.5 text-xs text-[#1f2933] placeholder:text-stone-400 focus:outline-none focus:border-[#0f766e] transition-colors font-medium"
+                />
               </div>
             </div>
 
-            {/* Content Display Workspace */}
-            <div className="flex-1 flex flex-col justify-between overflow-hidden bg-[#fffdf8]">
-              <div className="px-6 md:px-8 py-5 border-b border-[#e7e0d4] flex justify-between items-center shrink-0 bg-[#f6f3ee]/40">
-                <div>
-                  <span className="text-xs text-stone-500 font-medium">
-                    Langkah {currentStep + 1} dari 8
-                  </span>
-                  <h2 className="text-sm md:text-base font-bold text-[#1f2933] mt-0.5">
-                    {currentStep === 0 && 'Topik Utama & Pilar Konten'}
-                    {currentStep === 1 && 'Tanggal Mulai & Pengecualian Kalender'}
-                    {currentStep === 2 && 'Profil Target Demografi'}
-                    {currentStep === 3 && 'Alokasi & Format Publikasi'}
-                    {currentStep === 4 && 'Karakter Suara & Dialektika'}
-                    {currentStep === 5 && 'Psikologi Hooks Mixing'}
-                    {currentStep === 6 && 'Goal Formula & CTA'}
-                    {currentStep === 7 && 'Summary & Launch Strategy'}
-                  </h2>
+            {/* 2. Periode & Tanggal Mulai */}
+            <div className="bg-white border border-[#e7e0d4] rounded-2xl p-4 sm:p-5 shadow-xs space-y-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
+                    <Calendar size={14} className="text-[#0f766e]" />
+                    Tanggal Mulai Publikasi
+                  </label>
+                  <input
+                    type="date"
+                    value={configData.startDate || ''}
+                    onChange={(e) => configData.setStartDate(e.target.value)}
+                    className="w-full bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#0f766e] text-stone-800 font-medium"
+                  />
                 </div>
-                <button
-                  onClick={onClose}
-                  className="p-2 border border-[#e7e0d4] hover:bg-stone-100 rounded-xl text-stone-500 hover:text-stone-800 transition-all"
-                  title="Tutup Wizard"
-                >
-                  <X size={16} />
-                </button>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
+                    <Clock size={14} className="text-[#0f766e]" />
+                    Hari Libur / Skip Posting (Opsional)
+                  </label>
+                  <div className="grid grid-cols-7 gap-1">
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
+                      const isSkipped = configData.skipDays.includes(day);
+                      return (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => configData.toggleSkipDay(day)}
+                          className={`py-2 rounded-lg text-[11px] font-semibold border transition-all text-center ${
+                            isSkipped
+                              ? 'bg-rose-50 border-rose-200 text-rose-600 line-through'
+                              : 'bg-[#f6f3ee] border-[#e7e0d4] text-stone-700 hover:border-teal-400'
+                          }`}
+                          title={isSkipped ? `Hari ${day} dilewati (tidak posting)` : `Posting pada hari ${day}`}
+                        >
+                          {day}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Format Konten (Single Image, Carousel, Reels) */}
+            <div className="bg-white border border-[#e7e0d4] rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
+                  <LayoutGrid size={14} className="text-[#0f766e]" />
+                  Format Konten
+                </label>
+                <span className="text-[11px] text-stone-500">Pilih format yang ingin dibuat</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2.5">
+                {[
+                  { id: 'Single', title: 'Single Image', desc: 'Infografik / Quote Edukasi' },
+                  { id: 'Carousel', title: 'Carousel', desc: '5 Slide Micro-Learning' },
+                  { id: 'Reels', title: 'Reels / Video', desc: 'Video Pendek Edukasi 30s' },
+                ].map((fmt) => {
+                  const isSelected = configData.formats.includes(fmt.id);
+                  return (
+                    <button
+                      key={fmt.id}
+                      type="button"
+                      onClick={() => configData.toggleFormat(fmt.id)}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        isSelected
+                          ? 'bg-[#0f766e] border-[#0f766e] text-white shadow-xs'
+                          : 'bg-[#f6f3ee] border-[#e7e0d4] text-stone-700 hover:border-stone-400'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold">{fmt.title}</span>
+                        {isSelected && <CheckCircle2 size={13} className="text-white shrink-0" />}
+                      </div>
+                      <p className={`text-[10px] mt-1 line-clamp-1 ${isSelected ? 'text-teal-100' : 'text-stone-500'}`}>
+                        {fmt.desc}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 4. Ringkasan Funnel yang Direkomendasikan */}
+            <div className="bg-white border border-[#e7e0d4] rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
+                  <Layers size={14} className="text-[#0f766e]" />
+                  Alokasi Funnel (Jumlah Postingan)
+                </label>
+                <span className="text-xs font-bold text-[#0f766e] bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
+                  Total: {totalPosts} Postingan
+                </span>
               </div>
 
-              {/* Dynamic Steps form rendering canvas */}
-              <div className="flex-1 p-6 md:p-8 overflow-y-auto space-y-5">
-                {currentStep === 0 && (
-                  <div className="space-y-4">
-                    <InputField label="Brief Topik Utama" icon={Zap}>
-                      <textarea
-                        value={configData.coreTopic || ''}
-                        onChange={(e) => configData.setCoreTopic(e.target.value)}
-                        placeholder="Uraikan fokus topik kampanye utama..."
-                        className="w-full bg-[#f6f3ee] border border-[#e7e0d4] rounded-2xl p-4 text-xs text-[#1f2933] placeholder:text-stone-400 focus:outline-none focus:border-[#0f766e] h-28 resize-none leading-relaxed"
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  {
+                    key: 'tofu',
+                    label: 'TOFU (Awareness)',
+                    desc: 'Jangkau audiens baru & bangun rasa ingin tahu',
+                    badge: 'bg-teal-50 text-teal-800 border-teal-200'
+                  },
+                  {
+                    key: 'mofu',
+                    label: 'MOFU (Trust/Nurture)',
+                    desc: 'Edukasi mendalam & bukti keahlian solusi',
+                    badge: 'bg-amber-50 text-amber-800 border-amber-200'
+                  },
+                  {
+                    key: 'bofu',
+                    label: 'BOFU (Conversion)',
+                    desc: 'Arahkan ke link bio / penawaran produk',
+                    badge: 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  },
+                ].map(({ key, label, desc, badge }) => (
+                  <div key={key} className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl flex flex-col justify-between">
+                    <div>
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded border inline-block mb-1.5 ${badge}`}>
+                        {label}
+                      </span>
+                      <p className="text-[10px] text-stone-500 leading-snug mb-2">{desc}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        max="30"
+                        value={configData.ratio[key as keyof typeof configData.ratio]}
+                        onChange={(e) =>
+                          configData.setRatio({
+                            ...configData.ratio,
+                            [key]: Math.max(0, parseInt(e.target.value) || 0),
+                          })
+                        }
+                        className="w-full bg-white border border-[#e7e0d4] rounded-lg py-1.5 text-center text-xs font-bold text-stone-900 focus:outline-none focus:border-[#0f766e]"
                       />
-                      {configData.editableContext?.contentStrategy?.pillars &&
-                        configData.editableContext.contentStrategy.pillars.length > 0 && (
-                          <div className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-1.5">
-                            <span className="block text-xs font-semibold text-stone-600">
-                              💡 Pilar Konten Terhubung (Klik untuk terapkan):
-                            </span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {configData.editableContext.contentStrategy.pillars.map(
-                                (pillar: string, i: number) => (
-                                  <button
-                                    key={i}
-                                    onClick={() =>
-                                      configData.setCoreTopic(
-                                        `${configData.selectedProject || 'Campaign'} - Focus: ${pillar}`
-                                      )
-                                    }
-                                    className="bg-[#fffdf8] hover:bg-[#0f766e] hover:text-white border border-[#e7e0d4] text-stone-700 px-2.5 py-1 rounded-lg text-xs transition-all font-medium"
-                                  >
-                                    {pillar}
-                                  </button>
-                                )
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      <div className="pt-2">
-                        <button
-                          onClick={() => getAIRecommendation(0)}
-                          disabled={isRecommending}
-                          className="flex items-center gap-1.5 text-xs font-bold text-[#0f766e] hover:underline"
-                        >
-                          <Sparkles size={13} />{' '}
-                          {isRecommending ? 'Menganalisis...' : 'Minta Rekomendasi AI'}
-                        </button>
-                        <CalecoAIRecommendation
-                          recommendation={recommendations[0]}
-                          isLoading={isRecommending}
-                          onApply={(field, text) => handleApplyRecommendation(0, field, text)}
-                          onApplyAll={(data) => handleApplyAllRecommendations(0, data)}
+                      <span className="text-[11px] text-stone-500 font-medium">post</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 5. Blok Rekomendasi ALCO */}
+            <div className="bg-teal-50/60 border border-teal-200/80 rounded-2xl p-4 sm:p-4.5 text-xs text-stone-700 space-y-2">
+              <div className="flex items-center gap-1.5 font-bold text-[#0f766e]">
+                <Sparkles size={14} />
+                <span>Rekomendasi ALCO Content Engine</span>
+              </div>
+              <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
+                Formula ini dirancang khusus untuk membangun <strong>trust dan otoritas</strong> di Instagram & Facebook. 
+                Porsi <strong>TOFU (Awareness)</strong> terbesar menarik perhatian audiens baru, <strong>MOFU (Pertimbangan)</strong> meyakinkan bahwa Anda ahli di bidang ini, 
+                dan <strong>BOFU (Konversi)</strong> mengarahkan mereka secara natural ke tautan profil tanpa terasa memaksa (*soft-selling*).
+              </p>
+            </div>
+
+            {/* 6. Accordion Pengaturan Lanjutan */}
+            <div className="border border-[#e7e0d4] rounded-2xl overflow-hidden bg-white shadow-xs">
+              <button
+                type="button"
+                onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+                className="w-full px-4 sm:px-5 py-3.5 bg-[#f6f3ee]/60 hover:bg-[#f6f3ee] flex items-center justify-between text-xs font-bold text-stone-700 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Sliders size={14} className="text-[#0f766e]" />
+                  <span>Pengaturan Lanjutan (Opsional untuk Penyesuaian Detail)</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-stone-500 text-[11px]">
+                  <span>{isAdvancedOpen ? 'Tutup' : 'Buka'}</span>
+                  {isAdvancedOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </div>
+              </button>
+
+              {isAdvancedOpen && (
+                <div className="p-4 sm:p-5 border-t border-[#e7e0d4] space-y-5 bg-[#fffdf8]">
+                  {/* Target Demografi: Gender & Umur */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <InputField label="Target Gender" icon={Users}>
+                      <div className="grid grid-cols-3 gap-2">
+                        {['Both', 'Male', 'Female'].map((g) => (
+                          <button
+                            key={g}
+                            type="button"
+                            onClick={() => configData.setGender(g)}
+                            className={`py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                              configData.gender === g
+                                ? 'bg-[#0f766e] border-[#0f766e] text-white'
+                                : 'bg-[#f6f3ee] border-[#e7e0d4] text-stone-700 hover:border-stone-400'
+                            }`}
+                          >
+                            {g === 'Both' ? 'Semua' : g === 'Male' ? 'Pria' : 'Wanita'}
+                          </button>
+                        ))}
+                      </div>
+                    </InputField>
+
+                    <InputField
+                      label={`Rentang Umur: ${configData.ageRange[0]} - ${configData.ageRange[1]} Tahun`}
+                      icon={Users}
+                    >
+                      <div className="flex items-center gap-3 pt-1">
+                        <input
+                          type="range"
+                          min="15"
+                          max="65"
+                          value={configData.ageRange[0]}
+                          onChange={(e) =>
+                            configData.setAgeRange([
+                              parseInt(e.target.value),
+                              configData.ageRange[1],
+                            ])
+                          }
+                          className="w-full accent-[#0f766e] bg-stone-200"
+                        />
+                        <input
+                          type="range"
+                          min="15"
+                          max="65"
+                          value={configData.ageRange[1]}
+                          onChange={(e) =>
+                            configData.setAgeRange([
+                              configData.ageRange[0],
+                              parseInt(e.target.value),
+                            ])
+                          }
+                          className="w-full accent-[#0f766e] bg-stone-200"
                         />
                       </div>
                     </InputField>
                   </div>
-                )}
 
-                {currentStep === 1 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <InputField label="Tanggal Mulai" icon={Calendar}>
-                      <input
-                        type="date"
-                        value={configData.startDate || ''}
-                        onChange={(e) => configData.setStartDate(e.target.value)}
-                        className="w-full bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#0f766e] text-stone-800"
-                      />
-                    </InputField>
-                    <InputField label="Pengecualian / Skip Hari" icon={Calendar}>
-                      <div className="grid grid-cols-4 gap-1.5">
-                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
-                          const isSkipped = configData.skipDays.includes(day);
-                          return (
-                            <button
-                              key={day}
-                              onClick={() => configData.toggleSkipDay(day)}
-                              className={`py-2 rounded-xl text-xs font-semibold border transition-all ${
-                                isSkipped
-                                  ? 'bg-[#f6f3ee] border-[#e7e0d4] text-stone-400 line-through'
-                                  : 'bg-[#0f766e]/10 border-[#0f766e]/30 text-[#0f766e]'
-                              }`}
-                            >
-                              {day}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </InputField>
-                  </div>
-                )}
-
-                {currentStep === 2 && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <InputField label="Gender" icon={Users}>
-                        <div className="grid grid-cols-3 gap-2">
-                          {['Both', 'Male', 'Female'].map((g) => (
-                            <button
-                              key={g}
-                              onClick={() => configData.setGender(g)}
-                              className={`py-2 rounded-xl text-xs font-semibold border transition-all ${
-                                configData.gender === g
-                                  ? 'bg-[#0f766e] border-[#0f766e] text-white'
-                                  : 'bg-[#f6f3ee] border-[#e7e0d4] text-stone-700 hover:border-stone-400'
-                              }`}
-                            >
-                              {g}
-                            </button>
-                          ))}
-                        </div>
-                      </InputField>
-
-                      <InputField
-                        label={`Rentang Umur: ${configData.ageRange[0]} - ${configData.ageRange[1]} Tahun`}
-                        icon={Users}
-                      >
-                        <div className="flex items-center gap-3 pt-2">
-                          <input
-                            type="range"
-                            min="15"
-                            max="65"
-                            value={configData.ageRange[0]}
-                            onChange={(e) =>
-                              configData.setAgeRange([
-                                parseInt(e.target.value),
-                                configData.ageRange[1],
-                              ])
-                            }
-                            className="w-full accent-[#0f766e] bg-stone-200"
-                          />
-                          <input
-                            type="range"
-                            min="15"
-                            max="65"
-                            value={configData.ageRange[1]}
-                            onChange={(e) =>
-                              configData.setAgeRange([
-                                configData.ageRange[0],
-                                parseInt(e.target.value),
-                              ])
-                            }
-                            className="w-full accent-[#0f766e] bg-stone-200"
-                          />
-                        </div>
-                      </InputField>
-                    </div>
-
-                    <div className="pt-2">
-                      <button
-                        onClick={() => getAIRecommendation(2)}
-                        disabled={isRecommending}
-                        className="flex items-center gap-1.5 text-xs font-bold text-[#0f766e] hover:underline"
-                      >
-                        <Sparkles size={13} />{' '}
-                        {isRecommending ? 'Menganalisis...' : 'Minta Rekomendasi Target'}
-                      </button>
-                      <CalecoAIRecommendation
-                        recommendation={recommendations[2]}
-                        isLoading={isRecommending}
-                        onApply={(field, text) => handleApplyRecommendation(2, field, text)}
-                        onApplyAll={(data) => handleApplyAllRecommendations(2, data)}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {currentStep === 3 && (
-                  <div className="space-y-6">
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <label className="text-xs font-semibold text-stone-700">
-                          Rasio Alokasi Funnel (Jumlah Post)
-                        </label>
-                        <span className="text-xs text-[#0f766e] font-bold">
-                          Total: {configData.ratio.tofu + configData.ratio.mofu + configData.ratio.bofu} Post
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-3">
-                        {[
-                          { key: 'tofu', label: 'TOFU (Awareness)', color: 'text-sky-800' },
-                          { key: 'mofu', label: 'MOFU (Consideration)', color: 'text-amber-800' },
-                          { key: 'bofu', label: 'BOFU (Conversion)', color: 'text-[#0f766e]' },
-                        ].map(({ key, label, color }) => (
-                          <div key={key} className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-2xl">
-                            <span className={`text-xs font-bold block mb-1 ${color}`}>{label}</span>
-                            <input
-                              type="number"
-                              min="0"
-                              max="30"
-                              value={configData.ratio[key as keyof typeof configData.ratio]}
-                              onChange={(e) =>
-                                configData.setRatio({
-                                  ...configData.ratio,
-                                  [key]: parseInt(e.target.value) || 0,
-                                })
-                              }
-                              className="w-full bg-[#fffdf8] border border-[#e7e0d4] rounded-xl p-2 text-center text-sm font-bold text-stone-900"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <label className="text-xs font-semibold text-stone-700">
-                        Format Konten yang Didukung
-                      </label>
-                      <div className="grid grid-cols-3 gap-2">
-                        {['Single', 'Carousel', 'Reels'].map((fmt) => (
-                          <button
-                            key={fmt}
-                            onClick={() => configData.toggleFormat(fmt)}
-                            className={`py-2.5 rounded-xl text-xs font-semibold border transition-all ${
-                              configData.formats.includes(fmt)
-                                ? 'bg-[#0f766e] border-[#0f766e] text-white shadow-sm'
-                                : 'bg-[#f6f3ee] border-[#e7e0d4] text-stone-700 hover:border-stone-400'
-                            }`}
-                          >
-                            {fmt}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {currentStep === 4 && (
-                  <div className="space-y-4">
-                    <InputField label="Brand Voices & Karakter" icon={Mic2}>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                  {/* Brand Voices */}
+                  <div className="space-y-2">
+                    <InputField label="Karakter Suara (Brand Voice)" icon={Mic2}>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {[
                           'The Efficiency Expert',
                           'The Provocative Leader',
@@ -441,22 +423,24 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                           return (
                             <button
                               key={v}
+                              type="button"
                               onClick={() => configData.toggleVoice(v)}
-                              className={`p-3 text-left border rounded-xl transition-all ${
-                                isSel ? 'border-[#0f766e] bg-[#0f766e]/10 font-bold text-[#0f766e]' : 'border-[#e7e0d4] bg-[#f6f3ee] text-stone-700 hover:border-stone-400'
+                              className={`p-2.5 text-left border rounded-xl text-xs transition-all ${
+                                isSel
+                                  ? 'border-[#0f766e] bg-teal-50 font-bold text-[#0f766e]'
+                                  : 'border-[#e7e0d4] bg-[#f6f3ee] text-stone-700 hover:border-stone-400'
                               }`}
                             >
-                              <span className="text-xs block">{v}</span>
+                              {v}
                             </button>
                           );
                         })}
                       </div>
                     </InputField>
                   </div>
-                )}
 
-                {currentStep === 5 && (
-                  <div className="space-y-4">
+                  {/* Hook Mix & Reference Type */}
+                  <div className="space-y-3">
                     <InputField label="Psychological Hooks Mix (%)" icon={Filter}>
                       <div className="space-y-2">
                         {[0, 1, 2].map((i) => (
@@ -480,7 +464,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                         ))}
                       </div>
 
-                      <div className="flex gap-4 p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl max-w-sm mt-4 text-xs">
+                      <div className="flex gap-4 p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl max-w-sm mt-3 text-xs">
                         {['Logika AI', 'Humanis'].map((type) => (
                           <label key={type} className="flex items-center gap-2 cursor-pointer">
                             <div
@@ -499,12 +483,11 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                       </div>
                     </InputField>
                   </div>
-                )}
 
-                {currentStep === 6 && (
-                  <div className="space-y-4">
-                    <InputField label="Master Goal Formula & Tujuan Kampanye" icon={Sparkles}>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-4">
+                  {/* Goal Formula & Detail CTA */}
+                  <div className="space-y-3">
+                    <InputField label="Master Goal Formula" icon={Sparkles}>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
                         {[
                           { id: 'SALES', title: 'Penjualan', desc: 'Fokus konversi & penutupan transaksi sales.' },
                           { id: 'AWARENESS', title: 'Awareness & Soft Selling', desc: 'Informasikan audiens sembari sounding.' },
@@ -515,52 +498,30 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                           return (
                             <button
                               key={formula.id}
+                              type="button"
                               onClick={() => configData.setSelectedFormula(formula.title)}
-                              className={`p-3 text-left border rounded-xl transition-all leading-snug ${
-                                isSel ? 'border-[#0f766e] bg-[#0f766e]/10 font-bold' : 'border-[#e7e0d4] bg-[#f6f3ee] hover:border-stone-400'
+                              className={`p-2.5 text-left border rounded-xl transition-all ${
+                                isSel ? 'border-[#0f766e] bg-teal-50 font-bold' : 'border-[#e7e0d4] bg-[#f6f3ee] hover:border-stone-400'
                               }`}
                             >
                               <h4 className="text-xs font-bold text-[#1f2933]">{formula.title}</h4>
-                              <p className="text-[11px] text-stone-600 mt-0.5">{formula.desc}</p>
+                              <p className="text-[10px] text-stone-500">{formula.desc}</p>
                             </button>
                           );
                         })}
                       </div>
 
-                      {configData.editableContext?.offers && configData.editableContext.offers.length > 0 && (
-                        <div className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-2xl mb-2 space-y-1.5">
-                          <span className="block text-xs font-semibold text-stone-600">
-                            📋 App 1 Sync CTAs:
-                          </span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {configData.editableContext.offers.map((off: any, i: number) => {
-                              const active = configData.selectedCTAs?.includes(off.ctaText);
-                              return (
-                                <button
-                                  key={i}
-                                  onClick={() => configData.toggleCTA(off.ctaText)}
-                                  className={`px-2.5 py-1 rounded-lg text-xs border transition-all ${
-                                    active ? 'bg-[#0f766e] border-[#0f766e] text-white font-bold' : 'bg-[#fffdf8] border-[#e7e0d4] text-stone-700'
-                                  }`}
-                                >
-                                  {off.ctaText}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="space-y-1.5 mt-2">
-                        <label className="text-xs text-stone-600 font-semibold">Pilihan CTA Cepat</label>
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-stone-600 font-semibold">Pilihan Call-to-Action (CTA)</label>
                         <div className="flex flex-wrap gap-2">
-                          {['Link Bio', 'DM', 'WhatsApp'].map((cta) => {
+                          {['Link Bio', 'DM', 'WhatsApp', 'Komentar'].map((cta) => {
                             const isSel = configData.selectedCTAs?.includes(cta);
                             return (
                               <button
                                 key={cta}
+                                type="button"
                                 onClick={() => configData.toggleCTA(cta)}
-                                className={`px-3 py-1.5 rounded-xl text-xs border transition-all ${
+                                className={`px-3 py-1.5 rounded-lg text-xs border transition-all ${
                                   isSel ? 'bg-[#0f766e] border-[#0f766e] text-white font-bold' : 'bg-[#f6f3ee] border-[#e7e0d4] text-stone-700 hover:border-stone-400'
                                 }`}
                               >
@@ -572,109 +533,108 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                       </div>
                     </InputField>
                   </div>
-                )}
 
-                {currentStep === 7 && (
-                  <div className="space-y-4">
-                    <div className="p-5 bg-[#0f766e]/5 border border-[#0f766e]/20 rounded-2xl text-center space-y-2">
-                      <div className="w-10 h-10 bg-[#0f766e]/10 rounded-full flex items-center justify-center mx-auto text-[#0f766e]">
-                        <Sparkles size={18} />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-[#1f2933]">
-                          Strategi Siap Dijalankan
-                        </h3>
-                        <p className="text-xs text-stone-600 mt-1">
-                          Sistem kalender akan menghasilkan{' '}
-                          <strong className="text-[#0f766e] font-bold">
-                            {configData.ratio.tofu + configData.ratio.mofu + configData.ratio.bofu} postingan strategis
-                          </strong>{' '}
-                          untuk Anda.
-                        </p>
-                      </div>
+                  {/* Durasi Carousel & Reels */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-stone-700">Jumlah Slide Carousel</label>
+                      <input
+                        type="number"
+                        min="3"
+                        max="10"
+                        value={configData.carouselSlides}
+                        onChange={(e) => configData.setCarouselSlides(parseInt(e.target.value) || 5)}
+                        className="w-full bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-3 py-2 text-xs text-stone-900 focus:outline-none focus:border-[#0f766e]"
+                      />
                     </div>
-
-                    {configData.ratio.tofu + configData.ratio.mofu + configData.ratio.bofu > accessStatus.maxContent && (
-                      <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2">
-                        <AlertCircle size={14} /> Melebihi kuota paket. Kurangi alokasi post pada langkah alokasi.
-                      </div>
-                    )}
-
-                    <div className="flex justify-between items-center bg-[#f6f3ee] p-3 rounded-xl border border-[#e7e0d4] text-xs">
-                      <span className="text-stone-700 font-medium">
-                        Mode Generasi Cepat (Fast Response)
-                      </span>
-                      <button
-                        onClick={() => configData.setIsFastMode(!configData.isFastMode)}
-                        className={`w-10 h-6 rounded-full transition-all relative border ${
-                          configData.isFastMode ? 'bg-[#0f766e] border-[#0f766e]' : 'bg-stone-300 border-stone-400'
-                        }`}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-stone-700">Target Durasi Reels</label>
+                      <select
+                        value={configData.reelsDuration}
+                        onChange={(e) => configData.setReelsDuration(e.target.value)}
+                        className="w-full bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-3 py-2 text-xs text-stone-900 focus:outline-none focus:border-[#0f766e]"
                       >
-                        <motion.div
-                          animate={{ x: configData.isFastMode ? 18 : 2 }}
-                          className="w-4 h-4 rounded-full bg-white absolute top-0.5 shadow-sm"
-                        />
-                      </button>
+                        <option value="15s">15 Detik (Ringkas / Hook Cepat)</option>
+                        <option value="30s">30 Detik (Standar Edukasi Funnel)</option>
+                        <option value="60s">60 Detik (Pembahasan Lengkap)</option>
+                      </select>
                     </div>
                   </div>
-                )}
+                </div>
+              )}
+            </div>
+
+            {/* Error banner if exceeding quota */}
+            {totalPosts > (accessStatus?.maxContent || 30) && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2">
+                <AlertCircle size={14} className="shrink-0" />
+                <span>Melebihi batas maksimal ({accessStatus?.maxContent || 30} postingan). Silakan kurangi alokasi funnel di atas.</span>
               </div>
+            )}
+          </div>
 
-              {/* Bottom Nav bar controls */}
-              <div className="p-5 border-t border-[#e7e0d4] bg-[#fffdf8] flex justify-between shrink-0">
-                <button
-                  onClick={() => currentStep > 0 && setCurrentStep(currentStep - 1)}
-                  disabled={currentStep === 0}
-                  className={`flex items-center gap-1.5 py-2 px-4 rounded-xl text-xs font-semibold transition-all ${
-                    currentStep === 0
-                      ? 'text-stone-300 cursor-not-allowed opacity-40'
-                      : 'text-stone-700 hover:text-stone-900 border border-[#e7e0d4] hover:bg-stone-100'
-                  }`}
-                >
-                  <ChevronLeft size={14} /> Kembali
-                </button>
-
-                {currentStep < 7 ? (
-                  <button
-                    onClick={() => setCurrentStep(currentStep + 1)}
-                    className="flex items-center gap-1.5 py-2 px-5 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white text-xs font-semibold rounded-xl transition-all shadow-sm"
-                  >
-                    Lanjutkan <ChevronRight size={14} />
-                  </button>
-                ) : (
-                  <button
-                    id="caleco-generate-btn"
-                    disabled={
-                      isLoading ||
-                      configData.ratio.tofu + configData.ratio.mofu + configData.ratio.bofu > accessStatus.maxContent ||
-                      configData.ratio.tofu + configData.ratio.mofu + configData.ratio.bofu === 0 ||
-                      (configData.formats.includes('Reels') && !configData.reelsDuration) ||
-                      (configData.formats.includes('Carousel') && !configData.carouselSlides)
-                    }
-                    onClick={() => {
-                      if (isLoading) return;
-                      configData.generateContent();
-                      onClose();
-                    }}
-                    className={`px-6 py-2.5 font-bold rounded-xl text-xs flex items-center gap-2 transition-all shadow-sm ${
-                      isLoading ||
-                      configData.ratio.tofu + configData.ratio.mofu + configData.ratio.bofu > accessStatus.maxContent ||
-                      configData.ratio.tofu + configData.ratio.mofu + configData.ratio.bofu === 0 ||
-                      (configData.formats.includes('Reels') && !configData.reelsDuration) ||
-                      (configData.formats.includes('Carousel') && !configData.carouselSlides)
-                        ? 'bg-stone-200 text-stone-400 cursor-not-allowed opacity-60'
-                        : 'bg-[#0f766e] hover:bg-[#0f766e]/90 text-white'
-                    }`}
-                  >
-                    {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} className="fill-white" />}
-                    Jalankan Strategi Kalender
-                  </button>
-                )}
+          {/* Footer with Summary & Action Button */}
+          <div className="p-4 sm:p-6 border-t border-[#e7e0d4] bg-[#fffdf8] shrink-0 space-y-3">
+            {/* Short summary text */}
+            <div className="flex items-start sm:items-center justify-between gap-2 text-xs text-stone-600">
+              <div className="flex items-center gap-1.5">
+                <Info size={14} className="text-[#0f766e] shrink-0 mt-0.5 sm:mt-0" />
+                <span>
+                  Anda akan membuat kalender konten <strong>[{formatList}]</strong> untuk <strong>[{projectName}]</strong> mulai <strong>[{formattedStartDate}]</strong>.
+                </span>
               </div>
             </div>
-          </motion.div>
+
+            {/* Loading Indicator inside modal */}
+            {isLoading && (
+              <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl flex items-center gap-3 text-xs text-teal-800 animate-pulse">
+                <Loader2 size={16} className="animate-spin text-[#0f766e] shrink-0" />
+                <div className="space-y-0.5">
+                  <p className="font-bold">Sedang merancang strategi konten via Gemini AI...</p>
+                  <p className="text-[11px] text-teal-600">Menyusun headline, naskah hook, alur funnel, dan konsep visual. Mohon tunggu beberapa detik.</p>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-1">
+              {!isLoading && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2.5 border border-[#e7e0d4] hover:bg-stone-100 rounded-xl text-xs font-semibold text-stone-700 transition-colors"
+                >
+                  Batal
+                </button>
+              )}
+
+              <button
+                type="button"
+                disabled={isGenerateDisabled}
+                onClick={handleStartGeneration}
+                className={`w-full sm:w-auto px-6 py-3 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-sm ${
+                  isGenerateDisabled
+                    ? 'bg-stone-200 text-stone-400 cursor-not-allowed'
+                    : 'bg-[#0f766e] hover:bg-[#115e59] text-white shadow-teal-900/10'
+                }`}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" />
+                    <span>Sedang Memproses Kalender...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap size={15} className="fill-white" />
+                    <span>Buat Kalender Konten ({totalPosts} Post)</span>
+                    <ArrowRight size={14} />
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </motion.div>
-      )}
+      </motion.div>
     </AnimatePresence>
   );
 };

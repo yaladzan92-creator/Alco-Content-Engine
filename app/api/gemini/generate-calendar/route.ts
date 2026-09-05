@@ -97,6 +97,16 @@ export async function POST(req: NextRequest) {
     const ratioTotal = (ratio.tofu || 0) + (ratio.mofu || 0) + (ratio.bofu || 0);
     const totalPosts = ratioTotal > 0 ? ratioTotal : horizonToCount[normalizedHorizon];
 
+    const visualCtx = context.brand_visual_context;
+    const visualContextBlock = visualCtx ? `
+### BRAND VISUAL STYLE & GUIDELINES (GLOBAL VISUAL RULES):
+- Brand Visual Style: ${visualCtx.visual_style || '-'}
+- Color Palette: ${Array.isArray(visualCtx.color_palette) ? visualCtx.color_palette.join(', ') : (visualCtx.color_palette || '-')}
+- Typography Style: ${visualCtx.typography_style || '-'}
+- Image Style Rules: ${Array.isArray(visualCtx.image_style_rules) ? visualCtx.image_style_rules.join('; ') : (visualCtx.image_style_rules || '-')}
+- Design Mood: ${visualCtx.design_mood || '-'}
+` : '';
+
     const hookMixText = Array.isArray(hookMix) && hookMix.length > 0
       ? hookMix.map((h: any) => `${h.type || h} (${h.percentage || 0}%)`).join(', ')
       : 'Call-Out (40%), Curiosity Gap (35%), Social Proof (25%)';
@@ -117,7 +127,7 @@ Your task is to synthesize a high-converting, strategy-first Content Calendar Ma
 - Core Message: ${context.strategy_context.core_message}
 - Main Offer & Benefits: ${context.strategy_context.main_offer} (${context.strategy_context.offer_benefits.join('; ')})
 - Content Pillars: ${context.strategy_context.content_pillars.join('; ')}
-- Copy Direction: ${context.strategy_context.copy_direction.join('; ')}
+- Copy Direction: ${context.strategy_context.copy_direction.join('; ')}${visualContextBlock}
 
 ### CAMPAIGN EXECUTION PARAMETERS:
 - Core Topic / Focus: ${coreTopic}
@@ -282,17 +292,20 @@ Return ONLY the JSON matching the specified schema.`;
     const errMsg = String(error?.message || error || "");
     const errStatus = error?.status || error?.statusCode || 500;
 
-    const isRateLimit = errStatus === 429 || 
-                        /429/i.test(errMsg) || 
-                        /rate.*exceed/i.test(errMsg) || 
-                        /quota/i.test(errMsg) || 
-                        /resource.*exhaust/i.test(errMsg) || 
-                        /limit.*exceed/i.test(errMsg);
+    const isRateLimit = errStatus === 429 || errStatus === 503 ||
+                         /429/i.test(errMsg) || /503/i.test(errMsg) ||
+                         /rate.*exceed/i.test(errMsg) ||
+                         /quota/i.test(errMsg) ||
+                         /resource.*exhaust/i.test(errMsg) ||
+                         /high.*demand/i.test(errMsg) ||
+                         /overloaded/i.test(errMsg) ||
+                         /unavailable/i.test(errMsg) ||
+                         /limit.*exceed/i.test(errMsg);
 
     if (isRateLimit) {
       return NextResponse.json(
         { 
-          error: "Permintaan AI sedang dibatasi (Rate Limit / Quota Exceeded). Coba lagi beberapa saat.",
+          error: "Permintaan AI sedang dibatasi (Rate Limit / High Demand). Coba lagi beberapa saat.",
           isRateLimit: true,
           details: errMsg
         },

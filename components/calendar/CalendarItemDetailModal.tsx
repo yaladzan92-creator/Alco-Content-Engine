@@ -17,26 +17,16 @@ import {
   Loader2,
   Target,
   Anchor,
+  Pin,
 } from 'lucide-react';
 import { ContentItem } from './types';
 import { saveProjectData, getActiveProjectId } from '@/lib/storage';
 import { PromptNextStepLinks } from '@/components/production-studio/PromptNextStepLinks';
+import ProductionProgressWidget from './ProductionProgressWidget';
+import { ProductionProgress } from '@/lib/content-contract';
 
 function getStudioCtaLabel(item?: ContentItem | null): string {
-  if (!item) return 'Buka Production Studio';
-  const asset = (item.primaryAssetType || '').toLowerCase();
-  const format = (item.format || '').toLowerCase();
-
-  if (asset === 'carousel' || format.includes('carousel') || format.includes('karosel') || format.includes('slide')) {
-    return 'Buat Carousel di Studio';
-  }
-  if (asset === 'video' || format.includes('video') || format.includes('reels') || format.includes('tiktok') || format.includes('shorts') || format.includes('ugc')) {
-    return 'Buat Video di Studio';
-  }
-  if (asset === 'image' || format.includes('image') || format.includes('single') || format.includes('feed') || format.includes('poster') || format.includes('foto')) {
-    return 'Buat Image di Studio';
-  }
-  return 'Buka Production Studio';
+  return 'Lanjutkan Konten Ini';
 }
 
 const safeCopyToClipboard = async (text: string) => {
@@ -70,6 +60,7 @@ interface CalendarItemDetailModalProps {
 export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = ({
   editingItem,
   onClose,
+  onUpdateItem,
   onRegenerateItem,
   productionAsset,
   isGeneratingAsset,
@@ -85,6 +76,26 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
   const [showDraftNextStepLinks, setShowDraftNextStepLinks] = useState(false);
 
   if (!editingItem) return null;
+
+  const handleUpdateProgress = (newProgress: Partial<ProductionProgress>) => {
+    const updated: ContentItem = {
+      ...editingItem,
+      productionProgress: {
+        ...(editingItem.productionProgress || {
+          briefReady: true,
+          promptCopied: false,
+          assetCreated: false,
+          captionCopied: false,
+          readyToPost: false,
+          alreadyPosted: false,
+        }),
+        ...newProgress,
+      },
+    };
+    if (onUpdateItem) {
+      onUpdateItem(updated);
+    }
+  };
 
   const handleSendToProductionStudio = () => {
     setIsOpeningStudio(true);
@@ -198,17 +209,17 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
               <div className="space-y-1">
                 <div className="flex items-center gap-1.5 text-[#0f766e] font-bold text-xs">
                   <Sparkles size={14} />
-                  Buka di Production Studio
+                  <span>Lanjutkan Konten Ini</span>
                 </div>
                 <p className="text-xs text-stone-600">
-                  Generate naskah video reel, layout carousel slide demi slide, &amp; visual generator secara interaktif.
+                  Buka Production Studio untuk membuat gambar, carousel, video, dan caption siap posting.
                 </p>
               </div>
               <button
                 onClick={handleSendToProductionStudio}
                 disabled={isOpeningStudio}
                 aria-busy={isOpeningStudio}
-                className="w-full sm:w-auto px-4 py-2 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-sm active:scale-[0.98] disabled:opacity-70 disabled:cursor-wait cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-sm active:scale-[0.98] disabled:opacity-70 disabled:cursor-wait cursor-pointer"
               >
                 {isOpeningStudio ? (
                   <>
@@ -217,12 +228,18 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
                   </>
                 ) : (
                   <>
-                    <span>{getStudioCtaLabel(editingItem)}</span>
+                    <span>Lanjutkan Konten Ini</span>
                     <ExternalLink size={13} />
                   </>
                 )}
               </button>
             </div>
+
+            {/* Production Progress Checklist */}
+            <ProductionProgressWidget
+              item={editingItem}
+              onUpdateProgress={handleUpdateProgress}
+            />
 
             {/* Objective & Hook */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -255,8 +272,9 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
 
             {/* Caption */}
             <div className="space-y-2">
-              <span className="text-xs font-semibold text-stone-700">
-                📝 Caption & Hashtags
+              <span className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
+                <FileText size={13} className="text-[#0f766e]" />
+                <span>Caption & Hashtags</span>
               </span>
               <div className="bg-[#f6f3ee]/60 border border-[#e7e0d4] p-4 rounded-2xl text-xs text-stone-700 whitespace-pre-wrap leading-relaxed">
                 {editingItem.caption}
@@ -275,8 +293,9 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
                 </div>
               </div>
               <div className="space-y-2">
-                <span className="text-xs font-semibold text-stone-700">
-                  📌 Catatan Eksekusi & CTA
+                <span className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
+                  <Pin size={13} className="text-[#b7791f]" />
+                  <span>Catatan Eksekusi & CTA</span>
                 </span>
                 <div className="bg-[#f6f3ee]/60 border border-[#e7e0d4] p-3.5 rounded-2xl text-xs text-stone-700">
                   {editingItem.keterangan || '-'}
@@ -325,10 +344,10 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
               <div className="flex flex-wrap gap-2">
                 {[
                   { type: 'brief', label: 'Brief Lengkap', icon: FileText },
-                  { type: 'caption', label: 'Copy Caption', icon: FileText },
-                  { type: 'image', label: 'Prompt Gambar / Visual', icon: ImageIcon },
-                  { type: 'carousel', label: 'Blueprint Carousel', icon: Layers },
-                  { type: 'video', label: 'Script Video Singkat', icon: Video },
+                  { type: 'caption', label: 'Caption', icon: FileText },
+                  { type: 'image', label: 'Gambar', icon: ImageIcon },
+                  { type: 'carousel', label: 'Carousel', icon: Layers },
+                  { type: 'video', label: 'Video', icon: Video },
                 ].map(({ type, label, icon: Icon }) => (
                   <button
                     key={type}
