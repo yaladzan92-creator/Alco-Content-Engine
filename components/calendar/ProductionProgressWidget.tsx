@@ -1,14 +1,15 @@
 'use client';
 
-import React from 'react';
-import { CheckCircle2, Circle, Clock, Check, Sparkles, Send, FileText, Image as ImageIcon, Copy, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckCircle2, Circle, Clock, Check, Sparkles, Send, FileText, Image as ImageIcon, Copy, ArrowRight, ChevronDown } from 'lucide-react';
 import { ContentItem, ProductionProgress, getProductionStatus, getProductionStatusBadge } from '@/lib/content-contract';
 
 interface ProductionProgressWidgetProps {
   item: ContentItem;
   onUpdateProgress: (newProgress: Partial<ProductionProgress>) => void;
   className?: string;
-  variant?: 'card' | 'panel' | 'compact';
+  variant?: 'card' | 'panel' | 'compact' | 'expandable';
+  defaultExpanded?: boolean;
 }
 
 export default function ProductionProgressWidget({
@@ -16,7 +17,9 @@ export default function ProductionProgressWidget({
   onUpdateProgress,
   className = '',
   variant = 'card',
+  defaultExpanded = false,
 }: ProductionProgressWidgetProps) {
+  const [isExpanded, setIsExpanded] = useState<boolean>(defaultExpanded);
   const progress: ProductionProgress = item.productionProgress || {
     briefReady: true,
     promptCopied: false,
@@ -118,6 +121,94 @@ export default function ProductionProgressWidget({
         <span className="text-xs text-stone-500 font-medium">
           {completedCount}/6 tahap
         </span>
+      </div>
+    );
+  }
+
+  if (variant === 'expandable') {
+    return (
+      <div className={`bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl overflow-hidden shadow-xs transition-all ${className}`}>
+        {/* Collapsed Header / Toggle Trigger */}
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full p-3.5 sm:px-4 sm:py-3 flex items-center justify-between gap-3 text-left hover:bg-[#f6f3ee]/60 transition cursor-pointer select-none"
+        >
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <span className="text-xs font-bold text-[#1f2933]">
+              Produksi
+            </span>
+            <span className="text-stone-300">&bull;</span>
+            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold border ${badge.bgClass}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${badge.dotClass}`} />
+              {badge.label}
+            </span>
+            <span className="text-stone-300">&bull;</span>
+            <span className="text-xs font-bold text-[#0f766e]">
+              {completedCount}/6 selesai
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div className="w-14 bg-stone-200 h-1.5 rounded-full overflow-hidden hidden sm:block">
+              <div
+                className="bg-[#0f766e] h-full transition-all duration-300 rounded-full"
+                style={{ width: `${(completedCount / 6) * 100}%` }}
+              />
+            </div>
+            <ChevronDown
+              size={15}
+              className={`text-stone-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+            />
+          </div>
+        </button>
+
+        {/* Expanded Checklist */}
+        {isExpanded && (
+          <div className="p-3.5 sm:p-4 border-t border-[#e7e0d4]/70 bg-[#f6f3ee]/30 space-y-2.5">
+            <div className="flex items-center justify-between text-[11px] text-stone-500 pb-1">
+              <span className="font-semibold text-stone-700">Tahap Produksi Konten (6 Langkah)</span>
+              <span>{completedCount}/6 selesai</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {steps.map((step) => (
+                <button
+                  key={step.key}
+                  type="button"
+                  onClick={() => toggleField(step.key)}
+                  className={`text-left p-2.5 rounded-xl border transition-all flex items-start gap-2.5 cursor-pointer ${
+                    step.checked
+                      ? 'bg-teal-50/70 border-[#0f766e]/30 hover:border-[#0f766e]/50'
+                      : 'bg-white border-[#e7e0d4] hover:border-stone-400 hover:bg-stone-50/60'
+                  }`}
+                >
+                  <div className="mt-0.5 shrink-0">
+                    {step.checked ? (
+                      <CheckCircle2 size={16} className="text-[#0f766e] fill-teal-100" />
+                    ) : (
+                      <Circle size={16} className="text-stone-400" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-xs font-bold ${step.checked ? 'text-[#0f766e]' : 'text-[#1f2933]'}`}>
+                        {step.label}
+                      </span>
+                      {step.isManual && (
+                        <span className="text-[9px] px-1 py-0.2 bg-stone-100 text-stone-500 rounded border border-stone-200 font-medium">
+                          Manual
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-stone-500 mt-0.5 leading-tight line-clamp-2">
+                      {step.description}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

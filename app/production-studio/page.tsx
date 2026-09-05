@@ -5065,10 +5065,11 @@ ${formatDirection}${revisionDirective}`;
         
         {/* LEFT COLUMN: ACTIVE CALENDAR ITEM & BRAND SUMMARY (lg:col-span-4) */}
         <div className="lg:col-span-4 space-y-4">
-          {/* Production Progress Checklist */}
+          {/* Production Progress Checklist (Compact & Expandable) */}
           <ProductionProgressWidget
             item={sourceItem || activeItem}
             onUpdateProgress={handleUpdateProgress}
+            variant="expandable"
           />
           
           {/* Quick Context Reference Card - Compact on mobile, detailed on desktop */}

@@ -208,6 +208,10 @@ export default function VideoPanel(props: any) {
             <div className="flex items-center gap-1.5 flex-wrap">
               {googleFlowScenes.map((scene: any) => {
                 const isActive = activeScene.sceneNumber === scene.sceneNumber;
+                const isSceneDone = Boolean(
+                  copiedStates[`gflow_prompt_${scene.sceneNumber}_${activeVideo.id}`] ||
+                  copiedStates[`gflow_img_${scene.sceneNumber}_${activeVideo.id}`]
+                );
                 return (
                   <button
                     key={scene.sceneNumber}
@@ -219,11 +223,13 @@ export default function VideoPanel(props: any) {
                     }`}
                   >
                     <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-bold ${
-                      isActive ? 'bg-white/25 text-white' : 'bg-[#0f766e]/15 text-[#0f766e]'
+                      isActive ? 'bg-white/25 text-white' : isSceneDone ? 'bg-emerald-100 text-emerald-700' : 'bg-[#0f766e]/15 text-[#0f766e]'
                     }`}>
-                      {scene.sceneNumber}
+                      {isSceneDone ? '✓' : scene.sceneNumber}
                     </span>
-                    <span>Scene {scene.sceneNumber}: {scene.title.split(':')[1] || scene.title}</span>
+                    <span>
+                      Scene {scene.sceneNumber}{isSceneDone ? ' ✓' : ''}: {scene.title.split(':')[1] || scene.title}
+                    </span>
                     <span className={`text-[10px] opacity-75 font-mono ${isActive ? 'text-white' : 'text-stone-500'}`}>
                       ({scene.duration})
                     </span>
@@ -264,10 +270,29 @@ export default function VideoPanel(props: any) {
               </span>
             </div>
 
-            {/* SCRIPT & DIALOGUE BLOCK */}
-            <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl p-4 space-y-2">
+            {/* SHORT STEP-BY-STEP SCENE INSTRUCTIONS */}
+            <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-4 py-3 text-xs space-y-1">
+              <div className="flex items-center gap-2 font-bold text-stone-900">
+                <span className="w-5 h-5 rounded-full bg-[#0f766e] text-white flex items-center justify-center text-[10px] font-bold">
+                  {activeScene.sceneNumber}
+                </span>
+                <span>Kerjakan Scene {activeScene.sceneNumber}</span>
+              </div>
+              <ol className="list-decimal list-inside text-stone-600 text-[11px] leading-relaxed pl-1 space-y-0.5">
+                <li>Buat Start Frame menggunakan Image Prompt.</li>
+                <li>Gunakan Start Frame + Video Prompt di Google Flow.</li>
+                <li>
+                  {activeScene.sceneNumber === 1 && 'Setelah selesai, lanjut ke Scene 2.'}
+                  {activeScene.sceneNumber === 2 && 'Setelah selesai, lanjut ke Scene 3.'}
+                  {activeScene.sceneNumber >= 3 && 'Setelah Scene 3 selesai, gabungkan ketiga scene menjadi video final.'}
+                </li>
+              </ol>
+            </div>
+
+            {/* SCRIPT & DIALOGUE BLOCK (Secondary Reference) */}
+            <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl p-3.5 space-y-2">
               <div className="flex items-center justify-between flex-wrap gap-2 text-[11px]">
-                <span className="font-bold text-stone-700 flex items-center gap-1.5">
+                <span className="font-semibold text-stone-600 flex items-center gap-1.5">
                   <MessageSquare size={13} className="text-[#0f766e]" />
                   Naskah Dialog Audio (Bahasa Indonesia):
                 </span>
@@ -285,7 +310,7 @@ export default function VideoPanel(props: any) {
                   </button>
                 </div>
               </div>
-              <p className="text-xs text-stone-900 font-medium leading-relaxed italic bg-[#fffdf8] p-3 rounded-lg border border-[#e7e0d4]">
+              <p className="text-xs text-stone-900 font-medium leading-relaxed italic bg-[#fffdf8] p-2.5 rounded-lg border border-[#e7e0d4]">
                 &ldquo;{activeScene.dialogue}&rdquo;
               </p>
             </div>
@@ -395,6 +420,61 @@ export default function VideoPanel(props: any) {
               }}
               className="mt-1"
             />
+
+            {/* NEXT SCENE STEP ACTION */}
+            {activeScene.sceneNumber < googleFlowScenes.length ? (
+              <div className="pt-3 border-t border-[#e7e0d4] flex items-center justify-between flex-wrap gap-2">
+                <div className="text-xs text-stone-500">
+                  {isImgCopied || isPromptCopied ? (
+                    <span className="text-emerald-700 font-medium flex items-center gap-1">
+                      <Check size={13} className="text-emerald-600" /> Prompt Scene {activeScene.sceneNumber} sudah disalin.
+                    </span>
+                  ) : (
+                    <span>Salin prompt di atas sebelum melanjutkan.</span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveSceneNumber(activeScene.sceneNumber + 1)}
+                  className="px-4 py-2 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer ml-auto"
+                >
+                  <span>Lanjut ke Scene {activeScene.sceneNumber + 1}</span>
+                  <ArrowRight size={13} />
+                </button>
+              </div>
+            ) : (
+              <div className="pt-3 border-t border-[#e7e0d4]">
+                <div className="flex items-center justify-between flex-wrap gap-3 bg-emerald-50/70 p-3.5 rounded-xl border border-emerald-200">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shrink-0">
+                      ✓
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-emerald-900">Semua Scene Selesai</div>
+                      <div className="text-[11px] text-emerald-700">Setelah Scene 3 selesai, gabungkan ketiga scene menjadi video final.</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveSceneNumber(1)}
+                      className="px-3 py-1.5 bg-white hover:bg-stone-50 text-stone-700 font-semibold text-xs rounded-lg border border-stone-200 transition cursor-pointer"
+                    >
+                      Ulangi dari Scene 1
+                    </button>
+                    <a
+                      href="https://labs.google/fx/tools/flow"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3.5 py-1.5 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white font-bold text-xs rounded-lg transition flex items-center gap-1 shadow-xs cursor-pointer"
+                    >
+                      <ExternalLink size={12} />
+                      <span>Buka Google Flow</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* CAPTION SECTION (Siap Posting) */}
