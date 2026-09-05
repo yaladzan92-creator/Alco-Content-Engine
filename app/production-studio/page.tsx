@@ -26,7 +26,21 @@ import {
   countWords,
   normalizeGoogleFlowDialogue
 } from '@/lib/funnel-rules';
-import { getActiveProjectId, setActiveProjectId, loadProjectData, saveProjectData, removeProjectData, getProjectCharacterDNA, saveProjectCharacterDNA, updateItemInProject } from '@/lib/storage';
+import { 
+  getActiveProjectId, 
+  setActiveProjectId, 
+  loadProjectData, 
+  saveProjectData, 
+  removeProjectData, 
+  getProjectCharacterDNA, 
+  saveProjectCharacterDNA, 
+  updateItemInProject,
+  getProjectSavedCharacters,
+  saveProjectSavedCharacters,
+  getProjectActiveCharacterId,
+  saveProjectActiveCharacterId
+} from '@/lib/storage';
+import { injectCharacterToPrompt } from '@/lib/character-prompt';
 import CharacterDNASection from '@/components/CharacterDNA';
 import ProductionProgressWidget from '@/components/calendar/ProductionProgressWidget';
 import { GeminiApiKeyControl } from '@/components/GeminiApiKeyControl';
@@ -433,7 +447,7 @@ const getGoogleFlowVideoPack = (
       duration: '8 detik',
       shotType: 'close-up',
       dialogue: scene1Dialogue,
-      imagePrompt: scene1Image,
+      imagePrompt: injectCharacterToPrompt(scene1Image, characterDNA, 'video'),
       googleFlowPrompt: buildGoogleFlowPromptString('close-up', creator, setting, scene1Dialogue)
     },
     {
@@ -443,7 +457,7 @@ const getGoogleFlowVideoPack = (
       duration: '8 detik',
       shotType: 'medium close-up',
       dialogue: scene2Dialogue,
-      imagePrompt: scene2Image,
+      imagePrompt: injectCharacterToPrompt(scene2Image, characterDNA, 'video'),
       googleFlowPrompt: buildGoogleFlowPromptString('medium close-up', creator, setting, scene2Dialogue)
     },
     {
@@ -453,7 +467,7 @@ const getGoogleFlowVideoPack = (
       duration: '8 detik',
       shotType: 'medium',
       dialogue: scene3Dialogue,
-      imagePrompt: scene3Image,
+      imagePrompt: injectCharacterToPrompt(scene3Image, characterDNA, 'video'),
       googleFlowPrompt: buildGoogleFlowPromptString('medium', creator, setting, scene3Dialogue)
     }
   ];
@@ -3449,6 +3463,8 @@ export default function ProductionStudioPage() {
   const [sourceItem, setSourceItem] = useState<ContentItem | null>(null);
   const [sharedContextSnapshot, setSharedContextSnapshot] = useState<SharedContentContext | null>(null);
   const [characterDNA, setCharacterDNA] = useState<CharacterDNA | null>(null);
+  const [savedCharacters, setSavedCharacters] = useState<CharacterDNA[]>([]);
+  const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectIdState] = useState<string | null>(null);
   const [activeProjectIdState, setActiveProjectIdState] = useState<string | null>(null);
   const [effectiveProjectId, setEffectiveProjectId] = useState<string>('default');
@@ -3817,8 +3833,31 @@ export default function ProductionStudioPage() {
       const projId = resolvedSelectedProjId || currentActiveProjId || 'default';
       setEffectiveProjectId(projId);
 
-      const storedDNA = getProjectCharacterDNA(projId);
-      if (storedDNA) setCharacterDNA(storedDNA);
+      const charList = getProjectSavedCharacters(projId) as CharacterDNA[];
+      setSavedCharacters(charList);
+      const activeCharId = getProjectActiveCharacterId(projId);
+      setSelectedCharacterId(activeCharId);
+
+      if (activeCharId && charList.length > 0) {
+        const found = charList.find(c => c.character_id === activeCharId);
+        if (found) {
+          setCharacterDNA(found);
+        } else {
+          const storedDNA = getProjectCharacterDNA(projId);
+          if (storedDNA) setCharacterDNA(storedDNA);
+        }
+      } else {
+        const storedDNA = getProjectCharacterDNA(projId);
+        if (storedDNA) {
+          setCharacterDNA(storedDNA);
+          if (storedDNA.character_id) {
+            setSelectedCharacterId(storedDNA.character_id);
+          }
+        } else if (charList.length > 0) {
+          setCharacterDNA(charList[0]);
+          setSelectedCharacterId(charList[0].character_id);
+        }
+      }
 
       if (parsedItem) {
         const itemKey = getItemKey(parsedItem);
@@ -3934,6 +3973,25 @@ export default function ProductionStudioPage() {
 
   const handleDismissNextStep = (key: string) => {
     setNextStepVisibleKeys(prev => ({ ...prev, [key]: false }));
+  };
+
+  const handleSelectCharacter = (charId: string | null) => {
+    setSelectedCharacterId(charId);
+    saveProjectActiveCharacterId(effectiveProjectId, charId);
+    if (!charId) {
+      setCharacterDNA(null);
+      showToast('Karakter dimatikan (No Character)');
+    } else {
+      const found = savedCharacters.find(c => c.character_id === charId);
+      if (found) {
+        setCharacterDNA(found);
+        showToast(`Karakter "${found.identity?.display_name || 'DNA'}" aktif!`);
+      }
+    }
+  };
+
+  const handleCreateCharacterClick = () => {
+    setActiveTab('dna');
   };
 
   const handleUpdateProgress = (newProgress: Partial<ProductionProgress>) => {
@@ -4769,7 +4827,8 @@ ${formatDirection}${revisionDirective}`;
         ugcOutput, 
          sourceItem,
       handleDownloadImage, imageGenerateError, handleRenderVideo, handleCheckRenderStatus,
-      json2VideoPayload, characterDNA, getGoogleFlowVideoPack, setActiveTab
+      json2VideoPayload, characterDNA, getGoogleFlowVideoPack, setActiveTab,
+      savedCharacters, selectedCharacterId, handleSelectCharacter, handleCreateCharacterClick
     };
 
     if (activeTab === 'image') return <ImagePanel {...commonProps} />;
@@ -5298,9 +5357,17 @@ ${formatDirection}${revisionDirective}`;
               <div className="space-y-4 flex-1">
                 <CharacterDNASection 
                   projectId={effectiveProjectId}
+                  activeCharacterId={selectedCharacterId}
+                  onSelectCharacter={handleSelectCharacter}
                   onDNAUpdate={(dna) => {
                     setCharacterDNA(dna);
-                    showToast('DNA Karakter berhasil diperbarui!');
+                    const refreshed = getProjectSavedCharacters(effectiveProjectId);
+                    setSavedCharacters(refreshed);
+                    if (dna?.character_id) {
+                      setSelectedCharacterId(dna.character_id);
+                      saveProjectActiveCharacterId(effectiveProjectId, dna.character_id);
+                    }
+                    showToast('DNA Karakter berhasil disimpan & diperbarui!');
                   }} 
                 />
               </div>

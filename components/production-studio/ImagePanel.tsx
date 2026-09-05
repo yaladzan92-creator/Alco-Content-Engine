@@ -3,9 +3,11 @@ import React from 'react';
 import { 
   Sparkles, Loader2, Copy, Check, FileText, Image as ImageIcon, 
   Sliders, Target, CheckCircle2, Download, RefreshCw, ChevronDown, 
-  AlertCircle 
+  AlertCircle, UserCheck 
 } from 'lucide-react';
 import { PromptNextStepLinks } from './PromptNextStepLinks';
+import CharacterSelector from './CharacterSelector';
+import { injectCharacterToPrompt } from '@/lib/character-prompt';
 
 export default function ImagePanel(props: any) {
   const {
@@ -26,6 +28,11 @@ export default function ImagePanel(props: any) {
     sourceItem,
     handleDownloadImage,
     imageGenerateError,
+    savedCharacters,
+    selectedCharacterId,
+    handleSelectCharacter,
+    handleCreateCharacterClick,
+    characterDNA,
   } = props;
 
   if (!imageAnglesPackage || imageAnglesPackage.angles.length === 0) {
@@ -57,10 +64,11 @@ export default function ImagePanel(props: any) {
   const imageKey = `${sourceItem?.no || 1}_${activeAngle.id}`;
   const generatedImg = generatedImages[imageKey];
   const isGenerating = imageGeneratingKey === imageKey;
+  const effectivePrompt = injectCharacterToPrompt(activeAngle.finalPrompt, characterDNA, 'image');
 
   return (
     <div className="space-y-4">
-      {/* 1. ANGLE SELECTOR (Compact Horizontal Pills with small Recommended badge) */}
+      {/* 1. ANGLE & CHARACTER SELECTOR */}
       <div className="bg-[#fffdf8] border border-[#e7e0d4] p-2.5 rounded-2xl flex flex-wrap items-center justify-between gap-2 shadow-xs">
         <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
           {imageAnglesPackage.angles.map((angle: any) => {
@@ -94,8 +102,16 @@ export default function ImagePanel(props: any) {
           })}
         </div>
 
-        <div className="text-[11px] text-stone-500 font-medium px-2">
-          Format: <span className="font-semibold text-stone-700">4:5 Vertical Editorial</span> &bull; {activeAngle.funnelStage || 'TOFU'}
+        <div className="flex items-center gap-3">
+          <CharacterSelector
+            savedCharacters={savedCharacters || []}
+            selectedCharacterId={selectedCharacterId || null}
+            onSelectCharacter={handleSelectCharacter}
+            onCreateCharacter={handleCreateCharacterClick}
+          />
+          <div className="text-[11px] text-stone-500 font-medium px-2 hidden sm:block">
+            Format: <span className="font-semibold text-stone-700">4:5 Vertical</span> &bull; {activeAngle.funnelStage || 'TOFU'}
+          </div>
         </div>
       </div>
 
@@ -142,7 +158,7 @@ export default function ImagePanel(props: any) {
 
               {/* Secondary Action 1: Copy Prompt */}
               <button
-                onClick={() => handleCopyText(`prompt_${selectedAngleId}`, activeAngle.finalPrompt, 'promptCopied')}
+                onClick={() => handleCopyText(`prompt_${selectedAngleId}`, effectivePrompt, 'promptCopied')}
                 className="px-4 py-2.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-[#1f2933] border border-[#e7e0d4] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 {copiedStates[`prompt_${selectedAngleId}`] ? (
@@ -160,7 +176,7 @@ export default function ImagePanel(props: any) {
 
               {/* Secondary Action 2: Regenerate */}
               <button
-                onClick={() => handleGenerateImage(activeAngle.finalPrompt, activeAngle.id)}
+                onClick={() => handleGenerateImage(effectivePrompt, activeAngle.id)}
                 disabled={isGenerating}
                 className="px-4 py-2.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-stone-700 border border-[#e7e0d4] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
               >
@@ -190,12 +206,18 @@ export default function ImagePanel(props: any) {
               <p className="text-xs text-stone-500 leading-relaxed">
                 Generate visual resolusi tinggi berdasarkan strategi konten Angle {activeAngle.id} ({activeAngle.name}) langsung menggunakan model Imagen.
               </p>
+              {characterDNA?.identity?.display_name && (
+                <p className="text-[11px] text-[#0f766e] font-semibold flex items-center justify-center gap-1">
+                  <UserCheck size={12} />
+                  <span>Karakter Aktif: {characterDNA.identity.display_name}</span>
+                </p>
+              )}
             </div>
 
             {/* DOMINANT ACTION BUTTON */}
             <div className="pt-2 flex flex-wrap items-center justify-center gap-2.5">
               <button
-                onClick={() => handleGenerateImage(activeAngle.finalPrompt, activeAngle.id)}
+                onClick={() => handleGenerateImage(effectivePrompt, activeAngle.id)}
                 disabled={isGenerating}
                 className="px-6 py-2.5 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-xs disabled:opacity-50 cursor-pointer"
               >
@@ -213,7 +235,7 @@ export default function ImagePanel(props: any) {
               </button>
 
               <button
-                onClick={() => handleCopyText(`prompt_${selectedAngleId}`, activeAngle.finalPrompt, 'promptCopied')}
+                onClick={() => handleCopyText(`prompt_${selectedAngleId}`, effectivePrompt, 'promptCopied')}
                 className="px-4 py-2.5 bg-[#fffdf8] hover:bg-[#f6f3ee] text-stone-700 border border-[#e7e0d4] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
               >
                 {copiedStates[`prompt_${selectedAngleId}`] ? (
@@ -337,7 +359,7 @@ export default function ImagePanel(props: any) {
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-stone-500 font-medium">Salin prompt lengkap untuk digunakan di Midjourney atau platform lain:</span>
             <button
-              onClick={() => handleCopyText(`prompt_${selectedAngleId}`, activeAngle.finalPrompt, 'promptCopied')}
+              onClick={() => handleCopyText(`prompt_${selectedAngleId}`, effectivePrompt, 'promptCopied')}
               className="text-xs font-bold text-[#0f766e] hover:underline flex items-center gap-1 cursor-pointer"
             >
               <Copy size={12} />
@@ -345,8 +367,14 @@ export default function ImagePanel(props: any) {
             </button>
           </div>
           <div className="p-3.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-stone-900 font-mono text-xs leading-relaxed select-all whitespace-pre-wrap">
-            {activeAngle.finalPrompt}
+            {effectivePrompt}
           </div>
+          {characterDNA?.identity?.display_name && (
+            <div className="text-[11px] text-[#0f766e] font-medium flex items-center gap-1">
+              <CheckCircle2 size={12} />
+              <span>Karakter &quot;{characterDNA.identity.display_name}&quot; aktif diinjeksikan ke prompt.</span>
+            </div>
+          )}
           {activeAngle.textOverlay && (
             <div className="flex items-center gap-2 pt-1 text-xs">
               <span className="text-stone-500 font-medium text-[10px]">Teks Overlay:</span>

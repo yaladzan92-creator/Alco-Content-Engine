@@ -3,9 +3,11 @@ import React from 'react';
 import { 
   Sparkles, Copy, Check, Sliders, CheckCircle2, AlertCircle,
   Layers, ArrowRight, Palette, Compass, Camera, BarChart3,
-  Layers2, Eye, ShieldCheck, ChevronDown, FileText
+  Layers2, Eye, ShieldCheck, ChevronDown, FileText, UserCheck
 } from 'lucide-react';
 import { PromptNextStepLinks } from './PromptNextStepLinks';
+import CharacterSelector from './CharacterSelector';
+import { injectCharacterToPrompt } from '@/lib/character-prompt';
 
 export default function CarouselPanel(props: any) {
   const {
@@ -20,6 +22,11 @@ export default function CarouselPanel(props: any) {
     carouselOutput,
     getInitialDraft,
     tryParseJSON,
+    savedCharacters,
+    selectedCharacterId,
+    handleSelectCharacter,
+    handleCreateCharacterClick,
+    characterDNA,
   } = props;
 
   let plan: any | null = activeItem?.carousel_plan || null;
@@ -109,6 +116,8 @@ export default function CarouselPanel(props: any) {
       negative_prompt: ''
     };
 
+    const effectiveImagePrompt = injectCharacterToPrompt(s.slide_image_prompt, characterDNA, vf);
+
     return `--- SLIDE ${s.slide} (${(s.role || 'Content').toUpperCase()}) [Format: ${vf.toUpperCase()}] ---
 Headline: ${s.headline}
 Body:
@@ -140,11 +149,17 @@ Negative Space: ${vp.negative_space || '-'}
 Negative Prompt: ${vp.negative_prompt || '-'}
 
 [SLIDE IMAGE PROMPT (AI GENERATOR / FLUX / MIDJOURNEY)]
-${s.slide_image_prompt || '-'}
+${effectiveImagePrompt || '-'}
 
 [PRODUCTION / LAYOUT PROMPT]
 ${s.production_prompt || '-'}`;
   };
+
+  const effectiveSlideImagePrompt = injectCharacterToPrompt(
+    activeSlide.slide_image_prompt,
+    characterDNA,
+    visualFormat
+  );
 
   return (
     <div className="space-y-4">
@@ -173,26 +188,34 @@ ${s.production_prompt || '-'}`;
           )}
         </div>
 
-        <button
-          onClick={() => {
-            const combinedText = `[CAROUSEL 3-LAYER STRATEGY BLUEPRINT]\nFunnel Stage: ${funnelStage}\nGoal: ${plan.content_goal || '-'}\nCore Promise: ${plan.core_promise || '-'}\nPrimary CTA: ${plan.primary_cta_text || '-'} (${plan.primary_cta_type || '-'})\nSlide Count Reason: ${plan.slide_count_reason || '-'}\n\n` +
-              slides.map((s: any) => formatSlideFullText(s)).join('\n\n========================================\n\n');
-            handleCopyText('carousel_plan_all', combinedText, 'none');
-          }}
-          className="px-3 py-1.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-[#1f2933] border border-[#e7e0d4] rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-        >
-          {copiedStates['carousel_plan_all'] ? (
-            <>
-              <Check size={12} className="text-[#0f766e]" />
-              <span className="text-[#0f766e]">Semua Slide Tersalin!</span>
-            </>
-          ) : (
-            <>
-              <Copy size={12} />
-              <span>Salin Seluruh Blueprint</span>
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-2.5">
+          <CharacterSelector
+            savedCharacters={savedCharacters || []}
+            selectedCharacterId={selectedCharacterId || null}
+            onSelectCharacter={handleSelectCharacter}
+            onCreateCharacter={handleCreateCharacterClick}
+          />
+          <button
+            onClick={() => {
+              const combinedText = `[CAROUSEL 3-LAYER STRATEGY BLUEPRINT]\nFunnel Stage: ${funnelStage}\nGoal: ${plan.content_goal || '-'}\nCore Promise: ${plan.core_promise || '-'}\nPrimary CTA: ${plan.primary_cta_text || '-'} (${plan.primary_cta_type || '-'})\nSlide Count Reason: ${plan.slide_count_reason || '-'}\n\n` +
+                slides.map((s: any) => formatSlideFullText(s)).join('\n\n========================================\n\n');
+              handleCopyText('carousel_plan_all', combinedText, 'none');
+            }}
+            className="px-3 py-1.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-[#1f2933] border border-[#e7e0d4] rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+          >
+            {copiedStates['carousel_plan_all'] ? (
+              <>
+                <Check size={12} className="text-[#0f766e]" />
+                <span className="text-[#0f766e]">Semua Slide Tersalin!</span>
+              </>
+            ) : (
+              <>
+                <Copy size={12} />
+                <span>Salin Seluruh Blueprint</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* 2. SLIDE NAVIGATION (Compact, focused buttons: [1] [2] [3]... ) */}
@@ -391,7 +414,7 @@ ${s.production_prompt || '-'}`;
                         <span>Prompt Image Saja &bull; Slide {activeSlide.slide} (4:5 Format)</span>
                       </div>
                       <button
-                        onClick={() => handleCopyText(`slide_img_prompt_only_${activeSlide.slide}`, activeSlide.slide_image_prompt, 'promptCopied')}
+                        onClick={() => handleCopyText(`slide_img_prompt_only_${activeSlide.slide}`, effectiveSlideImagePrompt, 'promptCopied')}
                         className="px-2.5 py-1 bg-[#0f766e] hover:bg-[#0f766e]/85 text-white rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 shadow-xs cursor-pointer"
                       >
                         {copiedStates[`slide_img_prompt_only_${activeSlide.slide}`] ? (
@@ -408,8 +431,14 @@ ${s.production_prompt || '-'}`;
                       </button>
                     </div>
                     <div className="font-mono text-[10px] leading-relaxed text-stone-300 bg-stone-950/80 p-3 rounded-lg border border-stone-800 whitespace-pre-wrap select-all">
-                      {activeSlide.slide_image_prompt}
+                      {effectiveSlideImagePrompt}
                     </div>
+                    {characterDNA?.identity?.display_name && (
+                      <div className="text-[10px] text-teal-300 font-medium flex items-center gap-1">
+                        <CheckCircle2 size={11} />
+                        <span>Karakter &quot;{characterDNA.identity.display_name}&quot; aktif diinjeksikan ke prompt slide ini.</span>
+                      </div>
+                    )}
                   </div>
                 )}
 

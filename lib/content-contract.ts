@@ -289,6 +289,7 @@ export interface CharacterDNA {
 
   reference_images: string[];
   preview_image?: string;
+  additional_instructions?: string;
 
   identity: {
     display_name: string;
@@ -299,6 +300,7 @@ export interface CharacterDNA {
     facial_features?: string;
     hair_description?: string;
     skin_tone?: string;
+    distinctive_characteristics?: string;
   };
 
   style: {

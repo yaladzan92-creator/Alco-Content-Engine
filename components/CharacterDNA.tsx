@@ -15,30 +15,101 @@ import {
   FileCode,
   Copy,
   Check,
+  Plus,
+  Trash2,
+  Edit3,
+  CheckCircle2,
+  AlertCircle,
+  X,
+  User,
 } from 'lucide-react';
-import { getActiveProjectId, getProjectCharacterDNA, saveProjectCharacterDNA } from '@/lib/storage';
+import {
+  getActiveProjectId,
+  getProjectCharacterDNA,
+  saveProjectCharacterDNA,
+  getProjectSavedCharacters,
+  saveSingleSavedCharacter,
+  deleteSingleSavedCharacter,
+  getProjectActiveCharacterId,
+  saveProjectActiveCharacterId,
+} from '@/lib/storage';
 import { CharacterDNA } from '@/lib/content-contract';
 import { buildGeminiRequestHeaders } from '@/lib/client-gemini-key';
+import { buildCharacterConsistencyPrompt } from '@/lib/character-prompt';
 
-export default function CharacterDNASection({ 
+export default function CharacterDNASection({
   onDNAUpdate,
-  projectId
-}: { 
+  projectId,
+  activeCharacterId,
+  onSelectCharacter,
+}: {
   onDNAUpdate: (dna: CharacterDNA) => void;
   projectId?: string;
+  activeCharacterId?: string | null;
+  onSelectCharacter?: (charId: string | null) => void;
 }) {
+  const targetProjectId = projectId || getActiveProjectId() || 'default';
+
+  // Saved characters state
+  const [savedCharacters, setSavedCharacters] = useState<CharacterDNA[]>([]);
+  const [selectedCharId, setSelectedCharId] = useState<string | null>(activeCharacterId || null);
+
+  // Form input state
+  const [characterName, setCharacterName] = useState<string>('');
+  const [additionalInstructions, setAdditionalInstructions] = useState<string>('');
   const [images, setImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
+
+  // Status state
   const [loading, setLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [dna, setDna] = useState<CharacterDNA | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
+  // Load saved characters from project storage on mount / projectId change
   useEffect(() => {
-    const targetProjectId = projectId || getActiveProjectId() || 'default';
+    const list = getProjectSavedCharacters(targetProjectId) as CharacterDNA[];
+    setSavedCharacters(list);
+
+    const activeId = activeCharacterId || getProjectActiveCharacterId(targetProjectId);
+    setSelectedCharId(activeId);
+
+    if (activeId && list.length > 0) {
+      const activeChar = list.find((c) => c.character_id === activeId);
+      if (activeChar) {
+        setDna(activeChar);
+        return;
+      }
+    }
+
+    // Fallback: check single character_dna
     const existing = getProjectCharacterDNA(targetProjectId);
     if (existing) {
       setDna(existing);
+      if (!activeId && existing.character_id) {
+        setSelectedCharId(existing.character_id);
+      }
+    } else if (list.length > 0) {
+      setDna(list[0]);
+      setSelectedCharId(list[0].character_id);
     }
-  }, [projectId]);
+  }, [targetProjectId, activeCharacterId]);
+
+  // Sync external activeCharacterId prop
+  useEffect(() => {
+    if (activeCharacterId !== undefined) {
+      setSelectedCharId(activeCharacterId);
+      if (activeCharacterId) {
+        const found = savedCharacters.find((c) => c.character_id === activeCharacterId);
+        if (found) {
+          setDna(found);
+        }
+      }
+    }
+  }, [activeCharacterId, savedCharacters]);
 
   const handleCopy = (key: string, text: string) => {
     if (!text) return;
@@ -49,96 +120,614 @@ export default function CharacterDNASection({
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setImages(Array.from(e.target.files).slice(0, 3));
+      const selected = Array.from(e.target.files).slice(0, 3);
+      setImages(selected);
+      // Generate object URLs for preview
+      const previews = selected.map((file) => URL.createObjectURL(file));
+      setImagePreviews(previews);
     }
   };
 
+  const handleRemoveImage = (index: number) => {
+    const updatedImages = images.filter((_, i) => i !== index);
+    const updatedPreviews = imagePreviews.filter((_, i) => i !== index);
+    setImages(updatedImages);
+    setImagePreviews(updatedPreviews);
+  };
+
+  // Generate Character DNA via Gemini
   const generateDNA = async () => {
-    if (loading || images.length === 0) return;
+    if (loading) return;
+    if (!characterName.trim()) {
+      setErrorMessage('Silakan isi Nama Karakter terlebih dahulu.');
+      return;
+    }
+    if (images.length === 0 && !dna?.reference_images?.length) {
+      setErrorMessage('Upload minimal 1 foto referensi talent untuk dianalisis.');
+      return;
+    }
+
     setLoading(true);
+    setErrorMessage(null);
     try {
       const base64Images = await Promise.all(
-        images.map(img => new Promise<{ data: string; mimeType: string }>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve({ 
-            data: (e.target?.result as string).split(',')[1], 
-            mimeType: img.type 
-          });
-          reader.readAsDataURL(img);
-        }))
+        images.map(
+          (img) =>
+            new Promise<{ data: string; mimeType: string }>((resolve) => {
+              const reader = new FileReader();
+              reader.onload = (e) =>
+                resolve({
+                  data: (e.target?.result as string).split(',')[1],
+                  mimeType: img.type,
+                });
+              reader.readAsDataURL(img);
+            })
+        )
       );
+
+      // Build structured prompt embedding explicit user additional instructions
+      const userPrompt = `
+Analyze the character's visual identity carefully.
+Character Name: ${characterName.trim()}
+
+CRITICAL USER ADDITIONAL INSTRUCTIONS (HIGHEST PRIORITY OVERRIDE):
+"${additionalInstructions.trim() || 'Maintain a natural and consistent visual identity.'}"
+
+IMPORTANT RULE: The user's explicit instructions above MUST OVERRIDE any visual assumptions from the photos. For example, if the photo shows uncovered hair but user says "Karakter selalu memakai hijab", you MUST strictly specify hijab in hair_description, wardrobe_style, locked_traits, and dna_summary_prompt.
+
+Output a complete JSON object with the following schema:
+{
+  "dna": {
+    "identity": {
+      "display_name": "${characterName.trim()}",
+      "gender_presentation": "e.g. woman / man",
+      "estimated_age_range": "e.g. around 28 years old",
+      "ethnicity_or_region_hint": "e.g. Indonesian",
+      "body_type": "...",
+      "facial_features": "...",
+      "hair_description": "...",
+      "skin_tone": "...",
+      "distinctive_characteristics": "..."
+    },
+    "style": {
+      "wardrobe_style": "...",
+      "accessories": ["..."],
+      "makeup_style": "...",
+      "visual_vibe": "...",
+      "brand_fit_reason": "..."
+    },
+    "behavior": {
+      "speaking_tone": "...",
+      "expression_style": "...",
+      "pose_tendency": "...",
+      "gesture_style": "...",
+      "on_camera_persona": "..."
+    },
+    "consistency_rules": {
+      "locked_traits": ["..."],
+      "avoid_traits": ["..."],
+      "continuity_notes": ["..."]
+    },
+    "prompt_assets": {
+      "dna_summary_prompt": "...",
+      "locked_visual_prompt": "...",
+      "preview_generation_prompt": "...",
+      "scene_reuse_prompt_template": "..."
+    }
+  },
+  "previewImagePrompt": "Portrait of ${characterName.trim()} matching the DNA specifications"
+}
+`.trim();
 
       const response = await fetch('/api/gemini/generate-dna', {
         method: 'POST',
         headers: buildGeminiRequestHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ images: base64Images, prompt: "Maintain character consistency." }),
+        body: JSON.stringify({ images: base64Images, prompt: userPrompt }),
       });
 
+      if (!response.ok) {
+        throw new Error(`Failed to generate DNA: ${response.statusText}`);
+      }
+
       const data = await response.json();
-      const newDNA: CharacterDNA = { ...data.dna, preview_image: data.previewImageBase64 };
-      setDna(newDNA);
-      onDNAUpdate(newDNA);
-      
-      const targetProjectId = projectId || getActiveProjectId() || 'default';
-      saveProjectCharacterDNA(targetProjectId, newDNA);
-    } catch (error) {
-      console.error(error);
+      const rawDna = data.dna?.dna ? data.dna.dna : data.dna || {};
+
+      // Synthesize into robust CharacterDNA object
+      const synthesizedDNA: CharacterDNA = {
+        character_id: editingCharacterId || dna?.character_id || `char_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        project_id: targetProjectId,
+        reference_images: base64Images.map((b) => `data:${b.mimeType};base64,${b.data}`),
+        preview_image: data.previewImageBase64 || rawDna.preview_image || dna?.preview_image,
+        additional_instructions: additionalInstructions.trim(),
+        identity: {
+          display_name: characterName.trim() || rawDna.identity?.display_name || 'Karakter Talent',
+          gender_presentation: rawDna.identity?.gender_presentation || 'woman',
+          estimated_age_range: rawDna.identity?.estimated_age_range || 'around 28 years old',
+          ethnicity_or_region_hint: rawDna.identity?.ethnicity_or_region_hint || 'Indonesian',
+          body_type: rawDna.identity?.body_type || 'proporsional',
+          facial_features: rawDna.identity?.facial_features || 'ramah, natural',
+          hair_description: rawDna.identity?.hair_description || (additionalInstructions.toLowerCase().includes('hijab') ? 'Hijab sopan dan rapi' : 'Rapi natural'),
+          skin_tone: rawDna.identity?.skin_tone || 'kuning langsat hangat',
+          distinctive_characteristics: rawDna.identity?.distinctive_characteristics || rawDna.features?.[0] || '',
+        },
+        style: {
+          wardrobe_style: rawDna.style?.wardrobe_style || (additionalInstructions ? additionalInstructions : 'Smart casual sopan'),
+          accessories: Array.isArray(rawDna.style?.accessories) ? rawDna.style.accessories : [],
+          makeup_style: rawDna.style?.makeup_style || 'natural clean look',
+          visual_vibe: rawDna.style?.visual_vibe || 'profesional, ramah, terpercaya',
+          brand_fit_reason: rawDna.style?.brand_fit_reason || 'Mencerminkan persona brand yang autentik',
+        },
+        behavior: {
+          speaking_tone: rawDna.behavior?.speaking_tone || 'hangat dan meyakinkan',
+          expression_style: rawDna.behavior?.expression_style || 'senyum ramah dan kontak mata natural',
+          pose_tendency: rawDna.behavior?.pose_tendency || 'percaya diri santai di depan kamera',
+          gesture_style: rawDna.behavior?.gesture_style || 'gestur tangan komunikatif dan terkontrol',
+          on_camera_persona: rawDna.behavior?.on_camera_persona || 'Kreator Edukatif & Autentik',
+        },
+        consistency_rules: {
+          locked_traits: [
+            ...(Array.isArray(rawDna.consistency_rules?.locked_traits) ? rawDna.consistency_rules.locked_traits : []),
+            ...(additionalInstructions.trim() ? [`Instruksi User: ${additionalInstructions.trim()}`] : []),
+          ],
+          avoid_traits: Array.isArray(rawDna.consistency_rules?.avoid_traits) ? rawDna.consistency_rules.avoid_traits : ['pakaian terlalu mencolok', 'ekspresi kaku'],
+          continuity_notes: Array.isArray(rawDna.consistency_rules?.continuity_notes) ? rawDna.consistency_rules.continuity_notes : [],
+        },
+        prompt_assets: {
+          dna_summary_prompt: rawDna.prompt_assets?.dna_summary_prompt || `${characterName.trim()}, Indonesian, around 28 years old, ${additionalInstructions.trim() || 'consistent identity'}`,
+          locked_visual_prompt: rawDna.prompt_assets?.locked_visual_prompt || '',
+          preview_generation_prompt: rawDna.prompt_assets?.preview_generation_prompt || '',
+          scene_reuse_prompt_template: rawDna.prompt_assets?.scene_reuse_prompt_template || '',
+        },
+        timestamps: {
+          created_at: dna?.timestamps?.created_at || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      };
+
+      setDna(synthesizedDNA);
+      setSaveMessage('DNA berhasil dianalisis! Klik "Simpan Karakter" untuk menyimpan ke profil karakter.');
+      setTimeout(() => setSaveMessage(null), 5000);
+    } catch (error: any) {
+      console.error('Error generating DNA:', error);
+      setErrorMessage(error?.message || 'Gagal menganalisis foto. Periksa koneksi atau foto.');
     } finally {
       setLoading(false);
     }
   };
 
+  // Save character to reusable profiles list in storage
+  const handleSaveCharacter = () => {
+    if (!characterName.trim()) {
+      setErrorMessage('Nama Karakter wajib diisi untuk menyimpan profil.');
+      return;
+    }
+
+    setIsSaving(true);
+    setErrorMessage(null);
+
+    try {
+      const charToSave: CharacterDNA = dna
+        ? {
+            ...dna,
+            identity: {
+              ...dna.identity,
+              display_name: characterName.trim(),
+            },
+            additional_instructions: additionalInstructions.trim(),
+            timestamps: {
+              ...dna.timestamps,
+              updated_at: new Date().toISOString(),
+            },
+          }
+        : {
+            character_id: editingCharacterId || `char_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            project_id: targetProjectId,
+            reference_images: [],
+            additional_instructions: additionalInstructions.trim(),
+            identity: {
+              display_name: characterName.trim(),
+              gender_presentation: 'woman',
+              estimated_age_range: 'around 28 years old',
+              ethnicity_or_region_hint: 'Indonesian',
+              hair_description: additionalInstructions.toLowerCase().includes('hijab') ? 'Hijab sopan' : 'Rapi natural',
+              skin_tone: 'kuning langsat',
+            },
+            style: {
+              wardrobe_style: additionalInstructions.trim() || 'Pakaian sopan rapi',
+              visual_vibe: 'autentik, terpercaya',
+            },
+            behavior: {
+              on_camera_persona: 'Kreator Autentik',
+            },
+            consistency_rules: {
+              locked_traits: additionalInstructions.trim() ? [`Instruksi User: ${additionalInstructions.trim()}`] : [],
+              avoid_traits: [],
+            },
+            prompt_assets: {
+              dna_summary_prompt: `${characterName.trim()}, Indonesian, ${additionalInstructions.trim()}`,
+              locked_visual_prompt: '',
+              preview_generation_prompt: '',
+              scene_reuse_prompt_template: '',
+            },
+            timestamps: {
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+          };
+
+      const updatedList = saveSingleSavedCharacter(targetProjectId, charToSave);
+      setSavedCharacters(updatedList);
+      setSelectedCharId(charToSave.character_id);
+      setDna(charToSave);
+
+      // Notify parent components
+      onDNAUpdate(charToSave);
+      if (onSelectCharacter) {
+        onSelectCharacter(charToSave.character_id);
+      }
+
+      setEditingCharacterId(null);
+      setSaveMessage(`Karakter "${charToSave.identity.display_name}" berhasil disimpan dan diaktifkan!`);
+      setTimeout(() => setSaveMessage(null), 4000);
+    } catch (err: any) {
+      console.error('Failed to save character', err);
+      setErrorMessage('Gagal menyimpan karakter.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Select active character
+  const handleSelectChar = (char: CharacterDNA) => {
+    setSelectedCharId(char.character_id);
+    saveProjectActiveCharacterId(targetProjectId, char.character_id);
+    saveProjectCharacterDNA(targetProjectId, char);
+    setDna(char);
+    onDNAUpdate(char);
+    if (onSelectCharacter) {
+      onSelectCharacter(char.character_id);
+    }
+    setSaveMessage(`Karakter "${char.identity?.display_name}" aktif untuk produksi.`);
+    setTimeout(() => setSaveMessage(null), 3000);
+  };
+
+  // Switch to "No Character"
+  const handleSelectNoCharacter = () => {
+    setSelectedCharId(null);
+    saveProjectActiveCharacterId(targetProjectId, null);
+    if (onSelectCharacter) {
+      onSelectCharacter(null);
+    }
+    setSaveMessage('Mode "No Character" aktif. Prompt menggunakan behavior standar.');
+    setTimeout(() => setSaveMessage(null), 3000);
+  };
+
+  // Edit an existing character
+  const handleStartEdit = (char: CharacterDNA) => {
+    setEditingCharacterId(char.character_id);
+    setCharacterName(char.identity?.display_name || '');
+    setAdditionalInstructions(char.additional_instructions || '');
+    setDna(char);
+    setImages([]);
+    setImagePreviews([]);
+    setErrorMessage(null);
+    setSaveMessage(null);
+    // Scroll smoothly to form
+    const formEl = document.getElementById('character-form-box');
+    if (formEl) {
+      formEl.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // Cancel edit mode
+  const handleCancelEdit = () => {
+    setEditingCharacterId(null);
+    setCharacterName('');
+    setAdditionalInstructions('');
+    setImages([]);
+    setImagePreviews([]);
+  };
+
+  // Delete a character
+  const handleDeleteChar = (charId: string, name: string) => {
+    if (!window.confirm(`Hapus karakter "${name}" dari Saved Characters?`)) return;
+
+    const updated = deleteSingleSavedCharacter(targetProjectId, charId);
+    setSavedCharacters(updated);
+
+    if (selectedCharId === charId) {
+      const nextChar = updated[0] || null;
+      setSelectedCharId(nextChar?.character_id || null);
+      setDna(nextChar);
+      if (nextChar) {
+        onDNAUpdate(nextChar);
+        onSelectCharacter?.(nextChar.character_id);
+      } else {
+        onSelectCharacter?.(null);
+      }
+    }
+
+    if (editingCharacterId === charId) {
+      handleCancelEdit();
+    }
+  };
+
+  // Reset form to create a new character
+  const handleStartNew = () => {
+    setEditingCharacterId(null);
+    setCharacterName('');
+    setAdditionalInstructions('');
+    setImages([]);
+    setImagePreviews([]);
+    setErrorMessage(null);
+    setSaveMessage(null);
+  };
+
+  const activeConsistencyPrompt = dna ? buildCharacterConsistencyPrompt(dna) : '';
+
   return (
-    <div className="space-y-4 font-sans">
-      
-      {/* 1. HEADER & ACTION TOOLBAR */}
-      <div className="bg-[#fffdf8] rounded-2xl border border-[#e7e0d4] p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
+    <div className="space-y-5 font-sans">
+      {/* 1. SAVED CHARACTERS MANAGEMENT BAR */}
+      <div className="bg-[#fffdf8] rounded-2xl border border-[#e7e0d4] p-4 sm:p-5 shadow-xs space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#e7e0d4]/60">
+          <div className="flex items-center gap-2">
             <UserCheck size={18} className="text-[#0f766e]" />
-            <h2 className="text-sm font-bold text-[#1f2933]">Character DNA &amp; Visual Identity</h2>
+            <h2 className="text-sm font-bold text-[#1f2933]">Saved Characters</h2>
+            <span className="text-xs text-stone-500 font-medium">({savedCharacters.length} karakter tersimpan)</span>
           </div>
-          <p className="text-xs text-stone-500">
-            Kelola profil karakter visual agar wajah, postur, dan persona talent konsisten di setiap postingan.
-          </p>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSelectNoCharacter}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                selectedCharId === null
+                  ? 'bg-stone-800 text-white shadow-xs'
+                  : 'bg-[#f6f3ee] text-stone-600 hover:text-stone-900 border border-[#e7e0d4]'
+              }`}
+            >
+              No Character
+            </button>
+
+            <button
+              type="button"
+              onClick={handleStartNew}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+            >
+              <Plus size={13} />
+              <span>+ Buat Karakter Baru</span>
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="hidden"
-            id="dna-upload"
-          />
-          <label
-            htmlFor="dna-upload"
-            className="cursor-pointer flex items-center gap-2 px-3.5 py-2 bg-[#f6f3ee] text-stone-800 font-bold border border-[#e7e0d4] rounded-xl hover:bg-stone-200 text-xs transition shadow-xs"
-          >
-            <Upload size={13} className="text-[#0f766e]" />
-            <span>{images.length > 0 ? `${images.length} Foto Dipilih` : 'Upload Foto Ref (1-3)'}</span>
-          </label>
+        {/* Characters Grid / Badges */}
+        {savedCharacters.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
+            {savedCharacters.map((char) => {
+              const isSelected = selectedCharId === char.character_id;
+              return (
+                <div
+                  key={char.character_id}
+                  className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-2.5 ${
+                    isSelected
+                      ? 'bg-[#0f766e]/5 border-[#0f766e] shadow-xs ring-1 ring-[#0f766e]/30'
+                      : 'bg-[#f6f3ee]/80 border-[#e7e0d4] hover:bg-[#f6f3ee]'
+                  }`}
+                >
+                  <div
+                    onClick={() => handleSelectChar(char)}
+                    className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-[#e7e0d4] overflow-hidden relative shrink-0 flex items-center justify-center border border-[#e7e0d4]">
+                      {char.preview_image ? (
+                        <Image
+                          src={char.preview_image.startsWith('data:') ? char.preview_image : `data:image/png;base64,${char.preview_image}`}
+                          alt={char.identity?.display_name || 'Character'}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <User size={16} className="text-stone-500" />
+                      )}
+                    </div>
 
-          <button
-            onClick={generateDNA}
-            disabled={images.length === 0 || loading}
-            className="flex items-center gap-2 px-4 py-2 bg-[#0f766e] hover:bg-[#0f766e]/90 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition shadow-xs cursor-pointer"
-          >
-            {loading ? <Loader2 className="animate-spin" size={13} /> : <Sparkles size={13} />}
-            <span>{loading ? 'Menganalisis DNA...' : 'Generate DNA'}</span>
-          </button>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-stone-900 truncate">
+                          {char.identity?.display_name || 'Unnamed'}
+                        </span>
+                        {isSelected && (
+                          <span className="text-[9px] font-extrabold bg-[#0f766e] text-white px-1.5 py-0.2 rounded uppercase">
+                            Aktif
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-stone-500 block truncate">
+                        {char.additional_instructions || char.identity?.gender_presentation || 'Karakter Reusable'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action Icons */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleStartEdit(char)}
+                      className="p-1.5 text-stone-500 hover:text-[#0f766e] hover:bg-[#e7e0d4]/50 rounded-lg transition"
+                      title="Edit Karakter"
+                    >
+                      <Edit3 size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteChar(char.character_id, char.identity?.display_name || 'Karakter')}
+                      className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                      title="Hapus Karakter"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="py-2 text-center text-xs text-stone-500 italic">
+            Belum ada karakter tersimpan. Gunakan form di bawah untuk membuat dan menyimpan profil karakter baru.
+          </div>
+        )}
+      </div>
+
+      {/* 2. CREATE / EDIT CHARACTER WORKFLOW */}
+      <div id="character-form-box" className="bg-[#fffdf8] rounded-2xl border border-[#e7e0d4] p-5 shadow-xs space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-[#e7e0d4]/60">
+          <div>
+            <h3 className="text-sm font-bold text-[#1f2933]">
+              {editingCharacterId ? `Edit Karakter: ${characterName || 'Profil'}` : '1. Buat Karakter Baru'}
+            </h3>
+            <p className="text-xs text-stone-500">
+              Input foto referensi dan instruksi eksplisit Anda untuk konsistensi visual di seluruh prompt produksi.
+            </p>
+          </div>
+
+          {editingCharacterId && (
+            <button
+              type="button"
+              onClick={handleCancelEdit}
+              className="text-xs text-stone-500 hover:text-stone-800 font-medium underline cursor-pointer"
+            >
+              Batal Edit
+            </button>
+          )}
+        </div>
+
+        {/* Feedback Messages */}
+        {errorMessage && (
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2 animate-fadeIn">
+            <AlertCircle size={14} className="shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
+        {saveMessage && (
+          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center gap-2 animate-fadeIn">
+            <CheckCircle2 size={14} className="shrink-0" />
+            <span>{saveMessage}</span>
+          </div>
+        )}
+
+        {/* Form Fields */}
+        <div className="space-y-3.5">
+          {/* Field 1: Nama Karakter */}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-stone-700 block">
+              Nama Karakter <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={characterName}
+              onChange={(e) => setCharacterName(e.target.value)}
+              placeholder="Contoh: Maya, Sarah, Rani, Mas Budi..."
+              className="w-full px-3.5 py-2.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-xs text-stone-900 font-medium focus:outline-none focus:border-[#0f766e] focus:ring-1 focus:ring-[#0f766e] transition"
+            />
+          </div>
+
+          {/* Field 2: Foto Referensi Upload */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-stone-700 block">
+                Foto Referensi Talent (1–3 Foto)
+              </label>
+              <span className="text-[11px] text-stone-400">Format: JPG, PNG, WEBP</span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+                id="dna-upload-input"
+              />
+              <label
+                htmlFor="dna-upload-input"
+                className="cursor-pointer flex items-center gap-2 px-4 py-2.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-stone-800 font-bold border border-[#e7e0d4] rounded-xl text-xs transition shadow-2xs"
+              >
+                <Upload size={14} className="text-[#0f766e]" />
+                <span>{images.length > 0 ? `${images.length} Foto Dipilih (Ganti)` : 'Upload Foto Referensi'}</span>
+              </label>
+
+              {/* Thumbnails of selected images */}
+              {imagePreviews.map((previewUrl, idx) => (
+                <div key={idx} className="relative w-12 h-12 rounded-xl overflow-hidden border border-[#e7e0d4] bg-[#f6f3ee]">
+                  <Image src={previewUrl} alt={`Ref ${idx + 1}`} fill className="object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage(idx)}
+                    className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 text-white rounded-full flex items-center justify-center text-[10px] hover:bg-black"
+                  >
+                    <X size={10} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Field 3: Instruksi Tambahan (Highest Priority Explicit User Override) */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-stone-700 block">
+                Instruksi Tambahan (Prioritas Utama)
+              </label>
+              <span className="text-[10px] font-bold text-[#0f766e] bg-[#0f766e]/10 px-2 py-0.5 rounded">
+                Override Asumsi AI
+              </span>
+            </div>
+
+            <textarea
+              rows={3}
+              value={additionalInstructions}
+              onChange={(e) => setAdditionalInstructions(e.target.value)}
+              placeholder="Contoh: selalu memakai pakaian sopan, gunakan hijab, hindari pakaian ketat, pertahankan warna hijab netral..."
+              className="w-full px-3.5 py-2.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-xs text-stone-900 font-medium focus:outline-none focus:border-[#0f766e] focus:ring-1 focus:ring-[#0f766e] transition leading-relaxed"
+            />
+            <p className="text-[11px] text-stone-500 leading-normal">
+              Instruksi Tambahan adalah arahan eksplisit dari Anda yang memiliki prioritas lebih tinggi daripada asumsi AI dari foto (misal: jika foto rambut terbuka namun Anda instruksikan berhijab, sistem akan mengunci hijab).
+            </p>
+          </div>
+
+          {/* Action Row: Generate & Save */}
+          <div className="pt-2 flex flex-wrap items-center gap-2.5 border-t border-[#e7e0d4]/60">
+            <button
+              type="button"
+              onClick={generateDNA}
+              disabled={loading || !characterName.trim() || (images.length === 0 && !dna)}
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#0f766e] hover:bg-[#0f766e]/90 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition shadow-xs cursor-pointer"
+            >
+              {loading ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />}
+              <span>{loading ? 'Menganalisis DNA...' : 'Generate Character DNA'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSaveCharacter}
+              disabled={isSaving || !characterName.trim()}
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#1f2933] hover:bg-stone-800 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition shadow-xs cursor-pointer"
+            >
+              {isSaving ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
+              <span>Simpan Karakter</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* 2. CHARACTER IDENTITY (Result / Active Workspace) */}
-      {dna ? (
-        <div className="space-y-4">
-          
-          {/* Basic Identity & Preview */}
+      {/* 3. CHARACTER IDENTITY & ACTIVE DNA INSPECTOR */}
+      {dna && (
+        <div className="space-y-4 animate-fadeIn">
+          {/* Basic Identity & Master Reference */}
           <div className="bg-[#fffdf8] rounded-2xl border border-[#e7e0d4] p-5 shadow-xs">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
-              
               {/* Reference / Preview Image */}
               <div className="md:col-span-4 flex flex-col items-center">
                 {dna.preview_image ? (
@@ -153,7 +742,7 @@ export default function CharacterDNASection({
                 ) : (
                   <div className="w-full aspect-square max-w-[280px] rounded-2xl border border-dashed border-[#e7e0d4] bg-[#f6f3ee] flex flex-col items-center justify-center text-stone-400 p-4 text-center">
                     <UserCheck size={32} className="text-stone-300 mb-2" />
-                    <span className="text-xs font-semibold">Belum ada preview render</span>
+                    <span className="text-xs font-semibold">Master Reference</span>
                   </div>
                 )}
                 <span className="text-[10px] text-stone-500 font-medium mt-2">
@@ -172,9 +761,21 @@ export default function CharacterDNASection({
                       {dna.behavior?.on_camera_persona || dna.style?.visual_vibe || 'Kreator Autentik'}
                     </p>
                   </div>
-                  <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-[#0f766e]/10 text-[#0f766e] border border-[#0f766e]/20 uppercase tracking-wider">
-                    DNA Aktif
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {selectedCharId === dna.character_id ? (
+                      <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-[#0f766e]/10 text-[#0f766e] border border-[#0f766e]/20 uppercase tracking-wider">
+                        Aktif di Studio
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleSelectChar(dna)}
+                        className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-[#0f766e] text-white hover:bg-[#0f766e]/90 cursor-pointer"
+                      >
+                        Gunakan Karakter Ini
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Primary Specs Grid */}
@@ -201,30 +802,66 @@ export default function CharacterDNASection({
                   </div>
 
                   <div className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-0.5">
-                    <span className="text-[10px] font-bold text-stone-500 uppercase block">Rambut &amp; Wajah</span>
+                    <span className="text-[10px] font-bold text-stone-500 uppercase block">Rambut / Hijab</span>
                     <p className="text-stone-800 font-medium line-clamp-1">
                       {dna.identity?.hair_description || '-'}
                     </p>
                   </div>
                 </div>
 
-                {/* Brand Fit Note */}
-                {dna.style?.brand_fit_reason && (
-                  <div className="p-3 bg-[#f6f3ee]/60 border border-[#e7e0d4] rounded-xl text-xs space-y-1">
-                    <span className="text-[10px] font-bold text-stone-500 uppercase block">Kesesuaian Brand Voice</span>
-                    <p className="text-stone-700 leading-relaxed italic">
-                      &ldquo;{dna.style.brand_fit_reason}&rdquo;
+                {/* Explicit Additional Instructions Callout */}
+                {dna.additional_instructions && (
+                  <div className="p-3 bg-[#0f766e]/5 border border-[#0f766e]/20 rounded-xl text-xs space-y-1">
+                    <span className="text-[10px] font-bold text-[#0f766e] uppercase block">
+                      Instruksi Tambahan User (Prioritas Utama)
+                    </span>
+                    <p className="text-stone-800 font-medium italic">
+                      &ldquo;{dna.additional_instructions}&rdquo;
                     </p>
                   </div>
                 )}
               </div>
-
             </div>
           </div>
 
-          {/* 3. PROGRESSIVE DISCLOSURE SECTIONS */}
+          {/* 4. NATURAL LANGUAGE PROMPT CONTEXT DISPLAY */}
+          <div className="bg-[#fffdf8] rounded-2xl border border-[#e7e0d4] p-4 sm:p-5 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-bold text-stone-900">
+                  Prompt Context [CHARACTER CONSISTENCY]
+                </h4>
+                <p className="text-[11px] text-stone-500">
+                  Format natural-language yang diinjeksikan otomatis ke prompt Image, Carousel, dan Video.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleCopy('char_consistency_prompt', activeConsistencyPrompt)}
+                className="px-3 py-1.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-[#0f766e] font-bold text-xs rounded-xl border border-[#e7e0d4] flex items-center gap-1.5 transition cursor-pointer"
+              >
+                {copiedKey === 'char_consistency_prompt' ? (
+                  <>
+                    <Check size={12} />
+                    <span>Tersalin!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={12} />
+                    <span>Salin Natural Prompt</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="p-3.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-stone-900 font-mono text-xs leading-relaxed select-all whitespace-pre-wrap">
+              {activeConsistencyPrompt || 'Pilih karakter untuk melihat konteks prompt konsistensi.'}
+            </div>
+          </div>
+
+          {/* 5. PROGRESSIVE DISCLOSURE ACCORDIONS */}
           <div className="space-y-2.5">
-            
             {/* Visual DNA */}
             <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
               <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
@@ -244,14 +881,12 @@ export default function CharacterDNASection({
                   <p className="text-stone-800 font-medium">{dna.style?.visual_vibe || '-'}</p>
                 </div>
                 <div className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-1">
-                  <span className="text-[10px] font-bold text-stone-500 uppercase block">Makeup / Skincare Look</span>
+                  <span className="text-[10px] font-bold text-stone-500 uppercase block">Makeup / Grooming</span>
                   <p className="text-stone-800 font-medium">{dna.style?.makeup_style || '-'}</p>
                 </div>
                 <div className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-1">
                   <span className="text-[10px] font-bold text-stone-500 uppercase block">Aksesori Khas</span>
-                  <p className="text-stone-800 font-medium">
-                    {dna.style?.accessories?.join(', ') || '-'}
-                  </p>
+                  <p className="text-stone-800 font-medium">{dna.style?.accessories?.join(', ') || '-'}</p>
                 </div>
               </div>
             </details>
@@ -308,7 +943,6 @@ export default function CharacterDNASection({
                 <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />
               </summary>
               <div className="p-4 pt-2 border-t border-[#e7e0d4]/60 space-y-3 text-xs">
-                {/* Locked Traits */}
                 <div className="space-y-1.5">
                   <span className="text-[10px] font-bold text-stone-500 uppercase block">Karakteristik Wajib (Locked Traits)</span>
                   <div className="flex flex-wrap gap-1.5">
@@ -324,7 +958,6 @@ export default function CharacterDNASection({
                   </div>
                 </div>
 
-                {/* Avoid Traits */}
                 <div className="space-y-1.5">
                   <span className="text-[10px] font-bold text-stone-500 uppercase block">Pantangan Visual (Avoid Traits)</span>
                   <div className="flex flex-wrap gap-1.5">
@@ -342,61 +975,24 @@ export default function CharacterDNASection({
               </div>
             </details>
 
-            {/* Advanced Prompt Assets & Raw Data */}
+            {/* Advanced Raw Data */}
             <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
               <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
                 <div className="flex items-center gap-2">
                   <FileCode size={14} className="text-[#0f766e]" />
-                  <span>Prompt Assets &amp; Raw DNA Data</span>
+                  <span>Raw DNA Data Schema</span>
                 </div>
                 <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />
               </summary>
-              <div className="p-4 pt-2 border-t border-[#e7e0d4]/60 space-y-3 text-xs">
-                {dna.prompt_assets?.dna_summary_prompt && (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-stone-500 uppercase">DNA Summary Prompt</span>
-                      <button
-                        type="button"
-                        onClick={() => handleCopy('dna_sum', dna.prompt_assets?.dna_summary_prompt || '')}
-                        className="text-[10px] font-bold text-[#0f766e] hover:underline flex items-center gap-1 cursor-pointer"
-                      >
-                        {copiedKey === 'dna_sum' ? <Check size={11} /> : <Copy size={11} />}
-                        <span>{copiedKey === 'dna_sum' ? 'Tersalin' : 'Salin'}</span>
-                      </button>
-                    </div>
-                    <p className="text-stone-800 font-mono text-[11px] leading-relaxed bg-[#f6f3ee] p-3 rounded-lg border border-[#e7e0d4] select-all">
-                      {dna.prompt_assets.dna_summary_prompt}
-                    </p>
-                  </div>
-                )}
-
-                <div className="space-y-1.5">
-                  <span className="text-[10px] font-bold text-stone-500 uppercase">Raw JSON Schema</span>
-                  <div className="text-[#1f2933] bg-[#f6f3ee] p-3 rounded-xl border border-[#e7e0d4] text-[10px] font-mono overflow-y-auto max-h-52 custom-scrollbar">
-                    <pre>{JSON.stringify(dna, null, 2)}</pre>
-                  </div>
+              <div className="p-4 pt-2 border-t border-[#e7e0d4]/60 space-y-2 text-xs">
+                <div className="text-[#1f2933] bg-[#f6f3ee] p-3 rounded-xl border border-[#e7e0d4] text-[10px] font-mono overflow-y-auto max-h-52 custom-scrollbar">
+                  <pre>{JSON.stringify(dna, null, 2)}</pre>
                 </div>
               </div>
             </details>
-
-          </div>
-
-        </div>
-      ) : (
-        <div className="bg-[#fffdf8] rounded-2xl border border-[#e7e0d4] p-8 text-center space-y-3 shadow-xs">
-          <div className="w-12 h-12 rounded-2xl bg-[#0f766e]/10 text-[#0f766e] flex items-center justify-center mx-auto">
-            <UserCheck size={24} />
-          </div>
-          <div className="max-w-md mx-auto space-y-1">
-            <h3 className="text-sm font-bold text-stone-800">Belum Ada DNA Karakter untuk Proyek Ini</h3>
-            <p className="text-xs text-stone-500 leading-relaxed">
-              Upload 1 hingga 3 foto referensi orang/talent nyata di atas, lalu klik <strong>Generate DNA</strong> untuk mengekstrak identitas visual konsisten.
-            </p>
           </div>
         </div>
       )}
-
     </div>
   );
 }

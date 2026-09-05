@@ -23,6 +23,7 @@ import {
 import { Json2VideoApiKeyControl } from '@/components/Json2VideoApiKeyControl';
 import { VideoAssetUrlInput } from '@/components/VideoAssetUrlInput';
 import { PromptNextStepLinks } from './PromptNextStepLinks';
+import CharacterSelector from './CharacterSelector';
 import { countWords } from '@/lib/funnel-rules';
 
 export default function VideoPanel(props: any) {
@@ -65,6 +66,10 @@ export default function VideoPanel(props: any) {
     json2VideoPayload,
     characterDNA,
     getGoogleFlowVideoPack,
+    savedCharacters,
+    selectedCharacterId,
+    handleSelectCharacter,
+    handleCreateCharacterClick,
   } = props;
 
   // Single active scene state for focused progressive workspace
@@ -157,32 +162,40 @@ export default function VideoPanel(props: any) {
           })}
         </div>
 
-        {/* Compact Workflow Selector (Google Flow vs JSON2Video) */}
-        <div className="flex items-center gap-1 bg-[#f6f3ee] p-1 rounded-xl border border-[#e7e0d4]">
-          <button
-            type="button"
-            onClick={() => setVideoOutputMode('google_flow')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-              currentOutputMode === 'google_flow'
-                ? 'bg-[#0f766e] text-white shadow-xs'
-                : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <Sparkles size={12} />
-            <span>Google Flow (3 Scene)</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setVideoOutputMode('api')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-              currentOutputMode === 'api'
-                ? 'bg-[#b7791f] text-white shadow-xs'
-                : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <Video size={12} />
-            <span>Render via API</span>
-          </button>
+        {/* Character Selector & Workflow Selector */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <CharacterSelector
+            savedCharacters={savedCharacters || []}
+            selectedCharacterId={selectedCharacterId || null}
+            onSelectCharacter={handleSelectCharacter}
+            onCreateCharacter={handleCreateCharacterClick}
+          />
+          <div className="flex items-center gap-1 bg-[#f6f3ee] p-1 rounded-xl border border-[#e7e0d4]">
+            <button
+              type="button"
+              onClick={() => setVideoOutputMode('google_flow')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                currentOutputMode === 'google_flow'
+                  ? 'bg-[#0f766e] text-white shadow-xs'
+                  : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <Sparkles size={12} />
+              <span>Google Flow (3 Scene)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setVideoOutputMode('api')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                currentOutputMode === 'api'
+                  ? 'bg-[#b7791f] text-white shadow-xs'
+                  : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <Video size={12} />
+              <span>Render via API</span>
+            </button>
+          </div>
         </div>
       </div>
 

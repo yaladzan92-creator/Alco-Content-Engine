@@ -129,12 +129,98 @@ export const updateItemInProject = (projectId: string, updatedItem: any) => {
 
 export const getProjectCharacterDNA = (projectId: string, sourceItemKey?: string) => {
   const type = sourceItemKey ? `character_dna_${sourceItemKey}` : 'character_dna';
-  return loadProjectData(projectId, type);
+  const data = loadProjectData(projectId, type);
+  if (data) return data;
+  
+  // Fallback to active saved character if specific one not found
+  const activeCharId = getProjectActiveCharacterId(projectId);
+  if (activeCharId) {
+    const saved = getProjectSavedCharacters(projectId);
+    const active = saved.find(c => c.character_id === activeCharId);
+    if (active) return active;
+  }
+  return null;
 };
 
 export const saveProjectCharacterDNA = (projectId: string, data: any, sourceItemKey?: string) => {
   const type = sourceItemKey ? `character_dna_${sourceItemKey}` : 'character_dna';
   saveProjectData(projectId, type, data);
+};
+
+export const getProjectSavedCharacters = (projectId: string): any[] => {
+  const list = loadProjectData(projectId, 'saved_characters', []);
+  if (Array.isArray(list) && list.length > 0) return list;
+
+  // Fallback: check legacy single character_dna
+  const legacy = loadProjectData(projectId, 'character_dna');
+  if (legacy && legacy.identity?.display_name) {
+    const legacyItem = {
+      ...legacy,
+      character_id: legacy.character_id || `char_legacy_${Date.now()}`,
+    };
+    saveProjectData(projectId, 'saved_characters', [legacyItem]);
+    return [legacyItem];
+  }
+  return [];
+};
+
+export const saveProjectSavedCharacters = (projectId: string, characters: any[]): void => {
+  saveProjectData(projectId, 'saved_characters', characters);
+};
+
+export const getProjectActiveCharacterId = (projectId: string): string | null => {
+  return loadProjectData(projectId, 'active_character_id', null);
+};
+
+export const saveProjectActiveCharacterId = (projectId: string, characterId: string | null): void => {
+  saveProjectData(projectId, 'active_character_id', characterId);
+};
+
+export const saveSingleSavedCharacter = (projectId: string, character: any): any[] => {
+  const existingList = getProjectSavedCharacters(projectId);
+  const targetId = character.character_id || `char_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const normalized = {
+    ...character,
+    character_id: targetId,
+    project_id: projectId,
+    timestamps: {
+      created_at: character.timestamps?.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+  };
+
+  const existingIdx = existingList.findIndex(c => c.character_id === targetId);
+  let updatedList: any[];
+  if (existingIdx >= 0) {
+    updatedList = [...existingList];
+    updatedList[existingIdx] = normalized;
+  } else {
+    updatedList = [normalized, ...existingList];
+  }
+
+  saveProjectSavedCharacters(projectId, updatedList);
+  saveProjectActiveCharacterId(projectId, targetId);
+  saveProjectCharacterDNA(projectId, normalized);
+  return updatedList;
+};
+
+export const deleteSingleSavedCharacter = (projectId: string, characterId: string): any[] => {
+  const existingList = getProjectSavedCharacters(projectId);
+  const updatedList = existingList.filter(c => c.character_id !== characterId);
+  saveProjectSavedCharacters(projectId, updatedList);
+
+  const currentActiveId = getProjectActiveCharacterId(projectId);
+  if (currentActiveId === characterId) {
+    const nextActive = updatedList[0]?.character_id || null;
+    saveProjectActiveCharacterId(projectId, nextActive);
+    if (nextActive) {
+      saveProjectCharacterDNA(projectId, updatedList[0]);
+    } else {
+      removeProjectData(projectId, 'character_dna');
+    }
+  }
+
+  return updatedList;
 };
 
 export interface CalendarSettings {
