@@ -1,12 +1,11 @@
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Sparkles,
   Loader2,
   Copy,
   Check,
   Zap,
-  ChevronLeft,
   Video,
   Clipboard,
   Sliders,
@@ -18,6 +17,8 @@ import {
   ChevronDown,
   Image as ImageIcon,
   FileText,
+  Layers,
+  ArrowRight,
 } from 'lucide-react';
 import { Json2VideoApiKeyControl } from '@/components/Json2VideoApiKeyControl';
 import { VideoAssetUrlInput } from '@/components/VideoAssetUrlInput';
@@ -66,6 +67,9 @@ export default function VideoPanel(props: any) {
     getGoogleFlowVideoPack,
   } = props;
 
+  // Single active scene state for focused progressive workspace
+  const [activeSceneNumber, setActiveSceneNumber] = useState<number>(1);
+
   const effectiveVideoOutput = videoOutput || (getInitialDraft ? getInitialDraft('video', activeItem, activeContext) : '');
 
   let videoStyles: any[] | null = null;
@@ -89,535 +93,532 @@ export default function VideoPanel(props: any) {
   const activeVideo = videoStyles.find((v) => v.id === selectedVideoId) || videoStyles[0];
   const videoFunnelStage = normalizeFunnelStage(activeItem.jenis);
 
-  // VIEW 1: Initial State - Belum ada mode yang dipilih (HANYA 2 PILIHAN BESAR)
-  if (!videoOutputMode) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-[#fffdf8] border border-[#e7e0d4] p-5 rounded-2xl space-y-4 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#e7e0d4]">
-            <div>
-              <div className="flex items-center gap-2">
-                <Video size={16} className="text-[#0f766e]" />
-                <h3 className="text-sm font-bold text-[#1f2933]">Pilih Alur Produksi Video Vertikal (9:16)</h3>
+  // Default mode to google_flow if not explicitly selected, while allowing instant toggle
+  const currentOutputMode = videoOutputMode || 'google_flow';
+
+  const googleFlowScenes = getGoogleFlowVideoPack(
+    videoFunnelStage,
+    activeItem,
+    activeContext,
+    activeVideo,
+    characterDNA,
+    flowCustomCreator,
+    flowCustomSetting,
+    flowCustomDialogues[activeVideo.id]
+  );
+
+  const activeScene = googleFlowScenes.find((s: any) => s.sceneNumber === activeSceneNumber) || googleFlowScenes[0] || {
+    sceneNumber: 1,
+    title: 'Hook Pembuka',
+    duration: '8s',
+    shotType: 'Close-Up / Medium Shot',
+    role: 'Penarik Perhatian Spontan',
+    dialogue: activeVideo.script?.hook || '',
+    imagePrompt: '',
+    googleFlowPrompt: '',
+  };
+
+  const isImgCopied = copiedStates[`gflow_img_${activeScene.sceneNumber}_${activeVideo.id}`];
+  const isPromptCopied = copiedStates[`gflow_prompt_${activeScene.sceneNumber}_${activeVideo.id}`];
+  const isDialogueCopied = copiedStates[`gflow_dialogue_${activeScene.sceneNumber}_${activeVideo.id}`];
+
+  return (
+    <div className="space-y-4 font-sans">
+      
+      {/* 1. SELECTOR TOOLBAR: STYLE & WORKFLOW */}
+      <div className="bg-[#fffdf8] border border-[#e7e0d4] p-3 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xs">
+        {/* Compact Video Style Selector */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider mr-1 hidden sm:inline">
+            Style:
+          </span>
+          {videoStyles.map((style, idx) => {
+            const isSelected = selectedVideoId === style.id;
+            return (
+              <button
+                key={style.id}
+                onClick={() => handleSelectVideoStyle(style.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                  isSelected
+                    ? 'bg-[#0f766e] text-white shadow-xs'
+                    : 'bg-[#f6f3ee] text-stone-700 hover:text-stone-900 hover:bg-[#e7e0d4]/60 border border-[#e7e0d4]'
+                }`}
+              >
+                <span>{style.name}</span>
+                {idx === 0 && (
+                  <span className={`text-[9px] px-1.5 py-0.2 rounded font-semibold uppercase tracking-tight ${
+                    isSelected ? 'bg-white/20 text-white' : 'bg-[#0f766e]/10 text-[#0f766e]'
+                  }`}>
+                    Recommended
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Compact Workflow Selector (Google Flow vs JSON2Video) */}
+        <div className="flex items-center gap-1 bg-[#f6f3ee] p-1 rounded-xl border border-[#e7e0d4]">
+          <button
+            type="button"
+            onClick={() => setVideoOutputMode('google_flow')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              currentOutputMode === 'google_flow'
+                ? 'bg-[#0f766e] text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <Sparkles size={12} />
+            <span>Google Flow (3 Scene)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setVideoOutputMode('api')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              currentOutputMode === 'api'
+                ? 'bg-[#b7791f] text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <Video size={12} />
+            <span>Render via API</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 2. WORKSPACE: GOOGLE FLOW 3-SCENE PRODUCTION */}
+      {currentOutputMode === 'google_flow' && (
+        <div className="space-y-4">
+          
+          {/* Scene Navigation Bar */}
+          <div className="bg-[#f6f3ee] border border-[#e7e0d4] p-2 rounded-2xl flex flex-wrap items-center justify-between gap-2 shadow-xs">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {googleFlowScenes.map((scene: any) => {
+                const isActive = activeScene.sceneNumber === scene.sceneNumber;
+                return (
+                  <button
+                    key={scene.sceneNumber}
+                    onClick={() => setActiveSceneNumber(scene.sceneNumber)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                      isActive
+                        ? 'bg-[#0f766e] text-white shadow-xs'
+                        : 'bg-[#fffdf8] text-stone-700 hover:bg-white border border-[#e7e0d4]'
+                    }`}
+                  >
+                    <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-bold ${
+                      isActive ? 'bg-white/25 text-white' : 'bg-[#0f766e]/15 text-[#0f766e]'
+                    }`}>
+                      {scene.sceneNumber}
+                    </span>
+                    <span>Scene {scene.sceneNumber}: {scene.title.split(':')[1] || scene.title}</span>
+                    <span className={`text-[10px] opacity-75 font-mono ${isActive ? 'text-white' : 'text-stone-500'}`}>
+                      ({scene.duration})
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <a
+              href="https://labs.google/fx/tools/flow"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-2 bg-[#fffdf8] hover:bg-stone-50 border border-[#e7e0d4] text-[#0f766e] rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs shrink-0 cursor-pointer"
+            >
+              <ExternalLink size={13} />
+              <span>Buka Google Flow</span>
+            </a>
+          </div>
+
+          {/* ACTIVE SCENE WORKSPACE CARD */}
+          <div className="bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl p-5 space-y-4 shadow-xs">
+            
+            {/* Scene Header & Metadata */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#e7e0d4]">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-[#0f766e]/10 text-[#0f766e] border border-[#0f766e]/20">
+                  Scene {activeScene.sceneNumber} &bull; {activeScene.duration}
+                </span>
+                <h4 className="text-sm font-bold text-[#1f2933]">
+                  {activeScene.title}
+                </h4>
+                <span className="text-xs text-stone-500 font-mono">
+                  ({activeScene.shotType})
+                </span>
               </div>
-              <p className="text-xs text-stone-500 mt-0.5">
-                Tentukan alur produksi video yang ingin digunakan untuk naskah ini.
+              <span className="text-xs font-semibold text-[#0f766e] bg-[#0f766e]/10 px-2.5 py-0.5 rounded-lg border border-[#0f766e]/20">
+                {activeScene.role}
+              </span>
+            </div>
+
+            {/* SCRIPT & DIALOGUE BLOCK */}
+            <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl p-4 space-y-2">
+              <div className="flex items-center justify-between flex-wrap gap-2 text-[11px]">
+                <span className="font-bold text-stone-700 flex items-center gap-1.5">
+                  <MessageSquare size={13} className="text-[#0f766e]" />
+                  Naskah Dialog Audio (Bahasa Indonesia):
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-stone-200 text-stone-700 font-mono font-medium">
+                    {countWords(activeScene.dialogue)} kata &bull; ~8 detik
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyText(`gflow_dialogue_${activeScene.sceneNumber}_${activeVideo.id}`, activeScene.dialogue, 'none')}
+                    className="text-[11px] font-bold text-[#0f766e] hover:underline cursor-pointer flex items-center gap-1"
+                  >
+                    {isDialogueCopied ? <Check size={12} /> : <Copy size={12} />}
+                    <span>{isDialogueCopied ? 'Tersalin' : 'Salin Dialog'}</span>
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-stone-900 font-medium leading-relaxed italic bg-[#fffdf8] p-3 rounded-lg border border-[#e7e0d4]">
+                &ldquo;{activeScene.dialogue}&rdquo;
               </p>
             </div>
 
-            {/* Video Style Selection Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
-              {videoStyles.map((style) => (
+            {/* STEP-BY-STEP PRODUCTION ACTIONS (Primary Actions) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-1">
+              
+              {/* STEP 1: Prompt Image Scene */}
+              <div className="p-4 bg-[#f6f3ee]/60 border border-[#e7e0d4] rounded-xl flex flex-col justify-between space-y-3">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-sky-900 uppercase tracking-wider flex items-center gap-1.5">
+                      <ImageIcon size={13} className="text-sky-600" />
+                      Langkah 1: Start Frame Image Prompt
+                    </span>
+                    <span className="text-[10px] text-stone-500 font-mono">Format 9:16</span>
+                  </div>
+                  <div className="p-3 bg-[#fffdf8] border border-[#e7e0d4] rounded-xl min-h-[85px] max-h-[140px] overflow-y-auto custom-scrollbar">
+                    <p className="text-stone-800 font-mono text-[11px] leading-relaxed select-all">
+                      {activeScene.imagePrompt}
+                    </p>
+                  </div>
+                </div>
+
                 <button
-                  key={style.id}
-                  onClick={() => handleSelectVideoStyle(style.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                    selectedVideoId === style.id
-                      ? 'bg-[#0f766e] text-white shadow-xs'
-                      : 'bg-[#f6f3ee] text-stone-600 hover:text-stone-900 hover:bg-stone-200 border border-[#e7e0d4]'
+                  type="button"
+                  onClick={() =>
+                    handleCopyText(`gflow_img_${activeScene.sceneNumber}_${activeVideo.id}`, activeScene.imagePrompt, 'promptCopied')
+                  }
+                  className={`w-full py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer border ${
+                    isImgCopied
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                      : 'bg-[#fffdf8] hover:bg-sky-50 border-sky-200 text-sky-800 hover:border-sky-300'
                   }`}
                 >
-                  <div className={`w-2 h-2 rounded-full ${selectedVideoId === style.id ? 'bg-white' : 'bg-stone-400'}`} />
-                  <span>{style.name}</span>
+                  {isImgCopied ? (
+                    <>
+                      <Check size={14} className="text-emerald-600" />
+                      <span>Prompt Image Scene {activeScene.sceneNumber} Tersalin!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={14} />
+                      <span>1. Salin Prompt Image Scene {activeScene.sceneNumber}</span>
+                    </>
+                  )}
                 </button>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          {/* DUA PILIHAN BESAR ALUR VIDEO */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-            {/* OPSI 1: Google Flow Prompt */}
-            <button
-              type="button"
-              onClick={() => setVideoOutputMode('google_flow')}
-              className="p-5 rounded-2xl border-2 border-[#0f766e]/30 bg-[#fffdf8] hover:border-[#0f766e] hover:shadow-md transition-all text-left flex flex-col justify-between group cursor-pointer"
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-[#0f766e]/10 text-[#0f766e] border border-[#0f766e]/20">
-                    Alur Prompt AI &bull; 3 Scene
-                  </span>
-                  <span className="w-6 h-6 rounded-full bg-[#0f766e]/10 group-hover:bg-[#0f766e] text-[#0f766e] group-hover:text-white flex items-center justify-center transition-colors">
-                    <Sparkles size={13} />
-                  </span>
+              {/* STEP 2: Prompt Video Scene */}
+              <div className="p-4 bg-[#f6f3ee]/60 border border-[#e7e0d4] rounded-xl flex flex-col justify-between space-y-3">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-[#0f766e] uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles size={13} className="text-[#0f766e]" />
+                      Langkah 2: Video Motion Prompt (FX Studio / Veo)
+                    </span>
+                    <span className="text-[10px] text-stone-500 font-mono">Camera &amp; Motion</span>
+                  </div>
+                  <div className="p-3 bg-[#fffdf8] border border-[#e7e0d4] rounded-xl min-h-[85px] max-h-[140px] overflow-y-auto custom-scrollbar">
+                    <p className="text-stone-800 font-mono text-[11px] leading-relaxed select-all">
+                      {activeScene.googleFlowPrompt}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-[#1f2933] group-hover:text-[#0f766e] transition-colors">
-                    Google Flow Prompt
-                  </h3>
-                  <p className="text-xs text-stone-600 leading-relaxed mt-1">
-                    Naskah 3 scene vertikal (9:16) berdurasi @ 8 detik tersinkronisasi dialog Bahasa Indonesia &amp; visual prompt untuk Google FX Studio / Flow.
-                  </p>
-                </div>
-              </div>
-              <div className="pt-4 mt-4 border-t border-[#e7e0d4] flex items-center justify-between text-xs text-stone-500 font-medium">
-                <span>Format ALCO Creative System</span>
-                <span className="text-[#0f766e] font-bold group-hover:translate-x-0.5 transition-transform">
-                  Pilih Google Flow &rarr;
-                </span>
-              </div>
-            </button>
 
-            {/* OPSI 2: Render via API JSON2Video */}
-            <button
-              type="button"
-              onClick={() => setVideoOutputMode('api')}
-              className="p-5 rounded-2xl border-2 border-[#b7791f]/30 bg-[#fffdf8] hover:border-[#b7791f] hover:shadow-md transition-all text-left flex flex-col justify-between group cursor-pointer"
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-amber-100 text-amber-900 border border-amber-200">
-                    Otomatisasi Render &bull; Cloud Engine
-                  </span>
-                  <span className="w-6 h-6 rounded-full bg-amber-100 group-hover:bg-[#b7791f] text-[#b7791f] group-hover:text-white flex items-center justify-center transition-colors">
-                    <Video size={13} />
-                  </span>
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-[#1f2933] group-hover:text-[#b7791f] transition-colors">
-                    Render via API JSON2Video
-                  </h3>
-                  <p className="text-xs text-stone-600 leading-relaxed mt-1">
-                    Render video otomatis langsung menggunakan API Key JSON2Video pribadi, atau salin payload JSON lengkap untuk eksekusi manual.
-                  </p>
-                </div>
-              </div>
-              <div className="pt-4 mt-4 border-t border-[#e7e0d4] flex items-center justify-between text-xs text-stone-500 font-medium">
-                <span>BYO API Key &bull; Free 600 credits</span>
-                <span className="text-[#b7791f] font-bold group-hover:translate-x-0.5 transition-transform">
-                  Pilih Render API &rarr;
-                </span>
-              </div>
-            </button>
-          </div>
-        </div>
-
-        {/* Caption / Keterangan Postingan Video (Siap Posting) */}
-        {(activeVideo.captionForPost || activeItem?.caption) && (
-          <div className="bg-[#fffdf8] border border-[#e7e0d4] p-4.5 rounded-2xl space-y-2.5 shadow-xs">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FileText size={14} className="text-[#0f766e]" />
-                <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">Caption / Keterangan Postingan Video (Siap Posting)</span>
-              </div>
-              <button
-                onClick={() => handleCopyText(`video_caption_${activeVideo.id}`, activeVideo.captionForPost || activeItem?.caption, 'captionCopied')}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-[#1f2933] text-xs font-bold rounded-xl transition cursor-pointer border border-[#e7e0d4]"
-              >
-                {copiedStates[`video_caption_${activeVideo.id}`] ? (
-                  <>
-                    <Check size={13} className="text-[#0f766e]" />
-                    <span className="text-[#0f766e]">Caption Tersalin!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy size={13} />
-                    <span>Salin Caption</span>
-                  </>
-                )}
-              </button>
-            </div>
-            <div className="text-[11px] text-stone-500 font-medium">
-              {activeVideo.captionInstruction || "Paste teks ini di caption/keterangan postingan setelah aset dibuat."}
-            </div>
-            <div className="p-3.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-stone-900 font-sans text-xs leading-relaxed select-all whitespace-pre-wrap">
-              {activeVideo.captionForPost || activeItem?.caption}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // VIEW 2: Tampilan Setelah Memilih Alur ('google_flow' atau 'api')
-  return (
-    <div className="space-y-5">
-      {/* Active Mode Navigation Bar & Style Selection */}
-      <div className="bg-[#fffdf8] border border-[#e7e0d4] p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xs">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setVideoOutputMode(null)}
-            className="px-3 py-1.5 bg-[#f6f3ee] hover:bg-stone-200 text-stone-700 font-bold rounded-xl text-xs transition flex items-center gap-1.5 border border-[#e7e0d4] cursor-pointer shadow-xs"
-            title="Ganti Pilihan Alur Video"
-          >
-            <ChevronLeft size={14} />
-            <span>Ganti Alur</span>
-          </button>
-
-          <div className="flex items-center gap-2">
-            <span
-              className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${
-                videoOutputMode === 'google_flow'
-                  ? 'bg-[#0f766e]/10 text-[#0f766e] border-[#0f766e]/25'
-                  : 'bg-amber-100 text-amber-900 border-amber-200'
-              }`}
-            >
-              {videoOutputMode === 'google_flow' ? 'Alur: Google Flow Prompt' : 'Alur: Render via API JSON2Video'}
-            </span>
-          </div>
-        </div>
-
-        {/* Style Selection Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
-          {videoStyles.map((style) => (
-            <button
-              key={style.id}
-              onClick={() => handleSelectVideoStyle(style.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                selectedVideoId === style.id
-                  ? 'bg-[#0f766e] text-white shadow-xs'
-                  : 'bg-[#f6f3ee] text-stone-600 hover:text-stone-900 hover:bg-stone-200 border border-[#e7e0d4]'
-              }`}
-            >
-              <div className={`w-2 h-2 rounded-full ${selectedVideoId === style.id ? 'bg-white' : 'bg-stone-400'}`} />
-              <span>{style.name}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Caption / Keterangan Postingan Video (Siap Posting) */}
-      {(activeVideo.captionForPost || activeItem?.caption) && (
-        <div className="bg-[#fffdf8] border border-[#e7e0d4] p-4.5 rounded-2xl space-y-2.5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FileText size={14} className="text-[#0f766e]" />
-              <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">Caption / Keterangan Postingan Video (Siap Posting)</span>
-            </div>
-            <button
-              onClick={() => handleCopyText(`video_caption_${activeVideo.id}`, activeVideo.captionForPost || activeItem?.caption, 'captionCopied')}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-[#1f2933] text-xs font-bold rounded-xl transition cursor-pointer border border-[#e7e0d4]"
-            >
-              {copiedStates[`video_caption_${activeVideo.id}`] ? (
-                <>
-                  <Check size={13} className="text-[#0f766e]" />
-                  <span className="text-[#0f766e]">Caption Tersalin!</span>
-                </>
-              ) : (
-                <>
-                  <Copy size={13} />
-                  <span>Salin Caption</span>
-                </>
-              )}
-            </button>
-          </div>
-          <div className="text-[11px] text-stone-500 font-medium">
-            {activeVideo.captionInstruction || "Paste teks ini di caption/keterangan postingan setelah aset dibuat."}
-          </div>
-          <div className="p-3.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-stone-900 font-sans text-xs leading-relaxed select-all whitespace-pre-wrap">
-            {activeVideo.captionForPost || activeItem?.caption}
-          </div>
-        </div>
-      )}
-
-      {/* ALUR 1: GOOGLE FLOW PROMPT WORKFLOW */}
-      {videoOutputMode === 'google_flow' && (
-        <div className="space-y-5">
-          {/* SCRIPT STORYBOARD RINGKAS (Hook -> Masalah -> Solusi -> Proof -> CTA) */}
-          <div className="bg-[#fffdf8] border border-[#e7e0d4] p-4.5 rounded-2xl space-y-3.5 shadow-xs">
-            <div className="flex items-center justify-between pb-2 border-b border-[#e7e0d4]">
-              <div className="flex items-center gap-2">
-                <PlayCircle size={15} className="text-[#0f766e]" />
-                <h4 className="text-xs font-bold text-[#1f2933]">Naskah Monolog &amp; Struktur Alur Video</h4>
-              </div>
-              <span className="text-[11px] text-stone-500 font-medium">Ikuti urutan salin per scene di bawah</span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 text-xs">
-              <div className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-1.5">
-                <span className="px-2 py-0.5 rounded bg-rose-100 border border-rose-200 text-[9px] font-bold text-rose-800 uppercase tracking-wide block w-fit">
-                  1. Hook
-                </span>
-                <p className="text-stone-900 leading-relaxed font-semibold italic text-[11px]">
-                  &ldquo;{activeVideo.script?.hook}&rdquo;
-                </p>
-              </div>
-
-              <div className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-1.5">
-                <span className="px-2 py-0.5 rounded bg-amber-100 border border-amber-200 text-[9px] font-bold text-amber-800 uppercase tracking-wide block w-fit">
-                  2. Masalah
-                </span>
-                <p className="text-stone-800 leading-relaxed text-[11px]">
-                  &ldquo;{activeVideo.script?.masalah}&rdquo;
-                </p>
-              </div>
-
-              <div className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-1.5">
-                <span className="px-2 py-0.5 rounded bg-emerald-100 border border-emerald-200 text-[9px] font-bold text-emerald-800 uppercase tracking-wide block w-fit">
-                  3. Solusi
-                </span>
-                <p className="text-stone-800 leading-relaxed text-[11px]">
-                  &ldquo;{activeVideo.script?.solusi}&rdquo;
-                </p>
-              </div>
-
-              <div className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-1.5">
-                <span className="px-2 py-0.5 rounded bg-blue-100 border border-blue-200 text-[9px] font-bold text-blue-800 uppercase tracking-wide block w-fit">
-                  4. Proof
-                </span>
-                <p className="text-stone-800 leading-relaxed text-[11px]">
-                  &ldquo;{activeVideo.script?.proof}&rdquo;
-                </p>
-              </div>
-
-              <div className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-1.5">
-                <span className="px-2 py-0.5 rounded bg-purple-100 border border-purple-200 text-[9px] font-bold text-purple-800 uppercase tracking-wide block w-fit">
-                  5. CTA
-                </span>
-                <p className="text-stone-900 leading-relaxed font-bold text-[11px]">
-                  &ldquo;{activeVideo.script?.cta}&rdquo;
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* 3 Scene Google Flow Action Toolbar & Cards */}
-          <div className="space-y-4">
-            {/* Blok Instruksi Urutan Kerja di Google Flow */}
-            <div className="bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl p-4.5 space-y-3.5 shadow-xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#e7e0d4]">
-                <div className="flex items-center gap-2">
-                  <Sparkles size={16} className="text-[#0f766e]" />
-                  <h4 className="text-sm font-bold text-[#1f2933]">Urutan Kerja di Google Flow</h4>
-                </div>
-                <a
-                  href="https://labs.google/fx/tools/flow"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white rounded-xl text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer"
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleCopyText(
+                      `gflow_prompt_${activeScene.sceneNumber}_${activeVideo.id}`,
+                      activeScene.googleFlowPrompt,
+                      'promptCopied'
+                    )
+                  }
+                  className={`w-full py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer border ${
+                    isPromptCopied
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                      : 'bg-[#0f766e] hover:bg-[#0f766e]/90 border-[#0f766e] text-white'
+                  }`}
                 >
-                  <ExternalLink size={14} />
-                  <span>Buka Google Flow</span>
-                </a>
+                  {isPromptCopied ? (
+                    <>
+                      <Check size={14} className="text-emerald-600" />
+                      <span>Prompt Video Scene {activeScene.sceneNumber} Tersalin!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={14} />
+                      <span>2. Salin Prompt Video Scene {activeScene.sceneNumber}</span>
+                    </>
+                  )}
+                </button>
               </div>
 
-              <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 text-xs text-stone-700">
-                <li className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-full bg-[#0f766e] text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
-                    1
-                  </span>
-                  <span className="leading-relaxed">
-                    Salin <strong>Prompt Image Scene 1</strong>.
-                  </span>
-                </li>
-                <li className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-full bg-[#0f766e] text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
-                    2
-                  </span>
-                  <span className="leading-relaxed">
-                    Klik <strong>Buka Google Flow</strong>, paste prompt image, lalu generate sampai gambar berhasil dibuat.
-                  </span>
-                </li>
-                <li className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-full bg-[#0f766e] text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
-                    3
-                  </span>
-                  <span className="leading-relaxed">
-                    Salin <strong>Prompt Video Scene 1</strong>, paste ke Flow, lalu generate video.
-                  </span>
-                </li>
-                <li className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-full bg-[#0f766e] text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
-                    4
-                  </span>
-                  <span className="leading-relaxed">
-                    Ulangi urutan yang sama untuk <strong>Scene 2</strong>.
-                  </span>
-                </li>
-                <li className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-full bg-[#0f766e] text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
-                    5
-                  </span>
-                  <span className="leading-relaxed">
-                    Ulangi urutan yang sama untuk <strong>Scene 3</strong>.
-                  </span>
-                </li>
-              </ol>
             </div>
 
-            {/* Render 3 Scene Cards */}
-            {(() => {
-              const googleFlowScenes = getGoogleFlowVideoPack(
-                videoFunnelStage,
-                activeItem,
-                activeContext,
-                activeVideo,
-                characterDNA,
-                flowCustomCreator,
-                flowCustomSetting,
-                flowCustomDialogues[activeVideo.id]
-              );
-
-              return (
-                <div className="grid grid-cols-1 gap-4">
-                  {googleFlowScenes.map((scene: any) => {
-                    const sceneBadgeColor =
-                      scene.sceneNumber === 1
-                        ? 'bg-rose-100 text-rose-800 border-rose-200'
-                        : scene.sceneNumber === 2
-                        ? 'bg-amber-100 text-amber-800 border-amber-200'
-                        : 'bg-emerald-100 text-emerald-800 border-emerald-200';
-
-                    const isImgCopied = copiedStates[`gflow_img_${scene.sceneNumber}_${activeVideo.id}`];
-                    const isPromptCopied = copiedStates[`gflow_prompt_${scene.sceneNumber}_${activeVideo.id}`];
-
-                    return (
-                      <div
-                        key={scene.sceneNumber}
-                        className="bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl p-5 space-y-4 shadow-xs"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#e7e0d4]">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wider ${sceneBadgeColor}`}
-                            >
-                              Scene {scene.sceneNumber} &bull; {scene.duration}
-                            </span>
-                            <h4 className="text-sm font-bold text-[#1f2933]">{scene.title}</h4>
-                            <span className="text-xs text-stone-500 font-mono">({scene.shotType})</span>
-                          </div>
-                        </div>
-
-                        {/* Dialogue Field */}
-                        <div className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-1.5">
-                          <div className="flex items-center justify-between text-[11px] flex-wrap gap-1">
-                            <span className="font-bold text-stone-600 flex items-center gap-1">
-                              <MessageSquare size={12} className="text-[#0f766e]" /> Naskah Dialog Audio (Bahasa Indonesia):
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-stone-200/80 text-stone-700 font-mono font-medium">
-                                {countWords(scene.dialogue)} kata &bull; ~8 dtk
-                              </span>
-                              <span className="text-[10px] text-stone-500">{scene.role}</span>
-                            </div>
-                          </div>
-                          <p className="text-xs text-stone-900 font-medium leading-relaxed italic bg-[#fffdf8] p-2.5 rounded-lg border border-[#e7e0d4]/80">
-                            &ldquo;{scene.dialogue}&rdquo;
-                          </p>
-                        </div>
-
-                        {/* 2 Sub-boxes: Step 1 (Image Prompt) and Step 2 (Video Prompt) */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-1">
-                          {/* Box 1: Step 1 - Start Frame Image Prompt */}
-                          <div className="space-y-2.5 flex flex-col justify-between p-4 bg-[#f6f3ee]/60 border border-[#e7e0d4] rounded-xl">
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[11px] font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
-                                  <ImageIcon size={13} className="text-blue-600" /> 1. Start Frame Image Prompt (9:16)
-                                </span>
-                              </div>
-                              <div className="p-3 bg-[#fffdf8] border border-[#e7e0d4] rounded-xl min-h-[90px]">
-                                <p className="text-stone-800 font-mono text-[11px] leading-relaxed select-all">
-                                  {scene.imagePrompt}
-                                </p>
-                              </div>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleCopyText(`gflow_img_${scene.sceneNumber}_${activeVideo.id}`, scene.imagePrompt, 'promptCopied')
-                              }
-                              className={`w-full py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer border ${
-                                isImgCopied
-                                  ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
-                                  : 'bg-[#fffdf8] hover:bg-blue-50 border-blue-200 text-blue-700 hover:border-blue-300'
-                              }`}
-                            >
-                              {isImgCopied ? (
-                                <>
-                                  <Check size={14} className="text-emerald-600" />
-                                  <span>Prompt Image Scene {scene.sceneNumber} Tersalin</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy size={14} />
-                                  <span>1. Salin Prompt Image Scene {scene.sceneNumber}</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-
-                          {/* Box 2: Step 2 - Google Flow Video Prompt */}
-                          <div className="space-y-2.5 flex flex-col justify-between p-4 bg-[#f6f3ee]/60 border border-[#e7e0d4] rounded-xl">
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[11px] font-bold text-[#0f766e] uppercase tracking-wider flex items-center gap-1.5">
-                                  <Sparkles size={13} className="text-[#0f766e]" /> 2. Google Flow Video Prompt (Veo / FX Studio)
-                                </span>
-                              </div>
-                              <div className="p-3 bg-[#fffdf8] border border-[#e7e0d4] rounded-xl min-h-[90px]">
-                                <p className="text-stone-800 font-mono text-[11px] leading-relaxed select-all">
-                                  {scene.googleFlowPrompt}
-                                </p>
-                              </div>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleCopyText(
-                                  `gflow_prompt_${scene.sceneNumber}_${activeVideo.id}`,
-                                  scene.googleFlowPrompt,
-                                  'promptCopied'
-                                )
-                              }
-                              className={`w-full py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer border ${
-                                isPromptCopied
-                                  ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
-                                  : 'bg-[#0f766e] hover:bg-[#0f766e]/90 border-[#0f766e] text-white'
-                              }`}
-                            >
-                              {isPromptCopied ? (
-                                <>
-                                  <Check size={14} className="text-emerald-600" />
-                                  <span>Prompt Video Scene {scene.sceneNumber} Tersalin</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Sparkles size={14} />
-                                  <span>2. Salin Prompt Video Scene {scene.sceneNumber}</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Next step links when either prompt image or prompt video in this scene is copied */}
-                        <PromptNextStepLinks
-                          show={Boolean(
-                            nextStepVisibleKeys?.[`gflow_img_${scene.sceneNumber}_${activeVideo.id}`] ||
-                            nextStepVisibleKeys?.[`gflow_prompt_${scene.sceneNumber}_${activeVideo.id}`]
-                          )}
-                          onDismiss={() => {
-                            handleDismissNextStep?.(`gflow_img_${scene.sceneNumber}_${activeVideo.id}`);
-                            handleDismissNextStep?.(`gflow_prompt_${scene.sceneNumber}_${activeVideo.id}`);
-                          }}
-                          className="mt-2"
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
+            {/* Next step links when prompt is copied */}
+            <PromptNextStepLinks
+              show={Boolean(
+                nextStepVisibleKeys?.[`gflow_img_${activeScene.sceneNumber}_${activeVideo.id}`] ||
+                nextStepVisibleKeys?.[`gflow_prompt_${activeScene.sceneNumber}_${activeVideo.id}`]
+              )}
+              onDismiss={() => {
+                handleDismissNextStep?.(`gflow_img_${activeScene.sceneNumber}_${activeVideo.id}`);
+                handleDismissNextStep?.(`gflow_prompt_${activeScene.sceneNumber}_${activeVideo.id}`);
+              }}
+              className="mt-1"
+            />
           </div>
+
+          {/* CAPTION SECTION (Siap Posting) */}
+          {(activeVideo.captionForPost || activeItem?.caption) && (
+            <div className="bg-[#fffdf8] border border-[#e7e0d4] p-4.5 rounded-2xl space-y-2.5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText size={14} className="text-[#0f766e]" />
+                  <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">
+                    Caption Postingan Video (Siap Posting)
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleCopyText(`video_caption_${activeVideo.id}`, activeVideo.captionForPost || activeItem?.caption, 'captionCopied')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-[#1f2933] text-xs font-bold rounded-xl transition cursor-pointer border border-[#e7e0d4]"
+                >
+                  {copiedStates[`video_caption_${activeVideo.id}`] ? (
+                    <>
+                      <Check size={13} className="text-[#0f766e]" />
+                      <span className="text-[#0f766e]">Caption Tersalin!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={13} />
+                      <span>Salin Caption</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="text-[11px] text-stone-500 font-medium">
+                {activeVideo.captionInstruction || "Paste teks ini di caption/keterangan postingan setelah aset video selesai dibuat."}
+              </div>
+              <div className="p-3.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-stone-900 font-sans text-xs leading-relaxed select-all whitespace-pre-wrap">
+                {activeVideo.captionForPost || activeItem?.caption}
+              </div>
+            </div>
+          )}
+
+          {/* PROGRESSIVE DISCLOSURE: DETAIL PENDUKUNG & STRATEGI */}
+          <div className="space-y-2.5 pt-1">
+            
+            {/* 1. Naskah Alur Cerita Utuh (5-Step Monolog) */}
+            <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
+              <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+                <div className="flex items-center gap-2">
+                  <PlayCircle size={14} className="text-[#0f766e]" />
+                  <span>Struktur Naskah Cerita Utuh (Hook &rarr; Masalah &rarr; Solusi &rarr; Proof &rarr; CTA)</span>
+                </div>
+                <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />
+              </summary>
+              <div className="p-4 pt-2 border-t border-[#e7e0d4]/60 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 text-xs">
+                <div className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-1">
+                  <span className="px-2 py-0.5 rounded bg-rose-100 border border-rose-200 text-[9px] font-bold text-rose-800 uppercase block w-fit">
+                    1. Hook
+                  </span>
+                  <p className="text-stone-900 italic text-[11px] leading-relaxed">&ldquo;{activeVideo.script?.hook}&rdquo;</p>
+                </div>
+                <div className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-1">
+                  <span className="px-2 py-0.5 rounded bg-amber-100 border border-amber-200 text-[9px] font-bold text-amber-800 uppercase block w-fit">
+                    2. Masalah
+                  </span>
+                  <p className="text-stone-800 text-[11px] leading-relaxed">&ldquo;{activeVideo.script?.masalah}&rdquo;</p>
+                </div>
+                <div className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-1">
+                  <span className="px-2 py-0.5 rounded bg-emerald-100 border border-emerald-200 text-[9px] font-bold text-emerald-800 uppercase block w-fit">
+                    3. Solusi
+                  </span>
+                  <p className="text-stone-800 text-[11px] leading-relaxed">&ldquo;{activeVideo.script?.solusi}&rdquo;</p>
+                </div>
+                <div className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-1">
+                  <span className="px-2 py-0.5 rounded bg-blue-100 border border-blue-200 text-[9px] font-bold text-blue-800 uppercase block w-fit">
+                    4. Proof
+                  </span>
+                  <p className="text-stone-800 text-[11px] leading-relaxed">&ldquo;{activeVideo.script?.proof}&rdquo;</p>
+                </div>
+                <div className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-1">
+                  <span className="px-2 py-0.5 rounded bg-purple-100 border border-purple-200 text-[9px] font-bold text-purple-800 uppercase block w-fit">
+                    5. CTA
+                  </span>
+                  <p className="text-stone-900 font-bold text-[11px] leading-relaxed">&ldquo;{activeVideo.script?.cta}&rdquo;</p>
+                </div>
+              </div>
+            </details>
+
+            {/* 2. Urutan Kerja di Google Flow */}
+            <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
+              <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={14} className="text-[#0f766e]" />
+                  <span>Panduan Langkah Eksekusi di Google FX Studio / Flow</span>
+                </div>
+                <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />
+              </summary>
+              <div className="p-4 pt-2 border-t border-[#e7e0d4]/60 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-xs text-stone-700">
+                <div className="p-2.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl">
+                  <span className="font-bold text-[#0f766e] block text-[11px]">Langkah 1:</span>
+                  <p className="text-[11px] mt-0.5 leading-snug">Salin Prompt Image Scene 1, paste di Flow untuk membuat visual frame pembuka.</p>
+                </div>
+                <div className="p-2.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl">
+                  <span className="font-bold text-[#0f766e] block text-[11px]">Langkah 2:</span>
+                  <p className="text-[11px] mt-0.5 leading-snug">Salin Prompt Video Scene 1, generate video gerak di Google Flow.</p>
+                </div>
+                <div className="p-2.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl">
+                  <span className="font-bold text-[#0f766e] block text-[11px]">Langkah 3:</span>
+                  <p className="text-[11px] mt-0.5 leading-snug">Beralih ke Scene 2, lakukan urutan yang sama untuk konten solusi.</p>
+                </div>
+                <div className="p-2.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl">
+                  <span className="font-bold text-[#0f766e] block text-[11px]">Langkah 4:</span>
+                  <p className="text-[11px] mt-0.5 leading-snug">Lanjutkan Scene 3 untuk dorongan aksi CTA konversi tinggi.</p>
+                </div>
+                <div className="p-2.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl">
+                  <span className="font-bold text-[#0f766e] block text-[11px]">Langkah 5:</span>
+                  <p className="text-[11px] mt-0.5 leading-snug">Gabungkan 3 klip di CapCut/editor, tambahkan voiceover &amp; caption siap posting.</p>
+                </div>
+              </div>
+            </details>
+
+            {/* 3. Detail Strategi & Teknis Video */}
+            <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
+              <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+                <div className="flex items-center gap-2">
+                  <Sliders size={14} className="text-[#0f766e]" />
+                  <span>Detail Strategi, Arah Audio &amp; Konfigurasi Produksi</span>
+                </div>
+                <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />
+              </summary>
+              <div className="p-4 pt-2 border-t border-[#e7e0d4]/60 space-y-3.5 text-xs">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-1">
+                    <span className="text-[10px] font-bold text-stone-500 uppercase block">Hook &amp; Pacing</span>
+                    <p className="text-stone-800 font-semibold">{activeVideo.hookStyle || '-'}</p>
+                    <p className="text-stone-500 text-[11px]">Pacing: {activeVideo.pacingStyle || '-'}</p>
+                  </div>
+                  <div className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-1">
+                    <span className="text-[10px] font-bold text-stone-500 uppercase block">Arah Audio &amp; Voiceover</span>
+                    <p className="text-stone-800 leading-snug">{activeVideo.audioDirection || '-'}</p>
+                  </div>
+                  <div className="p-3 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-1">
+                    <span className="text-[10px] font-bold text-stone-500 uppercase block">Visual Direction Utama</span>
+                    <p className="text-stone-800 leading-snug line-clamp-3">{activeVideo.visualDirection || activeItem.visual || '-'}</p>
+                  </div>
+                </div>
+
+                {/* Mode Selection */}
+                <div className="pt-2 border-t border-[#e7e0d4] space-y-2">
+                  <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">Mode Produksi Video</span>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    {[
+                      { id: 'text_motion', title: 'Text Motion', desc: 'Video berbasis teks & motion graphic' },
+                      { id: 'ugc_video', title: 'UGC Video', desc: 'Video dengan talent / karakter pembawa pesan' },
+                      { id: 'asset_product', title: 'Asset Product', desc: 'Video memakai aset screenshot / produk' },
+                    ].map((mode) => {
+                      const isSelected = videoMode === mode.id;
+                      return (
+                        <button
+                          key={mode.id}
+                          type="button"
+                          onClick={() => setVideoMode(mode.id as any)}
+                          className={`p-2.5 rounded-xl border text-left transition-all ${
+                            isSelected
+                              ? 'bg-[#fffdf8] border-[#0f766e] shadow-xs'
+                              : 'bg-[#f6f3ee] border-[#e7e0d4] text-stone-600 hover:bg-[#fffdf8]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className={`text-xs font-bold ${isSelected ? 'text-[#0f766e]' : 'text-stone-800'}`}>
+                              {mode.title}
+                            </span>
+                            {isSelected && <Check size={12} className="text-[#0f766e]" />}
+                          </div>
+                          <p className="text-[10px] text-stone-500 leading-tight">{mode.desc}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Video Visual Assets URLs */}
+                <div className="pt-2 border-t border-[#e7e0d4] space-y-2">
+                  <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">Direct Asset URLs (Opsional)</span>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                    <VideoAssetUrlInput
+                      id="char-image-url-input"
+                      label="Character Image URL"
+                      badgeText="Latar UGC 9:16"
+                      value={characterImageUrl}
+                      onChange={setCharacterImageUrl}
+                      placeholder="https://example.com/char.jpg"
+                      aspectRatio="9:16"
+                      helperText="Wajib URL HTTPS publik."
+                      isCharacterUrl={true}
+                    />
+                    <VideoAssetUrlInput
+                      id="product-screen-url-input"
+                      label="Product Screen URL"
+                      badgeText="Overlay Mockup"
+                      value={productScreenImageUrl}
+                      onChange={setProductScreenImageUrl}
+                      placeholder="https://example.com/mock.png"
+                      aspectRatio="16:9"
+                      helperText="Tangkapan layar produk/UI."
+                    />
+                    <VideoAssetUrlInput
+                      id="cover-image-url-input"
+                      label="Cover Image URL"
+                      badgeText="Poster / Scene 1"
+                      value={coverImageUrl}
+                      onChange={setCoverImageUrl}
+                      placeholder="https://example.com/cov.jpg"
+                      aspectRatio="9:16"
+                      helperText="Thumbnail visual pembuka."
+                    />
+                  </div>
+                </div>
+              </div>
+            </details>
+
+          </div>
+
         </div>
       )}
 
-      {/* ALUR 2: RENDER VIA API (JSON2VIDEO) WORKFLOW */}
-      {videoOutputMode === 'api' && (
-        <div className="space-y-5">
+      {/* 3. WORKSPACE: RENDER VIA API (JSON2VIDEO) */}
+      {currentOutputMode === 'api' && (
+        <div className="space-y-4">
+          
           <div className="bg-[#fffdf8] border border-[#e7e0d4] p-5 rounded-2xl space-y-4 shadow-xs">
+            
+            {/* Header & Primary Actions */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-[#e7e0d4]">
               <div>
                 <h3 className="text-xs font-bold uppercase text-[#1f2933] tracking-wider flex items-center gap-1.5">
                   <Video size={14} className="text-[#b7791f]" />
-                  Render Video Otomatis &amp; JSON2Video Payload
+                  Render Otomatis Cloud Engine (JSON2Video)
                 </h3>
                 <p className="text-[11px] text-stone-500 leading-relaxed mt-0.5">
-                  Render video langsung dengan API Key JSON2Video, atau generate payload untuk salin manual.
+                  Render video otomatis langsung dari script menggunakan API Key Anda.
                 </p>
               </div>
 
@@ -630,7 +631,7 @@ export default function VideoPanel(props: any) {
                   className="px-3.5 py-2 bg-[#f6f3ee] hover:bg-stone-200 text-stone-800 border border-[#e7e0d4] font-bold rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                 >
                   <Clipboard size={13} />
-                  Generate Payload
+                  <span>Generate Payload</span>
                 </button>
 
                 <button
@@ -642,12 +643,12 @@ export default function VideoPanel(props: any) {
                   {isRenderingVideo ? (
                     <>
                       <Loader2 size={13} className="animate-spin" />
-                      Rendering...
+                      <span>Rendering...</span>
                     </>
                   ) : (
                     <>
                       <Zap size={13} />
-                      Render Video
+                      <span>Render Video</span>
                     </>
                   )}
                 </button>
@@ -665,7 +666,7 @@ export default function VideoPanel(props: any) {
               </div>
             )}
 
-            {/* Active Render Job Status Panel */}
+            {/* Active Render Job Status */}
             {(isRenderingVideo || renderJobId || renderJobData) && (
               <div className="p-4 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#e7e0d4]">
@@ -688,10 +689,10 @@ export default function VideoPanel(props: any) {
                         type="button"
                         disabled={isCheckingStatus}
                         onClick={() => handleCheckRenderStatus(renderJobId)}
-                        className="px-3 py-1 bg-[#fffdf8] hover:bg-stone-100 text-xs font-bold text-stone-700 rounded-lg transition border border-[#e7e0d4] flex items-center gap-1.5 shadow-xs"
+                        className="px-3 py-1 bg-[#fffdf8] hover:bg-stone-100 text-xs font-bold text-stone-700 rounded-lg transition border border-[#e7e0d4] flex items-center gap-1.5 shadow-xs cursor-pointer"
                       >
                         {isCheckingStatus ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                        Check Status
+                        <span>Cek Status</span>
                       </button>
                     )}
 
@@ -711,7 +712,7 @@ export default function VideoPanel(props: any) {
                         className="px-3.5 py-1 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5"
                       >
                         <ExternalLink size={12} />
-                        Open Video
+                        <span>Buka Video Hasil</span>
                       </a>
                     )}
                   </div>
@@ -738,144 +739,81 @@ export default function VideoPanel(props: any) {
               </div>
             )}
 
-            {/* Generated JSON Payload Display */}
-            {json2VideoPayload?.key === `${activeItem.no || 1}_${activeVideo.id}` ? (
-              <div className="space-y-3 pt-1">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-[11px] text-stone-500 leading-relaxed">
-                    Free account JSON2Video menyediakan 600 credits awal, maksimal 60 detik per video.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => handleCopyText(`json2video_${activeVideo.id}`, json2VideoPayload.text, 'none')}
-                    className="px-3 py-1.5 bg-[#f6f3ee] hover:bg-stone-200 text-stone-800 border border-[#e7e0d4] rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer"
-                  >
-                    {copiedStates[`json2video_${activeVideo.id}`] ? (
-                      <>
-                        <Check size={12} className="text-[#0f766e]" />
-                        <span className="text-[#0f766e]">Tersalin!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={12} />
-                        <span>Copy Payload</span>
-                      </>
-                    )}
-                  </button>
+            {/* Generated JSON Payload Details */}
+            {json2VideoPayload?.key === `${activeItem.no || 1}_${activeVideo.id}` && (
+              <details className="group border border-[#e7e0d4] bg-[#f6f3ee] rounded-xl overflow-hidden">
+                <summary className="p-3 flex items-center justify-between text-xs font-bold text-stone-700 cursor-pointer select-none">
+                  <div className="flex items-center gap-2">
+                    <FileText size={13} className="text-[#0f766e]" />
+                    <span>Detail Payload JSON2Video</span>
+                  </div>
+                  <ChevronDown size={14} className="group-open:rotate-180 transition-transform text-stone-400" />
+                </summary>
+                <div className="p-3 pt-0 space-y-2">
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyText(`json2video_${activeVideo.id}`, json2VideoPayload.text, 'none')}
+                      className="px-3 py-1 bg-[#fffdf8] hover:bg-stone-100 text-stone-800 border border-[#e7e0d4] rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                    >
+                      {copiedStates[`json2video_${activeVideo.id}`] ? (
+                        <>
+                          <Check size={12} className="text-[#0f766e]" />
+                          <span className="text-[#0f766e]">Tersalin</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={12} />
+                          <span>Salin Payload</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <pre className="max-h-60 overflow-auto custom-scrollbar whitespace-pre-wrap break-words rounded-lg border border-[#e7e0d4] bg-[#fffdf8] p-3 text-[10px] leading-relaxed text-stone-800 font-mono">
+                    {json2VideoPayload.text}
+                  </pre>
                 </div>
-                <pre className="max-h-80 overflow-auto custom-scrollbar whitespace-pre-wrap break-words rounded-xl border border-[#e7e0d4] bg-[#f6f3ee] p-3 text-[10px] leading-relaxed text-stone-800 font-mono">
-                  {json2VideoPayload.text}
-                </pre>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-dashed border-[#e7e0d4] bg-[#f6f3ee]/50 p-4 text-xs text-stone-500 leading-relaxed">
-                Klik &quot;Render Video&quot; untuk langsung merender video via API, atau &quot;Generate Payload&quot; untuk menyalin payload JSON.
-              </div>
+              </details>
             )}
+
           </div>
 
-          {/* Collapsible Section: Detail Teknis & Konfigurasi Aset Video (UX Focus #4 & #6) */}
-          <details className="group border border-[#e7e0d4] bg-[#f6f3ee]/50 rounded-2xl overflow-hidden shadow-xs transition-all">
-            <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-700 hover:text-stone-900 cursor-pointer select-none">
-              <div className="flex items-center gap-2">
-                <Sliders size={14} className="text-[#0f766e]" />
-                <span>Detail Teknis, Konfigurasi Mode &amp; Aset Video</span>
+          {/* Caption in API Mode */}
+          {(activeVideo.captionForPost || activeItem?.caption) && (
+            <div className="bg-[#fffdf8] border border-[#e7e0d4] p-4.5 rounded-2xl space-y-2.5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText size={14} className="text-[#0f766e]" />
+                  <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">
+                    Caption Postingan Video (Siap Posting)
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleCopyText(`video_caption_${activeVideo.id}`, activeVideo.captionForPost || activeItem?.caption, 'captionCopied')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-[#1f2933] text-xs font-bold rounded-xl transition cursor-pointer border border-[#e7e0d4]"
+                >
+                  {copiedStates[`video_caption_${activeVideo.id}`] ? (
+                    <>
+                      <Check size={13} className="text-[#0f766e]" />
+                      <span className="text-[#0f766e]">Caption Tersalin!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={13} />
+                      <span>Salin Caption</span>
+                    </>
+                  )}
+                </button>
               </div>
-              <ChevronDown size={15} className="group-open:rotate-180 transition-transform text-stone-500" />
-            </summary>
-            <div className="p-4 pt-2 border-t border-[#e7e0d4] space-y-4 text-xs">
-              {/* Video Mode Selection */}
-              <div className="space-y-2">
-                <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">Mode Produksi Visual</span>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-                  {[
-                    { id: 'text_motion', title: 'Text Motion', desc: 'Video berbasis teks & motion graphic' },
-                    { id: 'ugc_video', title: 'UGC Video', desc: 'Video dengan talent / karakter pembawa pesan' },
-                    { id: 'asset_product', title: 'Asset Product', desc: 'Video memakai aset screenshot / produk' },
-                  ].map((mode) => {
-                    const isSelected = videoMode === mode.id;
-                    return (
-                      <button
-                        key={mode.id}
-                        type="button"
-                        onClick={() => setVideoMode(mode.id as any)}
-                        className={`p-3 rounded-xl border text-left transition-all ${
-                          isSelected
-                            ? 'bg-[#fffdf8] border-[#0f766e] shadow-xs'
-                            : 'bg-[#fffdf8]/60 border-[#e7e0d4] text-stone-600 hover:bg-[#fffdf8]'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-0.5">
-                          <span className={`text-xs font-bold ${isSelected ? 'text-[#0f766e]' : 'text-stone-800'}`}>
-                            {mode.title}
-                          </span>
-                          {isSelected && <Check size={12} className="text-[#0f766e]" />}
-                        </div>
-                        <p className="text-[10px] text-stone-500 leading-snug">{mode.desc}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Video Visual Assets URLs */}
-              <div className="space-y-3 pt-2 border-t border-[#e7e0d4]">
-                <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">Aset Visual &amp; Direct URLs (HTTPS)</span>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <VideoAssetUrlInput
-                    id="char-image-url-input"
-                    label="Character Image URL"
-                    badgeText="Latar UGC 9:16"
-                    value={characterImageUrl}
-                    onChange={setCharacterImageUrl}
-                    placeholder="https://example.com/character.jpg"
-                    aspectRatio="9:16"
-                    helperText="Wajib URL HTTPS publik (Cloudinary, Imgur, Supabase)."
-                    isCharacterUrl={true}
-                  />
-                  <VideoAssetUrlInput
-                    id="product-screen-url-input"
-                    label="Product Screen URL"
-                    badgeText="Overlay Mockup"
-                    value={productScreenImageUrl}
-                    onChange={setProductScreenImageUrl}
-                    placeholder="https://example.com/mockup.png"
-                    aspectRatio="16:9"
-                    helperText="URL HTTPS untuk tangkapan layar antarmuka atau produk."
-                  />
-                  <VideoAssetUrlInput
-                    id="cover-image-url-input"
-                    label="Cover Image URL"
-                    badgeText="Poster / Scene 1"
-                    value={coverImageUrl}
-                    onChange={setCoverImageUrl}
-                    placeholder="https://example.com/cover.jpg"
-                    aspectRatio="9:16"
-                    helperText="URL HTTPS untuk thumbnail atau visual pembuka."
-                  />
-                </div>
-              </div>
-
-              {/* Technical Strategy Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-[#e7e0d4]">
-                <div className="p-3 bg-[#fffdf8] border border-[#e7e0d4] rounded-xl space-y-1.5">
-                  <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">Hook &amp; Pacing</span>
-                  <p className="text-stone-800 font-semibold">{activeVideo.hookStyle || '-'}</p>
-                  <p className="text-stone-500 text-[10px]">Pacing: {activeVideo.pacingStyle || '-'}</p>
-                </div>
-                <div className="p-3 bg-[#fffdf8] border border-[#e7e0d4] rounded-xl space-y-1.5">
-                  <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">Arah Audio &amp; Voiceover</span>
-                  <p className="text-stone-800">{activeVideo.audioDirection || '-'}</p>
-                </div>
-                <div className="p-3 bg-[#fffdf8] border border-[#e7e0d4] rounded-xl space-y-1.5">
-                  <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">Raw Generator Prompt</span>
-                  <p className="text-stone-700 font-mono text-[10px] leading-snug line-clamp-3">{activeVideo.videoPrompt || '-'}</p>
-                </div>
+              <div className="p-3.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-stone-900 font-sans text-xs leading-relaxed select-all whitespace-pre-wrap">
+                {activeVideo.captionForPost || activeItem?.caption}
               </div>
             </div>
-          </details>
+          )}
+
         </div>
       )}
+
     </div>
   );
 }
