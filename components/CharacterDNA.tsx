@@ -37,6 +37,63 @@ import { CharacterDNA } from '@/lib/content-contract';
 import { buildGeminiRequestHeaders } from '@/lib/client-gemini-key';
 import { buildCharacterConsistencyPrompt } from '@/lib/character-prompt';
 
+// Helper to resize and compress reference images before API call
+// - Max 1024px on longest side
+// - Preserves aspect ratio and AI facial feature recognition
+// - Significantly reduces multimodal token consumption
+const optimizeImageForDNAAnalysis = async (file: File): Promise<{ data: string; mimeType: string }> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = document.createElement('img');
+      img.onload = () => {
+        const MAX_DIMENSION = 1024;
+        let width = img.naturalWidth || img.width;
+        let height = img.naturalHeight || img.height;
+
+        if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+          if (width > height) {
+            height = Math.round((height * MAX_DIMENSION) / width);
+            width = MAX_DIMENSION;
+          } else {
+            width = Math.round((width * MAX_DIMENSION) / height);
+            height = MAX_DIMENSION;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        if (!ctx) {
+          const rawBase64 = (event.target?.result as string).split(',')[1];
+          resolve({ data: rawBase64, mimeType: file.type || 'image/jpeg' });
+          return;
+        }
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Compress to high-quality JPEG (0.85) to retain facial details while minimizing token footprint
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        const base64Data = dataUrl.split(',')[1];
+        resolve({ data: base64Data, mimeType: 'image/jpeg' });
+      };
+      img.onerror = () => {
+        const rawBase64 = (event.target?.result as string).split(',')[1];
+        resolve({ data: rawBase64, mimeType: file.type || 'image/jpeg' });
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.onerror = () => {
+      resolve({ data: '', mimeType: file.type || 'image/jpeg' });
+    };
+    reader.readAsDataURL(file);
+  });
+};
+
 export default function CharacterDNASection({
   onDNAUpdate,
   projectId,
@@ -66,6 +123,7 @@ export default function CharacterDNASection({
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isRateLimited, setIsRateLimited] = useState<boolean>(false);
   const [dna, setDna] = useState<CharacterDNA | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
@@ -122,6 +180,7 @@ export default function CharacterDNASection({
     if (e.target.files) {
       const selected = Array.from(e.target.files).slice(0, 3);
       setImages(selected);
+      setIsRateLimited(false);
       // Generate object URLs for preview
       const previews = selected.map((file) => URL.createObjectURL(file));
       setImagePreviews(previews);
@@ -149,20 +208,11 @@ export default function CharacterDNASection({
 
     setLoading(true);
     setErrorMessage(null);
+    setIsRateLimited(false);
     try {
+      // Optimize & resize reference images to max 1024px to heavily save token consumption while preserving facial features
       const base64Images = await Promise.all(
-        images.map(
-          (img) =>
-            new Promise<{ data: string; mimeType: string }>((resolve) => {
-              const reader = new FileReader();
-              reader.onload = (e) =>
-                resolve({
-                  data: (e.target?.result as string).split(',')[1],
-                  mimeType: img.type,
-                });
-              reader.readAsDataURL(img);
-            })
-        )
+        images.slice(0, 3).map((img) => optimizeImageForDNAAnalysis(img))
       );
 
       // Build structured prompt embedding explicit user additional instructions
@@ -225,11 +275,30 @@ Output a complete JSON object with the following schema:
         body: JSON.stringify({ images: base64Images, prompt: userPrompt }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to generate DNA: ${response.statusText}`);
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || data.error) {
+        if (response.status === 429 || data.isRateLimit || data.error === 'RATE_LIMIT') {
+          setIsRateLimited(true);
+          setErrorMessage(null);
+          return;
+        }
+
+        const rawMsg = data.message || data.error || '';
+        const isRateRelated = typeof rawMsg === 'string' && /quota|rate.*limit|rate.*exceed|resource.*exhaust|overload|429/i.test(rawMsg);
+        if (isRateRelated) {
+          setIsRateLimited(true);
+          setErrorMessage(null);
+          return;
+        }
+
+        const msg = typeof data.message === 'string' && !/grpc|google|stack|error:|\[|resource_exhausted/i.test(data.message)
+          ? data.message
+          : 'Gagal menganalisis foto. Periksa koneksi atau foto Anda.';
+        setErrorMessage(msg);
+        return;
       }
 
-      const data = await response.json();
       const rawDna = data.dna?.dna ? data.dna.dna : data.dna || {};
 
       // Synthesize into robust CharacterDNA object
@@ -289,7 +358,20 @@ Output a complete JSON object with the following schema:
       setTimeout(() => setSaveMessage(null), 5000);
     } catch (error: any) {
       console.error('Error generating DNA:', error);
-      setErrorMessage(error?.message || 'Gagal menganalisis foto. Periksa koneksi atau foto.');
+      const errStr = String(error?.message || error || '').toLowerCase();
+      if (
+        errStr.includes('429') ||
+        errStr.includes('quota') ||
+        errStr.includes('rate') ||
+        errStr.includes('resource_exhausted') ||
+        errStr.includes('overload') ||
+        errStr.includes('unavailable')
+      ) {
+        setIsRateLimited(true);
+        setErrorMessage(null);
+      } else {
+        setErrorMessage('Gagal menganalisis foto. Periksa koneksi atau foto.');
+      }
     } finally {
       setLoading(false);
     }
@@ -411,6 +493,7 @@ Output a complete JSON object with the following schema:
     setImages([]);
     setImagePreviews([]);
     setErrorMessage(null);
+    setIsRateLimited(false);
     setSaveMessage(null);
     // Scroll smoothly to form
     const formEl = document.getElementById('character-form-box');
@@ -426,6 +509,8 @@ Output a complete JSON object with the following schema:
     setAdditionalInstructions('');
     setImages([]);
     setImagePreviews([]);
+    setErrorMessage(null);
+    setIsRateLimited(false);
   };
 
   // Delete a character
@@ -460,6 +545,7 @@ Output a complete JSON object with the following schema:
     setImages([]);
     setImagePreviews([]);
     setErrorMessage(null);
+    setIsRateLimited(false);
     setSaveMessage(null);
   };
 
@@ -602,12 +688,24 @@ Output a complete JSON object with the following schema:
         </div>
 
         {/* Feedback Messages */}
-        {errorMessage && (
+        {isRateLimited ? (
+          <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 flex items-start gap-2.5 animate-fadeIn">
+            <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <p className="text-xs font-bold text-amber-900">
+                Kuota Gemini API telah mencapai batas.
+              </p>
+              <p className="text-[11px] text-amber-700 leading-relaxed">
+                Character DNA tidak dapat dianalisis sampai kuota API tersedia kembali.
+              </p>
+            </div>
+          </div>
+        ) : errorMessage ? (
           <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2 animate-fadeIn">
             <AlertCircle size={14} className="shrink-0" />
             <span>{errorMessage}</span>
           </div>
-        )}
+        ) : null}
 
         {saveMessage && (
           <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center gap-2 animate-fadeIn">

@@ -72,6 +72,41 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ dna, previewImageBase64 });
   } catch (error: any) {
     console.error("Generate DNA API Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+
+    const errString = String(error?.message || error?.status || error || "").toLowerCase();
+    const isRateLimit =
+      error?.status === 429 ||
+      error?.statusCode === 429 ||
+      errString.includes("429") ||
+      errString.includes("quota") ||
+      errString.includes("rate limit") ||
+      errString.includes("rate_limit") ||
+      errString.includes("rate exceed") ||
+      errString.includes("resource_exhausted") ||
+      errString.includes("resource exhausted") ||
+      errString.includes("overloaded") ||
+      errString.includes("high demand") ||
+      errString.includes("503") ||
+      errString.includes("unavailable");
+
+    if (isRateLimit) {
+      return NextResponse.json(
+        {
+          error: "RATE_LIMIT",
+          isRateLimit: true,
+          message: "Kuota Gemini API Anda telah mencapai batas. Silakan coba kembali setelah kuota tersedia.",
+        },
+        { status: 429 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        error: "GENERATE_DNA_FAILED",
+        isRateLimit: false,
+        message: "Gagal menganalisis Character DNA. Silakan periksa foto atau coba beberapa saat lagi.",
+      },
+      { status: 500 }
+    );
   }
 }
