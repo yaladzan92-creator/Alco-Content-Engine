@@ -169,7 +169,7 @@ export default function ReviewPanel(props: any) {
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {/* Path Image */}
           <button
             onClick={() => setActiveTab('image')}
@@ -218,23 +218,6 @@ export default function ReviewPanel(props: any) {
             </div>
             <p className="text-[11px] text-stone-500 line-clamp-2 leading-relaxed">
               Naskah monolog dialog, 3 scene Google Flow, dan opsi render JSON2Video.
-            </p>
-          </button>
-
-          {/* Path DNA Karakter */}
-          <button
-            onClick={() => setActiveTab('dna')}
-            className="p-3.5 bg-[#f6f3ee] hover:bg-[#fffdf8] hover:border-[#0f766e] border border-[#e7e0d4] rounded-xl text-left transition group shadow-xs cursor-pointer"
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-2 text-stone-900 font-bold text-xs group-hover:text-[#0f766e] transition">
-                <BrainCircuit size={14} className="text-[#b7791f]" />
-                <span>DNA Karakter</span>
-              </div>
-              <ArrowRight size={12} className="text-stone-400 group-hover:text-[#0f766e] group-hover:translate-x-0.5 transition" />
-            </div>
-            <p className="text-[11px] text-stone-500 line-clamp-2 leading-relaxed">
-              Kunci konsistensi wajah, postur tubuh, dan persona talent di setiap postingan.
             </p>
           </button>
         </div>

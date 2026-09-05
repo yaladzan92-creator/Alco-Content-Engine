@@ -41,7 +41,7 @@ export default function CharacterSelector({
       <div className="flex items-center gap-1.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-2.5 py-1.5 shadow-2xs">
         <label htmlFor="character-select" className="flex items-center gap-1 text-[11px] font-bold text-stone-600 shrink-0 select-none">
           <UserCheck size={13} className={selectedCharacter ? 'text-[#0f766e]' : 'text-stone-400'} />
-          <span>Character:</span>
+          <span>Karakter:</span>
         </label>
 
         <select
@@ -60,7 +60,7 @@ export default function CharacterSelector({
               ))}
             </optgroup>
           )}
-          <option value="__create__">+ Create Character</option>
+          <option value="__create__">+ Buat Karakter Baru</option>
         </select>
       </div>
 

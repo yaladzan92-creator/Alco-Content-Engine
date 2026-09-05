@@ -11,7 +11,7 @@ import {
   ArrowLeft, Sparkles, FileText, Image as ImageIcon, Video, Layers, Users, Star, 
   Target, Zap, Check, Copy, RefreshCw, Eye, BrainCircuit, MessageSquare, Clipboard, 
   AlertCircle, AlertTriangle, CheckSquare, ListTodo, Sliders, PlayCircle, ExternalLink, Download, Loader2,
-  ChevronDown, ChevronRight
+  ChevronDown, ChevronRight, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ContentItem, SharedContentContext, CharacterDNA, ProductionProgress } from '@/lib/content-contract';
@@ -3468,7 +3468,8 @@ export default function ProductionStudioPage() {
   const [selectedProjectId, setSelectedProjectIdState] = useState<string | null>(null);
   const [activeProjectIdState, setActiveProjectIdState] = useState<string | null>(null);
   const [effectiveProjectId, setEffectiveProjectId] = useState<string>('default');
-  const [activeTab, setActiveTab] = useState<'review' | 'dna' | 'image' | 'carousel' | 'video'>('review');
+  const [activeTab, setActiveTab] = useState<'review' | 'image' | 'carousel' | 'video'>('review');
+  const [showCharacterModal, setShowCharacterModal] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
@@ -3787,7 +3788,9 @@ export default function ProductionStudioPage() {
       const tabParam = urlParams.get('tab');
       if (tabParam === 'ugc') {
         setActiveTab('video');
-      } else if (tabParam && ['review', 'dna', 'image', 'carousel', 'video'].includes(tabParam)) {
+      } else if (tabParam === 'dna') {
+        setShowCharacterModal(true);
+      } else if (tabParam && ['review', 'image', 'carousel', 'video'].includes(tabParam)) {
         setActiveTab(tabParam as any);
       }
     }
@@ -3991,7 +3994,7 @@ export default function ProductionStudioPage() {
   };
 
   const handleCreateCharacterClick = () => {
-    setActiveTab('dna');
+    setShowCharacterModal(true);
   };
 
   const handleUpdateProgress = (newProgress: Partial<ProductionProgress>) => {
@@ -4791,7 +4794,6 @@ ${formatDirection}${revisionDirective}`;
       case 'image': return 'Buat Prompt Gambar';
       case 'carousel': return 'Buat Carousel';
       case 'video': return 'Buat Video';
-      case 'dna': return 'Simpan & Validasi DNA';
       default: return 'Buat Output';
     }
   };
@@ -5037,6 +5039,19 @@ ${formatDirection}${revisionDirective}`;
               {activeItem.format || 'Semua Format'}
             </span>
             <span className="text-stone-300">|</span>
+            {/* Supporting Character Context Quick Trigger */}
+            <button
+              onClick={() => setShowCharacterModal(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-[#f6f3ee] hover:bg-stone-200 text-stone-700 font-semibold rounded-lg border border-[#e7e0d4] text-[11px] transition cursor-pointer"
+              title="Kelola DNA Karakter & Profil Talent"
+            >
+              <BrainCircuit size={12} className={selectedCharacterId ? 'text-[#0f766e]' : 'text-stone-400'} />
+              <span>Karakter:</span>
+              <span className="font-bold text-stone-900">
+                {savedCharacters.find(c => c.character_id === selectedCharacterId)?.identity?.display_name || 'No Character'}
+              </span>
+            </button>
+            <span className="text-stone-300">|</span>
             <span className="text-stone-500 text-[11px] hidden sm:inline">Mode Aktif:</span>
             <span className="px-2.5 py-1 bg-[#0f766e]/10 text-[#0f766e] font-bold rounded-lg border border-[#0f766e]/20 text-[11px] uppercase">
               {activeTab}
@@ -5182,19 +5197,19 @@ ${formatDirection}${revisionDirective}`;
             </details>
           </div>
 
-          {/* Quick Brand Metadata Context Card (Desktop only) */}
-          <div className="hidden lg:block bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl p-5 space-y-4 shadow-xs">
-            <div className="flex items-center gap-2 pb-3 border-b border-[#e7e0d4]">
-              <div className="w-7 h-7 rounded-lg bg-[#0f766e]/10 flex items-center justify-center text-[#0f766e] border border-[#0f766e]/20">
-                <Target size={14} />
+          {/* Quick Brand Metadata Context Card (Collapsible for Progressive Disclosure) */}
+          <details className="hidden lg:block group bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl overflow-hidden shadow-xs">
+            <summary className="p-4 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-[#0f766e]/10 flex items-center justify-center text-[#0f766e] border border-[#0f766e]/20">
+                  <Target size={13} />
+                </div>
+                <h3 className="text-xs font-bold text-[#1f2933]">Informasi Brand &amp; Audiens</h3>
               </div>
-              <div>
-                <h3 className="text-xs font-bold text-[#1f2933]">Informasi Brand</h3>
-                <p className="text-[11px] text-stone-500">Suara Brand &amp; Audiens</p>
-              </div>
-            </div>
+              <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />
+            </summary>
 
-            <div className="space-y-3.5 text-xs">
+            <div className="p-4 pt-0 border-t border-[#e7e0d4]/60 space-y-3.5 text-xs mt-2.5">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-0.5">
                   <div className="text-[11px] font-semibold text-stone-500">Nama Brand</div>
@@ -5226,7 +5241,7 @@ ${formatDirection}${revisionDirective}`;
                 </div>
               </div>
             </div>
-          </div>
+          </details>
         </div>
 
         {/* RIGHT COLUMN: WORKSPACE TAB NAVIGATION & DYNAMIC WORKSHOP CONTENT (lg:col-span-8) */}
@@ -5292,7 +5307,6 @@ ${formatDirection}${revisionDirective}`;
                 { id: 'image', label: 'Gambar', icon: ImageIcon, formatMatch: ['gambar', 'single', 'image', 'feed', 'poster'] },
                 { id: 'carousel', label: 'Carousel', icon: Layers, formatMatch: ['carousel'] },
                 { id: 'video', label: 'Video', icon: Video, formatMatch: ['video', 'reels', 'tiktok', 'shorts'] },
-                { id: 'dna', label: 'DNA Karakter', icon: BrainCircuit, formatMatch: [] },
               ].map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -5353,24 +5367,6 @@ ${formatDirection}${revisionDirective}`;
                 saveReviewOutput={saveReviewOutput} setVideoMode={setVideoMode} handleCopyText={handleCopyText} copiedStates={copiedStates}
                 setActiveTab={setActiveTab}
               />
-            ) : activeTab === 'dna' ? (
-              <div className="space-y-4 flex-1">
-                <CharacterDNASection 
-                  projectId={effectiveProjectId}
-                  activeCharacterId={selectedCharacterId}
-                  onSelectCharacter={handleSelectCharacter}
-                  onDNAUpdate={(dna) => {
-                    setCharacterDNA(dna);
-                    const refreshed = getProjectSavedCharacters(effectiveProjectId);
-                    setSavedCharacters(refreshed);
-                    if (dna?.character_id) {
-                      setSelectedCharacterId(dna.character_id);
-                      saveProjectActiveCharacterId(effectiveProjectId, dna.character_id);
-                    }
-                    showToast('DNA Karakter berhasil disimpan & diperbarui!');
-                  }} 
-                />
-              </div>
             ) : (
               // TAB CONTENT: IMAGE, CAROUSEL, VIDEO WORKSHOPS
               <div className="space-y-4 flex-1 flex flex-col justify-between">
@@ -5516,6 +5512,60 @@ ${formatDirection}${revisionDirective}`;
         </div>
 
       </div>
+
+      {/* CHARACTER DNA ASSET MODAL / DRAWER (Context & Reusable Asset Layer) */}
+      <AnimatePresence>
+        {showCharacterModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-stone-950/60 backdrop-blur-xs overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ duration: 0.18 }}
+              className="bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden my-auto"
+            >
+              {/* Modal Header */}
+              <div className="p-4 sm:px-6 py-3.5 border-b border-[#e7e0d4] bg-[#f6f3ee] flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-[#0f766e]/10 text-[#0f766e] flex items-center justify-center border border-[#0f766e]/20">
+                    <BrainCircuit size={17} />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-stone-900">DNA Karakter &amp; Talent Profil</h2>
+                    <p className="text-[11px] text-stone-500">Konteks konsistensi talent &amp; visual persona untuk prompt produksi</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowCharacterModal(false)}
+                  className="p-1.5 rounded-xl text-stone-500 hover:text-stone-900 hover:bg-stone-200 transition cursor-pointer"
+                  title="Tutup Modal DNA Karakter"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Modal Body: Complete CharacterDNASection with full functionality */}
+              <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
+                <CharacterDNASection 
+                  projectId={effectiveProjectId}
+                  activeCharacterId={selectedCharacterId}
+                  onSelectCharacter={handleSelectCharacter}
+                  onDNAUpdate={(dna) => {
+                    setCharacterDNA(dna);
+                    const refreshed = getProjectSavedCharacters(effectiveProjectId);
+                    setSavedCharacters(refreshed);
+                    if (dna?.character_id) {
+                      setSelectedCharacterId(dna.character_id);
+                      saveProjectActiveCharacterId(effectiveProjectId, dna.character_id);
+                    }
+                    showToast('DNA Karakter berhasil disimpan & diperbarui!');
+                  }} 
+                />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Modern Footer */}
       <footer className="border-t border-[#e7e0d4] bg-[#fffdf8] py-4 px-6 flex justify-between items-center text-xs text-stone-500">
