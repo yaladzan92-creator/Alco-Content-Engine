@@ -533,6 +533,71 @@ Keterangan: ${editingItem.keterangan}`;
     return d ? addDays(d, -1) : null;
   }, [configData.startDate]);
 
+  const weeks = useMemo(() => {
+    const result: { weekIndex: number; days: Date[]; isCompact: boolean }[] = [];
+    for (let i = 0; i < calendarDays.length; i += 7) {
+      const weekDays = calendarDays.slice(i, i + 7);
+
+      const hasContent = weekDays.some((day) => {
+        const dayItems = filteredItems.filter((item) => {
+          try {
+            return isSameDay(parseISO(item.tanggal), day);
+          } catch {
+            return false;
+          }
+        });
+        const dayGrowthItems = filteredGrowthItems.filter((item) => {
+          try {
+            return isSameDay(parseISO(item.tanggal), day);
+          } catch {
+            return false;
+          }
+        });
+
+        const showStartPrompt =
+          items.length === 0 &&
+          !!todayDate &&
+          isSameDay(day, todayDate) &&
+          !isConfiguring &&
+          !configData.coreTopic;
+
+        const resumePrompt =
+          items.length === 0 &&
+          !!todayDate &&
+          isSameDay(day, todayDate) &&
+          !isConfiguring &&
+          !!configData.coreTopic;
+
+        const showConfigButton =
+          items.length > 0 && !!preStartDate && isSameDay(day, preStartDate);
+
+        return (
+          dayItems.length > 0 ||
+          dayGrowthItems.length > 0 ||
+          showStartPrompt ||
+          resumePrompt ||
+          showConfigButton
+        );
+      });
+
+      result.push({
+        weekIndex: Math.floor(i / 7),
+        days: weekDays,
+        isCompact: !hasContent,
+      });
+    }
+    return result;
+  }, [
+    calendarDays,
+    filteredItems,
+    filteredGrowthItems,
+    items.length,
+    todayDate,
+    isConfiguring,
+    configData.coreTopic,
+    preStartDate,
+  ]);
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over) return;
@@ -623,7 +688,7 @@ Keterangan: ${editingItem.keterangan}`;
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => setCurrentViewDate((prev) => subMonths(prev, 1))}
-              className="p-2 hover:bg-stone-100 rounded-xl text-stone-600 hover:text-stone-900 transition-all min-h-[38px] min-w-[38px] flex items-center justify-center border border-[#e7e0d4] bg-[#fffdf8] shadow-sm"
+              className="p-2 hover:bg-stone-100 dark:hover:bg-slate-800 rounded-xl text-stone-600 dark:text-slate-300 hover:text-stone-900 dark:hover:text-slate-100 transition-all min-h-[38px] min-w-[38px] flex items-center justify-center border border-[#e7e0d4] dark:border-slate-800 bg-[#fffdf8] dark:bg-slate-900 shadow-sm"
               title="Bulan Sebelumnya"
             >
               <ChevronLeft size={18} />
@@ -631,18 +696,18 @@ Keterangan: ${editingItem.keterangan}`;
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowDatePicker(true)}
-              className="text-base sm:text-lg font-bold text-[#1f2933] hover:text-[#0f766e] transition-colors px-3 py-1.5 rounded-xl hover:bg-stone-100 flex items-center gap-2 group min-h-[38px] border border-[#e7e0d4] bg-[#fffdf8] shadow-sm"
+              className="text-base sm:text-lg font-bold text-[#1f2933] dark:text-slate-100 hover:text-[#0f766e] dark:hover:text-teal-400 transition-colors px-3 py-1.5 rounded-xl hover:bg-stone-100 dark:hover:bg-slate-800 flex items-center gap-2 group min-h-[38px] border border-[#e7e0d4] dark:border-slate-800 bg-[#fffdf8] dark:bg-slate-900 shadow-sm"
             >
               <span>{format(monthStart, 'MMMM yyyy')}</span>
               <ChevronDown
                 size={16}
-                className="text-stone-400 group-hover:text-[#0f766e] transition-colors"
+                className="text-stone-400 dark:text-slate-500 group-hover:text-[#0f766e] dark:group-hover:text-teal-400 transition-colors"
               />
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => setCurrentViewDate((prev) => addMonths(prev, 1))}
-              className="p-2 hover:bg-stone-100 rounded-xl text-stone-600 hover:text-stone-900 transition-all min-h-[38px] min-w-[38px] flex items-center justify-center border border-[#e7e0d4] bg-[#fffdf8] shadow-sm"
+              className="p-2 hover:bg-stone-100 dark:hover:bg-slate-800 rounded-xl text-stone-600 dark:text-slate-300 hover:text-stone-900 dark:hover:text-slate-100 transition-all min-h-[38px] min-w-[38px] flex items-center justify-center border border-[#e7e0d4] dark:border-slate-800 bg-[#fffdf8] dark:bg-slate-900 shadow-sm"
               title="Bulan Berikutnya"
             >
               <ChevronRight size={18} />
@@ -654,7 +719,7 @@ Keterangan: ${editingItem.keterangan}`;
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={onReset}
-                className="p-2 text-stone-500 hover:text-amber-700 hover:bg-stone-100 rounded-xl border border-[#e7e0d4] bg-[#fffdf8] transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center shadow-sm"
+                className="p-2 text-stone-500 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-400 hover:bg-stone-100 dark:hover:bg-slate-800 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-[#fffdf8] dark:bg-slate-900 transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center shadow-sm"
                 title="Reset Semua Input"
               >
                 <RefreshCw size={16} />
@@ -662,12 +727,12 @@ Keterangan: ${editingItem.keterangan}`;
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setShowHistoryModal(true)}
-                className="p-2 text-stone-500 hover:text-[#0f766e] hover:bg-stone-100 rounded-xl border border-[#e7e0d4] bg-[#fffdf8] transition-colors relative min-h-[38px] min-w-[38px] flex items-center justify-center shadow-sm"
+                className="p-2 text-stone-500 dark:text-slate-400 hover:text-[#0f766e] dark:hover:text-teal-300 hover:bg-stone-100 dark:hover:bg-slate-800 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-[#fffdf8] dark:bg-slate-900 transition-colors relative min-h-[38px] min-w-[38px] flex items-center justify-center shadow-sm"
                 title="Histori Generate"
               >
                 <Layers size={16} />
                 {history.length > 0 && (
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-[#0f766e] rounded-full" />
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-[#0f766e] dark:bg-teal-400 rounded-full" />
                 )}
               </motion.button>
             </div>
@@ -677,7 +742,7 @@ Keterangan: ${editingItem.keterangan}`;
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={() => setShowRawOutput(true)}
-                  className="p-2 text-stone-500 hover:text-[#0f766e] hover:bg-stone-100 rounded-xl border border-[#e7e0d4] bg-[#fffdf8] transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center shadow-sm"
+                  className="p-2 text-stone-500 dark:text-slate-400 hover:text-[#0f766e] dark:hover:text-teal-300 hover:bg-stone-100 dark:hover:bg-slate-800 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-[#fffdf8] dark:bg-slate-900 transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center shadow-sm"
                   title="View Raw Output (Markdown & TAB)"
                 >
                   <FileText size={16} />
@@ -685,7 +750,7 @@ Keterangan: ${editingItem.keterangan}`;
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={onCopy}
-                  className="p-2 text-stone-500 hover:text-[#0f766e] hover:bg-stone-100 rounded-xl border border-[#e7e0d4] bg-[#fffdf8] transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center shadow-sm"
+                  className="p-2 text-stone-500 dark:text-slate-400 hover:text-[#0f766e] dark:hover:text-teal-300 hover:bg-stone-100 dark:hover:bg-slate-800 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-[#fffdf8] dark:bg-slate-900 transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center shadow-sm"
                   title="Copy for Spreadsheet (TSV)"
                 >
                   <Copy size={16} />
@@ -693,7 +758,7 @@ Keterangan: ${editingItem.keterangan}`;
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={onDownload}
-                  className="p-2 text-stone-500 hover:text-[#0f766e] hover:bg-stone-100 rounded-xl border border-[#e7e0d4] bg-[#fffdf8] transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center shadow-sm"
+                  className="p-2 text-stone-500 dark:text-slate-400 hover:text-[#0f766e] dark:hover:text-teal-300 hover:bg-stone-100 dark:hover:bg-slate-800 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-[#fffdf8] dark:bg-slate-900 transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center shadow-sm"
                   title="Download CSV"
                 >
                   <Download size={16} />
@@ -932,7 +997,7 @@ Keterangan: ${editingItem.keterangan}`;
           >
             <div
               ref={calendarConstraintsRef}
-              className="relative overflow-hidden rounded-2xl md:rounded-3xl border border-[#e7e0d4] bg-[#fffdf8] shadow-sm"
+              className="relative overflow-hidden rounded-2xl md:rounded-3xl border border-[#e7e0d4] dark:border-slate-800 bg-[#fffdf8] dark:bg-slate-900 shadow-sm"
             >
               <motion.div
                 drag="x"
@@ -942,76 +1007,82 @@ Keterangan: ${editingItem.keterangan}`;
                 className="cursor-grab active:cursor-grabbing"
               >
                 <div ref={calendarContentRef} className="w-full">
-                  <div className="grid grid-cols-7 border-b border-[#e7e0d4] bg-[#f6f3ee]/70">
+                  <div className="grid grid-cols-7 border-b border-[#e7e0d4] dark:border-slate-800 bg-[#f6f3ee]/70 dark:bg-slate-950/80">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
                       <div
                         key={day}
-                        className="p-3 text-xs font-bold text-stone-600 text-center border-r border-[#e7e0d4] last:border-r-0"
+                        className="p-3 text-xs font-bold text-stone-600 dark:text-slate-400 text-center border-r border-[#e7e0d4] dark:border-slate-800 last:border-r-0"
                       >
                         {day}
                       </div>
                     ))}
                   </div>
-                  <div className="grid grid-cols-7">
-                    {calendarDays.map((day, idx) => {
-                      const dayStr = format(day, 'yyyy-MM-dd');
-                      const dayItems = filteredItems.filter((item) => {
-                        try {
-                          return isSameDay(parseISO(item.tanggal), day);
-                        } catch (e) {
-                          return false;
-                        }
-                      });
-
-                      const dayGrowthItems = filteredGrowthItems.filter((item) => {
-                        try {
-                          return isSameDay(parseISO(item.tanggal), day);
-                        } catch (e) {
-                          return false;
-                        }
-                      });
-
-                      return (
-                        <CalendarDay
-                          key={dayStr}
-                          day={day}
-                          items={dayItems}
-                          growthItems={dayGrowthItems}
-                          isCurrentMonth={isSameMonth(day, monthStart)}
-                          todayDate={todayDate}
-                          onClick={() => {
-                            if (
-                              items.length === 0 ||
-                              (preStartDate && isSameDay(day, preStartDate))
-                            ) {
-                              setIsConfiguring(true);
+                  <div className="divide-y divide-[#e7e0d4] dark:divide-slate-800">
+                    {weeks.map((week) => (
+                      <div key={week.weekIndex} className="grid grid-cols-7">
+                        {week.days.map((day, dayIdx) => {
+                          const idx = week.weekIndex * 7 + dayIdx;
+                          const dayStr = format(day, 'yyyy-MM-dd');
+                          const dayItems = filteredItems.filter((item) => {
+                            try {
+                              return isSameDay(parseISO(item.tanggal), day);
+                            } catch (e) {
+                              return false;
                             }
-                          }}
-                          onEdit={(item) => {
-                            setEditingItem(item);
-                          }}
-                          onSendToCalcer={onSendToCalcer}
-                          loadingColor={loadingColors[idx]}
-                          showStartPrompt={
-                            items.length === 0 &&
-                            !!todayDate &&
-                            isSameDay(day, todayDate) &&
-                            !isConfiguring &&
-                            !configData.coreTopic
-                          }
-                          resumePrompt={
-                            items.length === 0 &&
-                            !!todayDate &&
-                            isSameDay(day, todayDate) &&
-                            !isConfiguring &&
-                            !!configData.coreTopic
-                          }
-                          showConfigButton={
-                            items.length > 0 && !!preStartDate && isSameDay(day, preStartDate)
-                          }
-                        />
-                      );
-                    })}
+                          });
+
+                          const dayGrowthItems = filteredGrowthItems.filter((item) => {
+                            try {
+                              return isSameDay(parseISO(item.tanggal), day);
+                            } catch (e) {
+                              return false;
+                            }
+                          });
+
+                          return (
+                            <CalendarDay
+                              key={dayStr}
+                              day={day}
+                              items={dayItems}
+                              growthItems={dayGrowthItems}
+                              isCurrentMonth={isSameMonth(day, monthStart)}
+                              todayDate={todayDate}
+                              isCompact={week.isCompact}
+                              onClick={() => {
+                                if (
+                                  items.length === 0 ||
+                                  (preStartDate && isSameDay(day, preStartDate))
+                                ) {
+                                  setIsConfiguring(true);
+                                }
+                              }}
+                              onEdit={(item) => {
+                                setEditingItem(item);
+                              }}
+                              onSendToCalcer={onSendToCalcer}
+                              loadingColor={loadingColors[idx]}
+                              showStartPrompt={
+                                items.length === 0 &&
+                                !!todayDate &&
+                                isSameDay(day, todayDate) &&
+                                !isConfiguring &&
+                                !configData.coreTopic
+                              }
+                              resumePrompt={
+                                items.length === 0 &&
+                                !!todayDate &&
+                                isSameDay(day, todayDate) &&
+                                !isConfiguring &&
+                                !!configData.coreTopic
+                              }
+                              showConfigButton={
+                                items.length > 0 && !!preStartDate && isSameDay(day, preStartDate)
+                              }
+                            />
+                          );
+                        })}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </motion.div>
