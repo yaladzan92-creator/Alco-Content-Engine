@@ -14,7 +14,7 @@
     "verify:build": "npm run typecheck && npm run lint && cross-env NODE_ENV=production next build",
     "verify:stability": "node scripts/validate-stability.mjs",
     "verify:full": "npm run verify:stability && npm run typecheck && npm run lint && cross-env NODE_ENV=production next build",
-    "desktop:build": "npm run build && electron-builder --config electron-builder.json --win nsis"
+    "desktop:build": "cross-env NODE_ENV=production next build && electron-builder --config electron-builder.json --win nsis"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

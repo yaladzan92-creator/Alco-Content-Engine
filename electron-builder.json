@@ -9,12 +9,16 @@
     ".next/**/*",
     "public/**/*",
     "electron/**/*",
+    "assets/**/*",
     "package.json"
   ],
   "asarUnpack": [
     ".next/**/*",
+    "electron/**/*",
     "node_modules/next/**/*",
     "node_modules/@google/genai/**/*",
+    "node_modules/react/**/*",
+    "node_modules/react-dom/**/*",
     "node_modules/sharp/**/*",
     "node_modules/@img/**/*"
   ],

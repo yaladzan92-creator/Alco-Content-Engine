@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/lib/theme-provider';
+import { LicenseProvider } from '@/lib/license/license-context';
 
 export const metadata: Metadata = {
-  title: 'ALCO Content Engine',
-  description: 'Premium brand-aware content planning and calendar engine powered by Gemini AI',
+  title: 'ALCO Content Engine v2',
+  description: 'Premium brand-aware content planning and calendar engine powered by Aladzan Corpora',
 };
 
 export default function RootLayout({
@@ -16,7 +17,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background text-foreground antialiased selection:bg-primary selection:text-primary-foreground" suppressHydrationWarning>
         <ThemeProvider>
-          {children}
+          <LicenseProvider>
+            {children}
+          </LicenseProvider>
         </ThemeProvider>
       </body>
     </html>

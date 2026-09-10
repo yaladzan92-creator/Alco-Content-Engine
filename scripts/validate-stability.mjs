@@ -96,6 +96,75 @@ if (fs.existsSync(nextEnvPath)) {
   errors.push('next-env.d.ts tidak ditemukan!');
 }
 
+// 5. Check ALCO APP STANDARD v2.1 Compliance
+const licenseFiles = [
+  'lib/license/types.ts',
+  'lib/license/device-fingerprint.ts',
+  'lib/license/request-code.ts',
+  'lib/license/canonical.ts',
+  'lib/license/authority-key.ts',
+  'lib/license/verification.ts',
+  'lib/license/license-context.tsx',
+];
+
+let allLicenseFilesExist = true;
+for (const relPath of licenseFiles) {
+  const fullPath = path.join(projectRoot, relPath);
+  if (!fs.existsSync(fullPath)) {
+    errors.push(`ALCO License file "${relPath}" wajib ada untuk kepatuhan ALCO APP STANDARD v2.1!`);
+    allLicenseFilesExist = false;
+  }
+}
+
+if (allLicenseFilesExist) {
+  successes.push('ALCO License Protocol v2.1 files terpasang lengkap.');
+}
+
+// 6. Security Audit: Check that NO Authority Private Key exists in repository/source
+const authorityKeyPath = path.join(projectRoot, 'lib', 'license', 'authority-key.ts');
+if (fs.existsSync(authorityKeyPath)) {
+  const keyContent = fs.readFileSync(authorityKeyPath, 'utf8');
+  if (/PRIVATE KEY/i.test(keyContent)) {
+    errors.push('CRITICAL SECURITY VIOLATION: Authority Private Key ditemukan di authority-key.ts! Hanya Authority Public Key yang diperbolehkan.');
+  } else {
+    successes.push('Security Audit: authority-key.ts bebas dari Private Key (Authority Public Key only).');
+  }
+}
+
+// 7. Check Electron Production Runtime & Health Check Route
+const electronMainPath = path.join(projectRoot, 'electron', 'main.cjs');
+const electronServerPath = path.join(projectRoot, 'electron', 'server.cjs');
+const healthRoutePath = path.join(projectRoot, 'app', 'api', 'health', 'route.ts');
+const electronBuilderPath = path.join(projectRoot, 'electron-builder.json');
+
+if (fs.existsSync(electronMainPath) && fs.existsSync(electronServerPath)) {
+  const mainContent = fs.readFileSync(electronMainPath, 'utf8');
+  if (mainContent.includes('checkServerHealth') && mainContent.includes('findAvailablePort') && mainContent.includes('stopProductionServer')) {
+    successes.push('Electron production runtime terpasang lengkap (dynamic port, health check retry, graceful shutdown).');
+  } else {
+    errors.push('electron/main.cjs harus mengimplementasikan findAvailablePort, checkServerHealth, dan stopProductionServer!');
+  }
+} else {
+  errors.push('electron/main.cjs atau electron/server.cjs tidak ditemukan!');
+}
+
+if (fs.existsSync(healthRoutePath)) {
+  successes.push('Endpoint health check production (/api/health) terpasang.');
+} else {
+  errors.push('app/api/health/route.ts wajib ada untuk health check!');
+}
+
+if (fs.existsSync(electronBuilderPath)) {
+  const builderConfig = JSON.parse(fs.readFileSync(electronBuilderPath, 'utf8'));
+  if (builderConfig.appId === 'com.alco.contentengine' && builderConfig.productName === 'ALCO Content Engine') {
+    successes.push('electron-builder.json valid (appId: com.alco.contentengine, productName: ALCO Content Engine).');
+  } else {
+    errors.push('electron-builder.json appId atau productName tidak sesuai!');
+  }
+} else {
+  errors.push('electron-builder.json tidak ditemukan!');
+}
+
 // Summary output
 console.log('--- STABILITY CHECK RESULT ---');
 for (const s of successes) {
