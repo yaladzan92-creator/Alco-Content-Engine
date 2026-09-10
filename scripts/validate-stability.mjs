@@ -96,6 +96,41 @@ if (fs.existsSync(nextEnvPath)) {
   errors.push('next-env.d.ts tidak ditemukan!');
 }
 
+// 5. Check ALCO APP STANDARD v2.1 Compliance
+const licenseFiles = [
+  'lib/license/types.ts',
+  'lib/license/device-fingerprint.ts',
+  'lib/license/request-code.ts',
+  'lib/license/canonical.ts',
+  'lib/license/authority-key.ts',
+  'lib/license/verification.ts',
+  'lib/license/license-context.tsx',
+];
+
+let allLicenseFilesExist = true;
+for (const relPath of licenseFiles) {
+  const fullPath = path.join(projectRoot, relPath);
+  if (!fs.existsSync(fullPath)) {
+    errors.push(`ALCO License file "${relPath}" wajib ada untuk kepatuhan ALCO APP STANDARD v2.1!`);
+    allLicenseFilesExist = false;
+  }
+}
+
+if (allLicenseFilesExist) {
+  successes.push('ALCO License Protocol v2.1 files terpasang lengkap.');
+}
+
+// 6. Security Audit: Check that NO Authority Private Key exists in repository/source
+const authorityKeyPath = path.join(projectRoot, 'lib', 'license', 'authority-key.ts');
+if (fs.existsSync(authorityKeyPath)) {
+  const keyContent = fs.readFileSync(authorityKeyPath, 'utf8');
+  if (/PRIVATE KEY/i.test(keyContent)) {
+    errors.push('CRITICAL SECURITY VIOLATION: Authority Private Key ditemukan di authority-key.ts! Hanya Authority Public Key yang diperbolehkan.');
+  } else {
+    successes.push('Security Audit: authority-key.ts bebas dari Private Key (Authority Public Key only).');
+  }
+}
+
 // Summary output
 console.log('--- STABILITY CHECK RESULT ---');
 for (const s of successes) {

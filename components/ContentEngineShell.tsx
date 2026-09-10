@@ -3,8 +3,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
-import { BrainCircuit, CalendarDays, Menu, PanelLeftClose, PanelLeftOpen, Settings, Zap } from 'lucide-react';
+import { BrainCircuit, CalendarDays, Menu, PanelLeftClose, PanelLeftOpen, Settings, Zap, ShieldCheck, Key } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
+import { LicenseModal } from '@/components/license/LicenseModal';
+import { useLicense } from '@/lib/license/license-context';
 
 interface ContentEngineShellProps {
   title: string;
@@ -19,7 +21,6 @@ interface ContentEngineShellProps {
 const navigationItems = [
   { href: '/', label: 'Kalender Konten', icon: CalendarDays },
   { href: '/production-studio', label: 'Production Studio', icon: BrainCircuit },
-  { href: '/', label: 'Pengaturan', icon: Settings },
 ];
 
 export default function ContentEngineShell({
@@ -33,6 +34,11 @@ export default function ContentEngineShell({
 }: ContentEngineShellProps) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isLicenseModalOpen, setIsLicenseModalOpen] = useState(false);
+  const { state } = useLicense();
+
+  const isLicensed = state.status === 'active' && !!state.license;
+  const planLabel = state.license?.plan?.toUpperCase() || (isLicensed ? 'ACTIVE' : 'TRIAL');
 
   useEffect(() => {
     const saved = window.localStorage.getItem('alco_content_sidebar_open');
@@ -111,6 +117,34 @@ export default function ContentEngineShell({
               </Link>
             );
           })}
+
+          <button
+            onClick={() => setIsLicenseModalOpen(true)}
+            className={`w-full flex h-10 items-center gap-3 rounded-lg px-3 text-xs font-bold transition text-muted-foreground hover:bg-secondary hover:text-foreground ${
+              !sidebarOpen ? 'justify-center px-0' : ''
+            }`}
+            title={!sidebarOpen ? 'ALCO License' : undefined}
+          >
+            {isLicensed ? (
+              <ShieldCheck size={16} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
+            ) : (
+              <Key size={16} className="shrink-0 text-amber-600 dark:text-amber-400" />
+            )}
+            {sidebarOpen && (
+              <div className="flex items-center justify-between w-full min-w-0">
+                <span className="truncate">Lisensi ALCO</span>
+                <span
+                  className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
+                    isLicensed
+                      ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                      : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                  }`}
+                >
+                  {planLabel}
+                </span>
+              </div>
+            )}
+          </button>
         </nav>
 
         {sidebarOpen && (
@@ -142,6 +176,19 @@ export default function ContentEngineShell({
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsLicenseModalOpen(true)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-2xs ${
+                  isLicensed
+                    ? 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300 hover:border-emerald-400'
+                    : 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60 text-amber-800 dark:text-amber-300 hover:border-amber-400'
+                }`}
+                title="ALCO License System"
+              >
+                {isLicensed ? <ShieldCheck size={14} /> : <Key size={14} />}
+                <span className="hidden sm:inline">{isLicensed ? `${planLabel}` : 'Lisensi'}</span>
+              </button>
+
               <ThemeToggle />
               {actions && <div className="hidden items-center gap-2 md:flex">{actions}</div>}
               {mobileActions && <div className="flex items-center gap-2 md:hidden">{mobileActions}</div>}
@@ -155,6 +202,8 @@ export default function ContentEngineShell({
 
         {footer}
       </div>
+
+      <LicenseModal isOpen={isLicenseModalOpen} onClose={() => setIsLicenseModalOpen(false)} />
     </main>
   );
 }
