@@ -124,7 +124,14 @@ if (allLicenseFilesExist) {
 const authorityKeyPath = path.join(projectRoot, 'lib', 'license', 'authority-key.ts');
 if (fs.existsSync(authorityKeyPath)) {
   const keyContent = fs.readFileSync(authorityKeyPath, 'utf8');
-  if (/PRIVATE KEY/i.test(keyContent)) {
+  const privateKeyPatterns = [
+    /-----BEGIN\s+(?:[A-Z0-9_-]+\s+)?PRIVATE\s+KEY-----/i,
+    /(?:export\s+)?(?:const|let|var)\s+\w*(?:private_?key|signing_?private_?key|authority_?private_?key)\w*\s*=/i,
+    /\b(?:authorityPrivateKey|signingPrivateKey|privateKey|PRIVATE_KEY)\s*[:=]/i,
+  ];
+  const detectedPattern = privateKeyPatterns.find((pattern) => pattern.test(keyContent));
+
+  if (detectedPattern) {
     errors.push('CRITICAL SECURITY VIOLATION: Authority Private Key ditemukan di authority-key.ts! Hanya Authority Public Key yang diperbolehkan.');
   } else {
     successes.push('Security Audit: authority-key.ts bebas dari Private Key (Authority Public Key only).');
