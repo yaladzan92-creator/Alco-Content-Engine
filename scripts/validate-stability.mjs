@@ -131,6 +131,7 @@ if (fs.existsSync(authorityKeyPath)) {
   }
 }
 
+<<<<<<< HEAD
 // 7. Check Electron Production Runtime & Health Check Route
 const electronMainPath = path.join(projectRoot, 'electron', 'main.cjs');
 const electronServerPath = path.join(projectRoot, 'electron', 'server.cjs');
@@ -165,6 +166,8 @@ if (fs.existsSync(electronBuilderPath)) {
   errors.push('electron-builder.json tidak ditemukan!');
 }
 
+=======
+>>>>>>> b4a6a3a8068bc96bba62210271a716ed735df186
 // Summary output
 console.log('--- STABILITY CHECK RESULT ---');
 for (const s of successes) {
