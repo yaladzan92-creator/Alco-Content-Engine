@@ -1,7 +1,20 @@
-import { base64UrlEncode } from './canonical';
-
 const DEVICE_ID_STORAGE_KEY = 'alco_device_id_v2';
 const APP_NAMESPACE = 'alco:contentengine:device';
+
+declare global {
+  interface Window {
+    alcoBridge?: {
+      getDeviceId: () => Promise<string>;
+      isElectron?: boolean;
+      platform?: string;
+    };
+    electronAPI?: {
+      getDeviceId: () => Promise<string>;
+      isElectron?: boolean;
+      platform?: string;
+    };
+  }
+}
 
 /**
  * Validates ALCO Device ID format: ALCO-DEV-XXXX-XXXX-XXXX
@@ -13,7 +26,7 @@ export function isValidAlcoDeviceId(id: string): boolean {
 }
 
 /**
- * Computes a SHA-256 hex string synchronously/asynchronously across browser and Node.
+ * Computes a SHA-256 hex string across browser and Node.
  */
 async function sha256Hex(message: string): Promise<string> {
   if (typeof crypto !== 'undefined' && crypto.subtle) {
@@ -28,7 +41,6 @@ async function sha256Hex(message: string): Promise<string> {
     const nodeCrypto = await import('crypto');
     return nodeCrypto.createHash('sha256').update(message).digest('hex');
   } catch {
-    // Basic hash fallback
     let hash = 0;
     for (let i = 0; i < message.length; i++) {
       hash = (hash << 5) - hash + message.charCodeAt(i);
@@ -40,63 +52,70 @@ async function sha256Hex(message: string): Promise<string> {
 
 /**
  * Generates or retrieves the stable ALCO Device ID for this machine.
- * Format: ALCO-DEV-XXXX-XXXX-XXXX
+ *
+ * PRODUCTION ARCHITECTURE:
+ * 1. Primary: Requests Device ID from Electron Main Process via secure IPC bridge (alcoBridge).
+ *    Electron Main retrieves the Windows MachineGuid from the Windows Registry, hashes it into
+ *    the standard ALCO format: ALCO-DEV-XXXX-XXXX-XXXX, and returns it.
+ * 2. Fallback: If running in a web browser outside Electron (such as Google AI Studio dev preview),
+ *    uses a deterministic development preview fallback.
+ *
+ * Browser data (userAgent, screen resolution, etc.) is NEVER used as primary production fingerprint.
  */
 export async function getAlcoDeviceId(): Promise<string> {
-  // 1. Check local storage cache first for instant consistency
-  if (typeof window !== 'undefined' && window.localStorage) {
+  // 1. Primary Production Source: Electron IPC (Windows MachineGuid)
+  if (typeof window !== 'undefined') {
+    const bridge = window.alcoBridge || window.electronAPI;
+    if (bridge && typeof bridge.getDeviceId === 'function') {
+      try {
+        const electronDeviceId = await bridge.getDeviceId();
+        if (isValidAlcoDeviceId(electronDeviceId)) {
+          // Synchronize to localStorage for fast synchronous cached reads on startup
+          try {
+            window.localStorage?.setItem(DEVICE_ID_STORAGE_KEY, electronDeviceId);
+          } catch {
+            // Ignore localStorage write error
+          }
+          return electronDeviceId;
+        }
+      } catch (err) {
+        console.warn('[ALCO License] Failed to retrieve Device ID via Electron IPC:', err);
+      }
+    }
+  }
+
+  // 2. Fallback for Web/Development Preview Mode ONLY (Outside Electron)
+  if (typeof window !== 'undefined') {
+    // Check if development fallback ID was already established
     try {
-      const cached = window.localStorage.getItem(DEVICE_ID_STORAGE_KEY);
+      const cached = window.localStorage?.getItem(DEVICE_ID_STORAGE_KEY);
       if (cached && isValidAlcoDeviceId(cached)) {
         return cached;
       }
     } catch {
       // Ignore localStorage read errors
     }
-  }
 
-  // 2. Gather hardware/platform fingerprint indicators
-  let rawSeed = '';
+    // Deterministic development preview seed (safe fallback for AI Studio web preview)
+    const devHostname = window.location?.hostname || 'localhost';
+    const devSeed = `${APP_NAMESPACE}::dev-preview::${devHostname}`;
+    const hash = await sha256Hex(devSeed);
+    const rawHex = hash.slice(0, 12).toUpperCase().padEnd(12, '0');
+    const devFallbackId = `ALCO-DEV-${rawHex.slice(0, 4)}-${rawHex.slice(4, 8)}-${rawHex.slice(8, 12)}`;
 
-  if (typeof window !== 'undefined') {
-    const nav = window.navigator;
-    const screen = window.screen;
-    const parts = [
-      APP_NAMESPACE,
-      nav.userAgent || '',
-      nav.language || '',
-      screen.width || '',
-      screen.height || '',
-      screen.colorDepth || '',
-      new Date().getTimezoneOffset(),
-      nav.hardwareConcurrency || 4,
-    ];
-    rawSeed = parts.join('::');
-  } else {
-    rawSeed = `${APP_NAMESPACE}::node::${process.platform}::${process.arch}`;
-  }
-
-  // 3. Hash to 256-bit digest
-  const hash = await sha256Hex(rawSeed);
-
-  // 4. Extract first 12 hex characters and uppercase them
-  const rawHex = hash.slice(0, 12).toUpperCase().padEnd(12, '0');
-  const part1 = rawHex.slice(0, 4);
-  const part2 = rawHex.slice(4, 8);
-  const part3 = rawHex.slice(8, 12);
-
-  const deviceId = `ALCO-DEV-${part1}-${part2}-${part3}`;
-
-  // 5. Store permanently for stability
-  if (typeof window !== 'undefined' && window.localStorage) {
     try {
-      window.localStorage.setItem(DEVICE_ID_STORAGE_KEY, deviceId);
+      window.localStorage?.setItem(DEVICE_ID_STORAGE_KEY, devFallbackId);
     } catch {
-      // Ignore localStorage write error
+      // Ignore
     }
+    return devFallbackId;
   }
 
-  return deviceId;
+  // 3. Node.js environment (e.g. server-side rendering or test scripts)
+  const nodeSeed = `${APP_NAMESPACE}::node::${process.platform}::${process.arch}`;
+  const hash = await sha256Hex(nodeSeed);
+  const rawHex = hash.slice(0, 12).toUpperCase().padEnd(12, '0');
+  return `ALCO-DEV-${rawHex.slice(0, 4)}-${rawHex.slice(4, 8)}-${rawHex.slice(8, 12)}`;
 }
 
 /**
@@ -115,3 +134,4 @@ export function getCachedAlcoDeviceId(): string {
   }
   return 'ALCO-DEV-INIT-0000-0000';
 }
+
