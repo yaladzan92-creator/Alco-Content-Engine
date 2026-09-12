@@ -96,7 +96,7 @@ if (fs.existsSync(nextEnvPath)) {
   errors.push('next-env.d.ts tidak ditemukan!');
 }
 
-// 5. Check ALCO APP STANDARD v2.1 Compliance
+// 5. Check ALCO APP STANDARD v2.2 Compliance
 const licenseFiles = [
   'lib/license/types.ts',
   'lib/license/device-fingerprint.ts',
@@ -111,13 +111,13 @@ let allLicenseFilesExist = true;
 for (const relPath of licenseFiles) {
   const fullPath = path.join(projectRoot, relPath);
   if (!fs.existsSync(fullPath)) {
-    errors.push(`ALCO License file "${relPath}" wajib ada untuk kepatuhan ALCO APP STANDARD v2.1!`);
+    errors.push(`ALCO License file "${relPath}" wajib ada untuk kepatuhan ALCO APP STANDARD v2.2!`);
     allLicenseFilesExist = false;
   }
 }
 
 if (allLicenseFilesExist) {
-  successes.push('ALCO License Protocol v2.1 files terpasang lengkap.');
+  successes.push('ALCO License Protocol v2.2 files terpasang lengkap.');
 }
 
 // 6. Security Audit: Check that NO Authority Private Key exists in repository/source
@@ -141,6 +141,7 @@ if (fs.existsSync(authorityKeyPath)) {
 // 7. Check Electron Production Runtime & Health Check Route
 const electronMainPath = path.join(projectRoot, 'electron', 'main.cjs');
 const electronServerPath = path.join(projectRoot, 'electron', 'server.cjs');
+const electronPreloadPath = path.join(projectRoot, 'electron', 'preload.cjs');
 const healthRoutePath = path.join(projectRoot, 'app', 'api', 'health', 'route.ts');
 const electronBuilderPath = path.join(projectRoot, 'electron-builder.json');
 
@@ -153,6 +154,24 @@ if (fs.existsSync(electronMainPath) && fs.existsSync(electronServerPath)) {
   }
 } else {
   errors.push('electron/main.cjs atau electron/server.cjs tidak ditemukan!');
+}
+
+// 8. Check ALCO Device ID & Preload IPC Bridge (ALCO APP STANDARD v2.2 Section 9)
+if (fs.existsSync(electronMainPath) && fs.existsSync(electronPreloadPath)) {
+  const mainContent = fs.readFileSync(electronMainPath, 'utf8');
+  const preloadContent = fs.readFileSync(electronPreloadPath, 'utf8');
+
+  const hasMachineGuid = mainContent.includes('getWindowsMachineGuid') && mainContent.includes('getAlcoProductionDeviceId');
+  const hasIpcHandler = mainContent.includes("ipcMain.handle('alco:get-device-id'");
+  const hasPreloadBridge = preloadContent.includes('alcoBridge') && preloadContent.includes('getDeviceId');
+
+  if (hasMachineGuid && hasIpcHandler && hasPreloadBridge) {
+    successes.push('Device ID hardware protocol terpasang lengkap (Windows MachineGuid, format ALCO-DEV-XXXX-XXXX-XXXX, IPC bridge).');
+  } else {
+    errors.push('Device ID protocol belum lengkap di electron/main.cjs atau electron/preload.cjs!');
+  }
+} else {
+  errors.push('electron/preload.cjs tidak ditemukan!');
 }
 
 if (fs.existsSync(healthRoutePath)) {

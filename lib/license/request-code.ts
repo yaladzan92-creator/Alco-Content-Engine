@@ -14,7 +14,7 @@ export interface GenerateRequestCodeParams {
 }
 
 /**
- * Generates an ALCO Request Code v2 compliant with ALCO APP STANDARD v2.1
+ * Generates an ALCO Request Code v2 compliant with ALCO APP STANDARD v2.2
  * Format: ALCO-REQ-v2.<BASE64URL_PAYLOAD>.<CRC16>
  */
 export function generateRequestCodeV2(params: GenerateRequestCodeParams): string {

@@ -4,7 +4,7 @@ export async function GET() {
   return NextResponse.json({
     status: 'ok',
     app: 'alco-content-engine',
-    version: '0.1.0',
+    uptime: process.uptime(),
     timestamp: new Date().toISOString(),
   });
 }

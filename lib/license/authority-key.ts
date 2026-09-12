@@ -1,6 +1,6 @@
 /**
  * ALCO Authority Public Key Configuration
- * CRITICAL RULE (ALCO APP STANDARD v2.1 Section 14):
+ * CRITICAL RULE (ALCO APP STANDARD v2.2 Section 14):
  * Distributed apps MUST ONLY hold the Authority Public Key.
  * Private signing keys MUST NEVER be present in the user app or public repository.
  */
