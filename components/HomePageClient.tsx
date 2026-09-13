@@ -28,6 +28,7 @@ import { buildGeminiRequestHeaders, useGeminiApiKey } from '@/lib/client-gemini-
 import CalendarView from '@/components/CalendarView';
 import { StrategyIntakeModal } from '@/components/StrategyIntakeModal';
 import ContentEngineShell from '@/components/ContentEngineShell';
+import { useLicense } from '@/lib/license/license-context';
 
 const safeCopyToClipboard = async (text: string) => {
   if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
@@ -69,11 +70,15 @@ export default function HomePageClient() {
   const [sharedContext, setSharedContext] = useState<SharedContentContext | null>(null);
   const [isIntakeModalOpen, setIsIntakeModalOpen] = useState(false);
 
+  const { state: licenseState } = useLicense();
   const [accessCode, setAccessCode] = useState('');
-  const [isAccessValid] = useState(true);
+  const isAccessValid = licenseState.status === 'active' && !!licenseState.license;
   const [isEditAccessLocked] = useState(false);
   const [, setShowUnlockModal] = useState(false);
-  const [accessStatus] = useState({ type: 'FULL', maxContent: 30 });
+  const accessStatus = {
+    type: licenseState.license?.plan?.toUpperCase() || (isAccessValid ? 'FULL' : 'UNLICENSED'),
+    maxContent: licenseState.license?.plan === 'starter' ? 10 : 30,
+  };
   const [usageStats] = useState({ generates: 0, copies: 0 });
 
   // 14 calendar settings per project

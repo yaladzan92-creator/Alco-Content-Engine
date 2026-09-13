@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/lib/theme-provider';
 import { LicenseProvider } from '@/lib/license/license-context';
+import { LicenseGate } from '@/components/license/LicenseGate';
 
 export const metadata: Metadata = {
   title: 'ALCO Content Engine v2',
@@ -18,7 +19,9 @@ export default function RootLayout({
       <body className="min-h-screen bg-background text-foreground antialiased selection:bg-primary selection:text-primary-foreground" suppressHydrationWarning>
         <ThemeProvider>
           <LicenseProvider>
-            {children}
+            <LicenseGate>
+              {children}
+            </LicenseGate>
           </LicenseProvider>
         </ThemeProvider>
       </body>

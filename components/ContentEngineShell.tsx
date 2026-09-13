@@ -38,7 +38,7 @@ export default function ContentEngineShell({
   const { state } = useLicense();
 
   const isLicensed = state.status === 'active' && !!state.license;
-  const planLabel = state.license?.plan?.toUpperCase() || (isLicensed ? 'ACTIVE' : 'TRIAL');
+  const planLabel = state.license?.plan?.toUpperCase() || (isLicensed ? 'ACTIVE' : 'UNLICENSED');
 
   useEffect(() => {
     const saved = window.localStorage.getItem('alco_content_sidebar_open');

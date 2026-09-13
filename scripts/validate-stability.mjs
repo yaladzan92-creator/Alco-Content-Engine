@@ -105,6 +105,7 @@ const licenseFiles = [
   'lib/license/authority-key.ts',
   'lib/license/verification.ts',
   'lib/license/license-context.tsx',
+  'components/license/LicenseGate.tsx',
 ];
 
 let allLicenseFilesExist = true;
@@ -118,6 +119,28 @@ for (const relPath of licenseFiles) {
 
 if (allLicenseFilesExist) {
   successes.push('ALCO License Protocol v2.2 files terpasang lengkap.');
+}
+
+// 5A. Check ALCO APP STANDARD v2.2 Section 15A: License Gate Enforcement
+const layoutPath = path.join(projectRoot, 'app', 'layout.tsx');
+if (fs.existsSync(layoutPath)) {
+  const layoutContent = fs.readFileSync(layoutPath, 'utf8');
+  if (layoutContent.includes('<LicenseGate>') && layoutContent.includes('</LicenseGate>')) {
+    successes.push('Section 15A License Gate terpasang aktif di RootLayout (app/layout.tsx).');
+  } else {
+    errors.push('app/layout.tsx wajib membungkus children dengan <LicenseGate> untuk kepatuhan Section 15A!');
+  }
+}
+
+// Check that no forbidden default bypass (e.g. useState(true) for isAccessValid) exists
+const homeClientPath = path.join(projectRoot, 'components', 'HomePageClient.tsx');
+if (fs.existsSync(homeClientPath)) {
+  const homeClientContent = fs.readFileSync(homeClientPath, 'utf8');
+  if (homeClientContent.includes('useState(true)') && homeClientContent.includes('isAccessValid')) {
+    errors.push('CRITICAL: Ditemukan hardcoded default bypass isAccessValid = true di HomePageClient.tsx!');
+  } else {
+    successes.push('Bebas dari default bypass (isAccessValid tersinkronisasi penuh dengan useLicense).');
+  }
 }
 
 // 6. Security Audit: Check that NO Authority Private Key exists in repository/source
