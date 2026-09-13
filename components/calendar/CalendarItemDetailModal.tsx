@@ -168,7 +168,7 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
                       ? 'bg-sky-100 text-sky-800 border border-sky-200'
                       : isMofu
                       ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                      : 'bg-[#0f766e]/10 text-[#0f766e] border border-[#0f766e]/20'
+                      : 'bg-primary/10 text-primary border border-primary/20'
                   }`}
                 >
                   {editingItem.jenis}
@@ -190,7 +190,7 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
                 className="p-2 bg-stone-100 hover:bg-stone-200 border border-stone-200 rounded-xl text-stone-700 hover:text-stone-900 transition-all flex items-center gap-1.5 text-xs font-semibold"
                 title="Salin Detail Konten"
               >
-                {isCopied ? <Check size={14} className="text-[#0f766e]" /> : <Copy size={14} />}
+                {isCopied ? <Check size={14} className="text-primary" /> : <Copy size={14} />}
                 <span className="hidden sm:inline">{isCopied ? 'Tersalin' : 'Salin'}</span>
               </button>
               <button
@@ -207,7 +207,7 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
             {/* Quick Action: Send to Production Studio */}
             <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
               <div className="space-y-1">
-                <div className="flex items-center gap-1.5 text-[#0f766e] font-bold text-xs">
+                <div className="flex items-center gap-1.5 text-primary font-bold text-xs">
                   <Sparkles size={14} />
                   <span>Lanjutkan Konten Ini</span>
                 </div>
@@ -219,7 +219,7 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
                 onClick={handleSendToProductionStudio}
                 disabled={isOpeningStudio}
                 aria-busy={isOpeningStudio}
-                className="w-full sm:w-auto px-4 py-2 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-sm active:scale-[0.98] disabled:opacity-70 disabled:cursor-wait cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-sm active:scale-[0.98] disabled:opacity-70 disabled:cursor-wait cursor-pointer"
               >
                 {isOpeningStudio ? (
                   <>
@@ -252,7 +252,7 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
               </div>
               <div className="bg-[#f6f3ee]/60 border border-[#e7e0d4] p-4 rounded-2xl space-y-1">
                 <span className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
-                  <Anchor size={13} className="text-[#0f766e]" />
+                  <Anchor size={13} className="text-primary" />
                   Hook Type & Dialect
                 </span>
                 <p className="text-xs text-[#1f2933]">{editingItem.hookType || '-'}</p>
@@ -262,7 +262,7 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
             {/* Body Copywriting */}
             <div className="space-y-2">
               <span className="text-xs font-semibold text-stone-700 flex items-center gap-2">
-                <FileText size={13} className="text-[#0f766e]" />
+                <FileText size={13} className="text-primary" />
                 Naskah / Body Konten
               </span>
               <div className="bg-[#f6f3ee]/60 border border-[#e7e0d4] p-4 rounded-2xl text-xs text-[#1f2933] whitespace-pre-wrap leading-relaxed font-sans">
@@ -273,7 +273,7 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
             {/* Caption */}
             <div className="space-y-2">
               <span className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
-                <FileText size={13} className="text-[#0f766e]" />
+                <FileText size={13} className="text-primary" />
                 <span>Caption & Hashtags</span>
               </span>
               <div className="bg-[#f6f3ee]/60 border border-[#e7e0d4] p-4 rounded-2xl text-xs text-stone-700 whitespace-pre-wrap leading-relaxed">
@@ -308,11 +308,11 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
               <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-2xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-stone-800 font-semibold flex items-center gap-1.5">
-                    <Layers size={14} className="text-[#0f766e]" />
+                    <Layers size={14} className="text-primary" />
                     Carousel Plan ({editingItem.carousel_plan.slide_count || editingItem.carousel_plan.slides?.length || 0} Slides)
                   </span>
                   {editingItem.carousel_plan.primary_cta_text && (
-                    <span className="text-xs font-semibold text-[#0f766e] bg-[#0f766e]/10 px-2 py-0.5 rounded border border-[#0f766e]/20">
+                    <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">
                       CTA: {editingItem.carousel_plan.primary_cta_text}
                     </span>
                   )}
@@ -337,7 +337,7 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
             <div className="border-t border-[#e7e0d4] pt-5 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-stone-700 font-semibold flex items-center gap-1.5">
-                  <Sparkles size={13} className="text-[#0f766e]" />
+                  <Sparkles size={13} className="text-primary" />
                   Aset Produksi Cepat via AI
                 </span>
               </div>
@@ -353,7 +353,7 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
                     key={type}
                     disabled={isGeneratingAsset}
                     onClick={() => handleGenerateProductionAsset(type as any)}
-                    className="px-3 py-1.5 bg-[#f6f3ee] hover:bg-[#0f766e] hover:text-white border border-[#e7e0d4] hover:border-[#0f766e] rounded-xl text-xs font-medium text-stone-700 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                    className="px-3 py-1.5 bg-[#f6f3ee] hover:bg-primary hover:text-white border border-[#e7e0d4] hover:border-primary rounded-xl text-xs font-medium text-stone-700 transition-all flex items-center gap-1.5 disabled:opacity-50"
                   >
                     <Icon size={13} />
                     {label}
@@ -363,17 +363,17 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
 
               {/* Generated Asset View */}
               {isGeneratingAsset && (
-                <div className="p-4 bg-[#0f766e]/5 border border-[#0f766e]/20 rounded-2xl text-center space-y-2">
-                  <Loader2 size={16} className="animate-spin text-[#0f766e] mx-auto" />
-                  <p className="text-xs text-[#0f766e] font-medium">Caleco AI sedang menyusun draft aset produksi...</p>
+                <div className="p-4 bg-primary/5 border border-primary/20 rounded-2xl text-center space-y-2">
+                  <Loader2 size={16} className="animate-spin text-primary mx-auto" />
+                  <p className="text-xs text-primary font-medium">Caleco AI sedang menyusun draft aset produksi...</p>
                 </div>
               )}
 
               {productionAsset && !isGeneratingAsset && (
-                <div className="bg-[#fffdf8] border border-[#0f766e]/30 rounded-2xl p-4 space-y-2 relative shadow-sm">
+                <div className="bg-[#fffdf8] border border-primary/30 rounded-2xl p-4 space-y-2 relative shadow-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#0f766e] flex items-center gap-1.5">
-                      <Sparkles size={13} className="text-[#0f766e]" />
+                    <span className="text-xs font-bold text-primary flex items-center gap-1.5">
+                      <Sparkles size={13} className="text-primary" />
                       <span>{productionAsset.title}</span>
                     </span>
                     <button
@@ -385,7 +385,7 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
                           setTimeout(() => setCopiedAsset(false), 2000);
                         }
                       }}
-                      className="px-2.5 py-1 bg-[#0f766e]/10 hover:bg-[#0f766e] text-[#0f766e] hover:text-white border border-[#0f766e]/30 rounded-lg text-xs font-medium transition-all flex items-center gap-1 cursor-pointer"
+                      className="px-2.5 py-1 bg-primary/10 hover:bg-primary text-primary hover:text-white border border-primary/30 rounded-lg text-xs font-medium transition-all flex items-center gap-1 cursor-pointer"
                     >
                       {copiedAsset ? <Check size={12} /> : <Copy size={12} />}
                       {copiedAsset ? 'Tersalin' : 'Salin Draft'}
@@ -407,7 +407,7 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
             {/* AI Revision Box */}
             <div className="border-t border-[#e7e0d4] pt-5 space-y-3">
               <span className="text-xs text-stone-700 font-semibold flex items-center gap-1.5">
-                <RefreshCw size={13} className="text-[#0f766e]" />
+                <RefreshCw size={13} className="text-primary" />
                 Instruksi Revisi Konten Ini via AI
               </span>
               <div className="flex gap-2">
@@ -416,7 +416,7 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
                   value={revisionInstructions}
                   onChange={(e) => setRevisionInstructions(e.target.value)}
                   placeholder="Contoh: Buat headline lebih provokatif, ubah CTA jadi follow Instagram..."
-                  className="flex-1 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-3.5 py-2 text-xs text-stone-900 placeholder:text-stone-500 focus:outline-none focus:border-[#0f766e]"
+                  className="flex-1 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-3.5 py-2 text-xs text-stone-900 placeholder:text-stone-500 focus:outline-none focus:border-primary"
                   onKeyDown={async (e) => {
                     if (e.key === 'Enter' && revisionInstructions.trim() && onRegenerateItem && !isRevising) {
                       setIsRevising(true);
@@ -435,7 +435,7 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
                     setIsRevising(false);
                     setRevisionInstructions('');
                   }}
-                  className="px-4 py-2 bg-[#0f766e] hover:bg-[#0f766e]/90 disabled:bg-stone-200 disabled:text-stone-400 text-white font-semibold text-xs rounded-xl transition-all flex items-center gap-1.5 shrink-0"
+                  className="px-4 py-2 bg-primary hover:bg-primary/90 disabled:bg-stone-200 disabled:text-stone-400 text-white font-semibold text-xs rounded-xl transition-all flex items-center gap-1.5 shrink-0"
                 >
                   {isRevising ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
                   Revisi

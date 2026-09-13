@@ -145,14 +145,14 @@ export default function VideoPanel(props: any) {
                 onClick={() => handleSelectVideoStyle(style.id)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
                   isSelected
-                    ? 'bg-[#0f766e] text-white shadow-xs'
+                    ? 'bg-primary text-white shadow-xs'
                     : 'bg-[#f6f3ee] text-stone-700 hover:text-stone-900 hover:bg-[#e7e0d4]/60 border border-[#e7e0d4]'
                 }`}
               >
                 <span>{style.name}</span>
                 {idx === 0 && (
                   <span className={`text-[9px] px-1.5 py-0.2 rounded font-semibold uppercase tracking-tight ${
-                    isSelected ? 'bg-white/20 text-white' : 'bg-[#0f766e]/10 text-[#0f766e]'
+                    isSelected ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'
                   }`}>
                     Recommended
                   </span>
@@ -170,8 +170,8 @@ export default function VideoPanel(props: any) {
             onSelectCharacter={handleSelectCharacter}
             onCreateCharacter={handleCreateCharacterClick}
           />
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f6f3ee] rounded-xl border border-[#e7e0d4] text-xs font-bold text-[#0f766e]">
-            <Sparkles size={13} className="text-[#0f766e]" />
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f6f3ee] rounded-xl border border-[#e7e0d4] text-xs font-bold text-primary">
+            <Sparkles size={13} className="text-primary" />
             <span>Google Flow (3 Scene)</span>
           </div>
         </div>
@@ -196,12 +196,12 @@ export default function VideoPanel(props: any) {
                     onClick={() => setActiveSceneNumber(scene.sceneNumber)}
                     className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                       isActive
-                        ? 'bg-[#0f766e] text-white shadow-xs'
+                        ? 'bg-primary text-white shadow-xs'
                         : 'bg-[#fffdf8] text-stone-700 hover:bg-white border border-[#e7e0d4]'
                     }`}
                   >
                     <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-bold ${
-                      isActive ? 'bg-white/25 text-white' : isSceneDone ? 'bg-emerald-100 text-emerald-700' : 'bg-[#0f766e]/15 text-[#0f766e]'
+                      isActive ? 'bg-white/25 text-white' : isSceneDone ? 'bg-emerald-100 text-emerald-700' : 'bg-primary/15 text-primary'
                     }`}>
                       {isSceneDone ? '✓' : scene.sceneNumber}
                     </span>
@@ -220,7 +220,7 @@ export default function VideoPanel(props: any) {
               href="https://labs.google/fx/tools/flow"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3.5 py-2 bg-[#fffdf8] hover:bg-stone-50 border border-[#e7e0d4] text-[#0f766e] rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs shrink-0 cursor-pointer"
+              className="px-3.5 py-2 bg-[#fffdf8] hover:bg-stone-50 border border-[#e7e0d4] text-primary rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs shrink-0 cursor-pointer"
             >
               <ExternalLink size={13} />
               <span>Buka Google Flow</span>
@@ -233,7 +233,7 @@ export default function VideoPanel(props: any) {
             {/* Scene Header & Metadata */}
             <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#e7e0d4]">
               <div className="flex items-center gap-2.5 flex-wrap">
-                <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-[#0f766e]/10 text-[#0f766e] border border-[#0f766e]/20">
+                <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
                   Scene {activeScene.sceneNumber} &bull; {activeScene.duration}
                 </span>
                 <h4 className="text-sm font-bold text-[#1f2933]">
@@ -243,7 +243,7 @@ export default function VideoPanel(props: any) {
                   ({activeScene.shotType})
                 </span>
               </div>
-              <span className="text-xs font-semibold text-[#0f766e] bg-[#0f766e]/10 px-2.5 py-0.5 rounded-lg border border-[#0f766e]/20">
+              <span className="text-xs font-semibold text-primary bg-primary/10 px-2.5 py-0.5 rounded-lg border border-primary/20">
                 {activeScene.role}
               </span>
             </div>
@@ -251,7 +251,7 @@ export default function VideoPanel(props: any) {
             {/* SHORT STEP-BY-STEP SCENE INSTRUCTIONS */}
             <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-4 py-3 text-xs space-y-1">
               <div className="flex items-center gap-2 font-bold text-stone-900">
-                <span className="w-5 h-5 rounded-full bg-[#0f766e] text-white flex items-center justify-center text-[10px] font-bold">
+                <span className="w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold">
                   {activeScene.sceneNumber}
                 </span>
                 <span>Kerjakan Scene {activeScene.sceneNumber}</span>
@@ -271,7 +271,7 @@ export default function VideoPanel(props: any) {
             <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl p-3.5 space-y-2">
               <div className="flex items-center justify-between flex-wrap gap-2 text-[11px]">
                 <span className="font-semibold text-stone-600 flex items-center gap-1.5">
-                  <MessageSquare size={13} className="text-[#0f766e]" />
+                  <MessageSquare size={13} className="text-primary" />
                   Naskah Dialog Audio (Bahasa Indonesia):
                 </span>
                 <div className="flex items-center gap-2">
@@ -281,7 +281,7 @@ export default function VideoPanel(props: any) {
                   <button
                     type="button"
                     onClick={() => handleCopyText(`gflow_dialogue_${activeScene.sceneNumber}_${activeVideo.id}`, activeScene.dialogue, 'none')}
-                    className="text-[11px] font-bold text-[#0f766e] hover:underline cursor-pointer flex items-center gap-1"
+                    className="text-[11px] font-bold text-primary hover:underline cursor-pointer flex items-center gap-1"
                   >
                     {isDialogueCopied ? <Check size={12} /> : <Copy size={12} />}
                     <span>{isDialogueCopied ? 'Tersalin' : 'Salin Dialog'}</span>
@@ -342,8 +342,8 @@ export default function VideoPanel(props: any) {
               <div className="p-4 bg-[#f6f3ee]/60 border border-[#e7e0d4] rounded-xl flex flex-col justify-between space-y-3">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-[#0f766e] uppercase tracking-wider flex items-center gap-1.5">
-                      <Sparkles size={13} className="text-[#0f766e]" />
+                    <span className="text-[11px] font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles size={13} className="text-primary" />
                       Langkah 2: Video Motion Prompt (FX Studio / Veo)
                     </span>
                     <span className="text-[10px] text-stone-500 font-mono">Camera &amp; Motion</span>
@@ -367,7 +367,7 @@ export default function VideoPanel(props: any) {
                   className={`w-full py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer border ${
                     isPromptCopied
                       ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
-                      : 'bg-[#0f766e] hover:bg-[#0f766e]/90 border-[#0f766e] text-white'
+                      : 'bg-primary hover:bg-blue-700 border-primary text-white'
                   }`}
                 >
                   {isPromptCopied ? (
@@ -427,7 +427,7 @@ export default function VideoPanel(props: any) {
                 <button
                   type="button"
                   onClick={() => setActiveSceneNumber(activeScene.sceneNumber + 1)}
-                  className="px-4 py-2 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer ml-auto"
+                  className="px-4 py-2 bg-primary hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer ml-auto"
                 >
                   <span>Lanjut ke Scene {activeScene.sceneNumber + 1}</span>
                   <ArrowRight size={13} />
@@ -459,7 +459,7 @@ export default function VideoPanel(props: any) {
                       href="https://labs.google/fx/tools/flow"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3.5 py-1.5 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white font-bold text-xs rounded-lg transition flex items-center gap-1 shadow-xs cursor-pointer"
+                      className="px-3.5 py-1.5 bg-primary hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition flex items-center gap-1 shadow-xs cursor-pointer"
                     >
                       <ExternalLink size={12} />
                       <span>Buka Google Flow</span>
@@ -475,7 +475,7 @@ export default function VideoPanel(props: any) {
             <div className="bg-[#fffdf8] border border-[#e7e0d4] p-4.5 rounded-2xl space-y-2.5 shadow-xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <FileText size={14} className="text-[#0f766e]" />
+                  <FileText size={14} className="text-primary" />
                   <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">
                     Caption Postingan Video (Siap Posting)
                   </span>
@@ -486,8 +486,8 @@ export default function VideoPanel(props: any) {
                 >
                   {copiedStates[`video_caption_${activeVideo.id}`] ? (
                     <>
-                      <Check size={13} className="text-[#0f766e]" />
-                      <span className="text-[#0f766e]">Caption Tersalin!</span>
+                      <Check size={13} className="text-primary" />
+                      <span className="text-primary">Caption Tersalin!</span>
                     </>
                   ) : (
                     <>
@@ -511,9 +511,9 @@ export default function VideoPanel(props: any) {
             
             {/* 1. Naskah Alur Cerita Utuh (5-Step Monolog) */}
             <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
-              <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+              <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
                 <div className="flex items-center gap-2">
-                  <PlayCircle size={14} className="text-[#0f766e]" />
+                  <PlayCircle size={14} className="text-primary" />
                   <span>Struktur Naskah Cerita Utuh (Hook &rarr; Masalah &rarr; Solusi &rarr; Proof &rarr; CTA)</span>
                 </div>
                 <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />
@@ -554,32 +554,32 @@ export default function VideoPanel(props: any) {
 
             {/* 2. Urutan Kerja di Google Flow */}
             <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
-              <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+              <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
                 <div className="flex items-center gap-2">
-                  <Sparkles size={14} className="text-[#0f766e]" />
+                  <Sparkles size={14} className="text-primary" />
                   <span>Panduan Langkah Eksekusi di Google FX Studio / Flow</span>
                 </div>
                 <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />
               </summary>
               <div className="p-4 pt-2 border-t border-[#e7e0d4]/60 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-xs text-stone-700">
                 <div className="p-2.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl">
-                  <span className="font-bold text-[#0f766e] block text-[11px]">Langkah 1:</span>
+                  <span className="font-bold text-primary block text-[11px]">Langkah 1:</span>
                   <p className="text-[11px] mt-0.5 leading-snug">Salin Prompt Image Scene 1, paste di Flow untuk membuat visual frame pembuka.</p>
                 </div>
                 <div className="p-2.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl">
-                  <span className="font-bold text-[#0f766e] block text-[11px]">Langkah 2:</span>
+                  <span className="font-bold text-primary block text-[11px]">Langkah 2:</span>
                   <p className="text-[11px] mt-0.5 leading-snug">Salin Prompt Video Scene 1, generate video gerak di Google Flow.</p>
                 </div>
                 <div className="p-2.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl">
-                  <span className="font-bold text-[#0f766e] block text-[11px]">Langkah 3:</span>
+                  <span className="font-bold text-primary block text-[11px]">Langkah 3:</span>
                   <p className="text-[11px] mt-0.5 leading-snug">Beralih ke Scene 2, lakukan urutan yang sama untuk konten solusi.</p>
                 </div>
                 <div className="p-2.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl">
-                  <span className="font-bold text-[#0f766e] block text-[11px]">Langkah 4:</span>
+                  <span className="font-bold text-primary block text-[11px]">Langkah 4:</span>
                   <p className="text-[11px] mt-0.5 leading-snug">Lanjutkan Scene 3 untuk dorongan aksi CTA konversi tinggi.</p>
                 </div>
                 <div className="p-2.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl">
-                  <span className="font-bold text-[#0f766e] block text-[11px]">Langkah 5:</span>
+                  <span className="font-bold text-primary block text-[11px]">Langkah 5:</span>
                   <p className="text-[11px] mt-0.5 leading-snug">Gabungkan 3 klip di CapCut/editor, tambahkan voiceover &amp; caption siap posting.</p>
                 </div>
               </div>
@@ -587,9 +587,9 @@ export default function VideoPanel(props: any) {
 
             {/* 3. Detail Strategi & Teknis Video */}
             <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
-              <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+              <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
                 <div className="flex items-center gap-2">
-                  <Sliders size={14} className="text-[#0f766e]" />
+                  <Sliders size={14} className="text-primary" />
                   <span>Detail Strategi, Arah Audio &amp; Konfigurasi Produksi</span>
                 </div>
                 <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />
@@ -628,15 +628,15 @@ export default function VideoPanel(props: any) {
                           onClick={() => setVideoMode(mode.id as any)}
                           className={`p-2.5 rounded-xl border text-left transition-all ${
                             isSelected
-                              ? 'bg-[#fffdf8] border-[#0f766e] shadow-xs'
+                              ? 'bg-[#fffdf8] border-primary shadow-xs'
                               : 'bg-[#f6f3ee] border-[#e7e0d4] text-stone-600 hover:bg-[#fffdf8]'
                           }`}
                         >
                           <div className="flex items-center justify-between mb-0.5">
-                            <span className={`text-xs font-bold ${isSelected ? 'text-[#0f766e]' : 'text-stone-800'}`}>
+                            <span className={`text-xs font-bold ${isSelected ? 'text-primary' : 'text-stone-800'}`}>
                               {mode.title}
                             </span>
-                            {isSelected && <Check size={12} className="text-[#0f766e]" />}
+                            {isSelected && <Check size={12} className="text-primary" />}
                           </div>
                           <p className="text-[10px] text-stone-500 leading-tight">{mode.desc}</p>
                         </button>
@@ -795,7 +795,7 @@ export default function VideoPanel(props: any) {
                         }
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-3.5 py-1 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5"
+                        className="px-3.5 py-1 bg-primary hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5"
                       >
                         <ExternalLink size={12} />
                         <span>Buka Video Hasil</span>
@@ -830,7 +830,7 @@ export default function VideoPanel(props: any) {
               <details className="group border border-[#e7e0d4] bg-[#f6f3ee] rounded-xl overflow-hidden">
                 <summary className="p-3 flex items-center justify-between text-xs font-bold text-stone-700 cursor-pointer select-none">
                   <div className="flex items-center gap-2">
-                    <FileText size={13} className="text-[#0f766e]" />
+                    <FileText size={13} className="text-primary" />
                     <span>Detail Payload JSON2Video</span>
                   </div>
                   <ChevronDown size={14} className="group-open:rotate-180 transition-transform text-stone-400" />
@@ -844,8 +844,8 @@ export default function VideoPanel(props: any) {
                     >
                       {copiedStates[`json2video_${activeVideo.id}`] ? (
                         <>
-                          <Check size={12} className="text-[#0f766e]" />
-                          <span className="text-[#0f766e]">Tersalin</span>
+                          <Check size={12} className="text-primary" />
+                          <span className="text-primary">Tersalin</span>
                         </>
                       ) : (
                         <>
@@ -869,7 +869,7 @@ export default function VideoPanel(props: any) {
             <div className="bg-[#fffdf8] border border-[#e7e0d4] p-4.5 rounded-2xl space-y-2.5 shadow-xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <FileText size={14} className="text-[#0f766e]" />
+                  <FileText size={14} className="text-primary" />
                   <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">
                     Caption Postingan Video (Siap Posting)
                   </span>
@@ -880,8 +880,8 @@ export default function VideoPanel(props: any) {
                 >
                   {copiedStates[`video_caption_${activeVideo.id}`] ? (
                     <>
-                      <Check size={13} className="text-[#0f766e]" />
-                      <span className="text-[#0f766e]">Caption Tersalin!</span>
+                      <Check size={13} className="text-primary" />
+                      <span className="text-primary">Caption Tersalin!</span>
                     </>
                   ) : (
                     <>

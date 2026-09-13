@@ -40,7 +40,7 @@ export const CalecoAIRecommendation: React.FC<CalecoAIRecommendationProps> = ({
       <div className="flex items-center justify-between mb-2">
         <div
           className={`flex items-center gap-1.5 ${
-            isError ? 'text-rose-600' : 'text-[#0f766e]'
+            isError ? 'text-rose-600' : 'text-primary'
           } font-semibold text-xs`}
         >
           <Sparkles size={13} />
@@ -49,7 +49,7 @@ export const CalecoAIRecommendation: React.FC<CalecoAIRecommendationProps> = ({
         {isObject && !isLoading && onApplyAll && !isError && (
           <button
             onClick={() => onApplyAll(recommendation as Record<string, string>)}
-            className="flex items-center gap-1 px-2.5 py-1 bg-[#0f766e]/10 hover:bg-[#0f766e] text-[#0f766e] hover:text-white rounded-lg transition-all text-xs font-semibold"
+            className="flex items-center gap-1 px-2.5 py-1 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded-lg transition-all text-xs font-semibold"
             title="Terapkan Semua Rekomendasi"
           >
             <Check size={12} />
@@ -59,7 +59,7 @@ export const CalecoAIRecommendation: React.FC<CalecoAIRecommendationProps> = ({
       </div>
       {isLoading ? (
         <div className="flex items-center gap-2 text-stone-500 py-1">
-          <Loader2 size={13} className="animate-spin text-[#0f766e]" />
+          <Loader2 size={13} className="animate-spin text-primary" />
           <span>Caleco AI sedang menyusun rekomendasi...</span>
         </div>
       ) : isError ? (
@@ -70,14 +70,14 @@ export const CalecoAIRecommendation: React.FC<CalecoAIRecommendationProps> = ({
         <div className="space-y-2.5">
           {isObject ? (
             Object.entries(recommendation as Record<string, string>).map(([field, text]) => (
-              <div key={field} className="space-y-1 border-l-2 border-[#0f766e]/40 pl-3 py-1 bg-[#f6f3ee]/50 rounded-r-lg">
+              <div key={field} className="space-y-1 border-l-2 border-primary/40 pl-3 py-1 bg-[#f6f3ee]/50 rounded-r-lg">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-semibold text-stone-600">
                     {field.replace(/([A-Z])/g, ' $1').trim()}
                   </span>
                   <button
                     onClick={() => onApply(field, text)}
-                    className="p-1 hover:bg-[#0f766e]/15 text-[#0f766e] rounded-md transition-all"
+                    className="p-1 hover:bg-primary/15 text-primary rounded-md transition-all"
                     title={`Terapkan ke ${field}`}
                   >
                     <Check size={12} />
@@ -97,7 +97,7 @@ export const CalecoAIRecommendation: React.FC<CalecoAIRecommendationProps> = ({
               </p>
               <button
                 onClick={() => onApply('default', recommendation as string)}
-                className="p-1.5 bg-[#0f766e]/10 hover:bg-[#0f766e] text-[#0f766e] hover:text-white rounded-lg transition-all shrink-0"
+                className="p-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded-lg transition-all shrink-0"
                 title="Terapkan Rekomendasi"
               >
                 <Check size={13} />

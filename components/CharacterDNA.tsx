@@ -557,7 +557,7 @@ Output a complete JSON object with the following schema:
       <div className="bg-[#fffdf8] rounded-2xl border border-[#e7e0d4] p-4 sm:p-5 shadow-xs space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#e7e0d4]/60">
           <div className="flex items-center gap-2">
-            <UserCheck size={18} className="text-[#0f766e]" />
+            <UserCheck size={18} className="text-primary" />
             <h2 className="text-sm font-bold text-[#1f2933]">Saved Characters</h2>
             <span className="text-xs text-stone-500 font-medium">({savedCharacters.length} karakter tersimpan)</span>
           </div>
@@ -578,7 +578,7 @@ Output a complete JSON object with the following schema:
             <button
               type="button"
               onClick={handleStartNew}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
             >
               <Plus size={13} />
               <span>+ Buat Karakter Baru</span>
@@ -596,7 +596,7 @@ Output a complete JSON object with the following schema:
                   key={char.character_id}
                   className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-2.5 ${
                     isSelected
-                      ? 'bg-[#0f766e]/5 border-[#0f766e] shadow-xs ring-1 ring-[#0f766e]/30'
+                      ? 'bg-primary/5 border-primary shadow-xs ring-1 ring-primary/30'
                       : 'bg-[#f6f3ee]/80 border-[#e7e0d4] hover:bg-[#f6f3ee]'
                   }`}
                 >
@@ -623,7 +623,7 @@ Output a complete JSON object with the following schema:
                           {char.identity?.display_name || 'Unnamed'}
                         </span>
                         {isSelected && (
-                          <span className="text-[9px] font-extrabold bg-[#0f766e] text-white px-1.5 py-0.2 rounded uppercase">
+                          <span className="text-[9px] font-extrabold bg-primary text-white px-1.5 py-0.2 rounded uppercase">
                             Aktif
                           </span>
                         )}
@@ -639,7 +639,7 @@ Output a complete JSON object with the following schema:
                     <button
                       type="button"
                       onClick={() => handleStartEdit(char)}
-                      className="p-1.5 text-stone-500 hover:text-[#0f766e] hover:bg-[#e7e0d4]/50 rounded-lg transition"
+                      className="p-1.5 text-stone-500 hover:text-primary hover:bg-[#e7e0d4]/50 rounded-lg transition"
                       title="Edit Karakter"
                     >
                       <Edit3 size={13} />
@@ -726,7 +726,7 @@ Output a complete JSON object with the following schema:
               value={characterName}
               onChange={(e) => setCharacterName(e.target.value)}
               placeholder="Contoh: Maya, Sarah, Rani, Mas Budi..."
-              className="w-full px-3.5 py-2.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-xs text-stone-900 font-medium focus:outline-none focus:border-[#0f766e] focus:ring-1 focus:ring-[#0f766e] transition"
+              className="w-full px-3.5 py-2.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-xs text-stone-900 font-medium focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition"
             />
           </div>
 
@@ -752,7 +752,7 @@ Output a complete JSON object with the following schema:
                 htmlFor="dna-upload-input"
                 className="cursor-pointer flex items-center gap-2 px-4 py-2.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-stone-800 font-bold border border-[#e7e0d4] rounded-xl text-xs transition shadow-2xs"
               >
-                <Upload size={14} className="text-[#0f766e]" />
+                <Upload size={14} className="text-primary" />
                 <span>{images.length > 0 ? `${images.length} Foto Dipilih (Ganti)` : 'Upload Foto Referensi'}</span>
               </label>
 
@@ -778,7 +778,7 @@ Output a complete JSON object with the following schema:
               <label className="text-xs font-bold text-stone-700 block">
                 Instruksi Tambahan (Prioritas Utama)
               </label>
-              <span className="text-[10px] font-bold text-[#0f766e] bg-[#0f766e]/10 px-2 py-0.5 rounded">
+              <span className="text-[10px] font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded">
                 Override Asumsi AI
               </span>
             </div>
@@ -788,7 +788,7 @@ Output a complete JSON object with the following schema:
               value={additionalInstructions}
               onChange={(e) => setAdditionalInstructions(e.target.value)}
               placeholder="Contoh: selalu memakai pakaian sopan, gunakan hijab, hindari pakaian ketat, pertahankan warna hijab netral..."
-              className="w-full px-3.5 py-2.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-xs text-stone-900 font-medium focus:outline-none focus:border-[#0f766e] focus:ring-1 focus:ring-[#0f766e] transition leading-relaxed"
+              className="w-full px-3.5 py-2.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-xs text-stone-900 font-medium focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition leading-relaxed"
             />
             <p className="text-[11px] text-stone-500 leading-normal">
               Instruksi Tambahan adalah arahan eksplisit dari Anda yang memiliki prioritas lebih tinggi daripada asumsi AI dari foto (misal: jika foto rambut terbuka namun Anda instruksikan berhijab, sistem akan mengunci hijab).
@@ -801,7 +801,7 @@ Output a complete JSON object with the following schema:
               type="button"
               onClick={generateDNA}
               disabled={loading || !characterName.trim() || (images.length === 0 && !dna)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-[#0f766e] hover:bg-[#0f766e]/90 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition shadow-xs cursor-pointer"
+              className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition shadow-xs cursor-pointer"
             >
               {loading ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />}
               <span>{loading ? 'Menganalisis DNA...' : 'Generate Character DNA'}</span>
@@ -861,14 +861,14 @@ Output a complete JSON object with the following schema:
                   </div>
                   <div className="flex items-center gap-2">
                     {selectedCharId === dna.character_id ? (
-                      <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-[#0f766e]/10 text-[#0f766e] border border-[#0f766e]/20 uppercase tracking-wider">
+                      <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">
                         Aktif di Studio
                       </span>
                     ) : (
                       <button
                         type="button"
                         onClick={() => handleSelectChar(dna)}
-                        className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-[#0f766e] text-white hover:bg-[#0f766e]/90 cursor-pointer"
+                        className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-primary text-white hover:bg-blue-700 cursor-pointer"
                       >
                         Gunakan Karakter Ini
                       </button>
@@ -909,8 +909,8 @@ Output a complete JSON object with the following schema:
 
                 {/* Explicit Additional Instructions Callout */}
                 {dna.additional_instructions && (
-                  <div className="p-3 bg-[#0f766e]/5 border border-[#0f766e]/20 rounded-xl text-xs space-y-1">
-                    <span className="text-[10px] font-bold text-[#0f766e] uppercase block">
+                  <div className="p-3 bg-cyan-500/5 border border-cyan-500/20 rounded-xl text-xs space-y-1">
+                    <span className="text-[10px] font-bold text-cyan-700 dark:text-cyan-300 uppercase block">
                       Instruksi Tambahan User (Prioritas Utama)
                     </span>
                     <p className="text-stone-800 font-medium italic">
@@ -937,7 +937,7 @@ Output a complete JSON object with the following schema:
               <button
                 type="button"
                 onClick={() => handleCopy('char_consistency_prompt', activeConsistencyPrompt)}
-                className="px-3 py-1.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-[#0f766e] font-bold text-xs rounded-xl border border-[#e7e0d4] flex items-center gap-1.5 transition cursor-pointer"
+                className="px-3 py-1.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-primary font-bold text-xs rounded-xl border border-[#e7e0d4] flex items-center gap-1.5 transition cursor-pointer"
               >
                 {copiedKey === 'char_consistency_prompt' ? (
                   <>
@@ -962,9 +962,9 @@ Output a complete JSON object with the following schema:
           <div className="space-y-2.5">
             {/* Visual DNA */}
             <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
-              <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+              <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
                 <div className="flex items-center gap-2">
-                  <Eye size={14} className="text-[#0f766e]" />
+                  <Eye size={14} className="text-primary" />
                   <span>Visual DNA &amp; Wardrobe</span>
                 </div>
                 <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />
@@ -991,9 +991,9 @@ Output a complete JSON object with the following schema:
 
             {/* Personality DNA */}
             <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
-              <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+              <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
                 <div className="flex items-center gap-2">
-                  <Smile size={14} className="text-[#0f766e]" />
+                  <Smile size={14} className="text-primary" />
                   <span>Personality &amp; Behavior DNA</span>
                 </div>
                 <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />
@@ -1012,9 +1012,9 @@ Output a complete JSON object with the following schema:
 
             {/* Voice / Communication DNA */}
             <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
-              <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+              <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
                 <div className="flex items-center gap-2">
-                  <Mic2 size={14} className="text-[#0f766e]" />
+                  <Mic2 size={14} className="text-primary" />
                   <span>Voice &amp; Communication DNA</span>
                 </div>
                 <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />
@@ -1033,9 +1033,9 @@ Output a complete JSON object with the following schema:
 
             {/* Production & Consistency Rules */}
             <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
-              <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+              <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
                 <div className="flex items-center gap-2">
-                  <ShieldCheck size={14} className="text-[#0f766e]" />
+                  <ShieldCheck size={14} className="text-primary" />
                   <span>Production Rules &amp; Aturan Konsistensi</span>
                 </div>
                 <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />
@@ -1075,9 +1075,9 @@ Output a complete JSON object with the following schema:
 
             {/* Advanced Raw Data */}
             <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
-              <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+              <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
                 <div className="flex items-center gap-2">
-                  <FileCode size={14} className="text-[#0f766e]" />
+                  <FileCode size={14} className="text-primary" />
                   <span>Raw DNA Data Schema</span>
                 </div>
                 <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />

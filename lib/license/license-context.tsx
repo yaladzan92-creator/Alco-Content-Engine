@@ -22,13 +22,13 @@ interface LicenseContextValue {
 const LicenseContext = createContext<LicenseContextValue | null>(null);
 
 export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [deviceId, setDeviceId] = useState<string>(() => getCachedAlcoDeviceId());
+  const [deviceId, setDeviceId] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [state, setState] = useState<AlcoLicenseStoreState>({
     status: 'unlicensed',
     license: null,
     rawCode: null,
-    deviceId: getCachedAlcoDeviceId(),
+    deviceId: '',
     lastVerifiedAt: null,
   });
 
@@ -90,6 +90,11 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   useEffect(() => {
+    // Read cached device ID safely after client mount to prevent SSR hydration mismatch
+    const cached = getCachedAlcoDeviceId();
+    if (cached) {
+      setDeviceId(cached);
+    }
     initLicense();
   }, [initLicense]);
 

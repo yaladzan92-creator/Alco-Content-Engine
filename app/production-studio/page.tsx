@@ -4935,12 +4935,12 @@ ${formatDirection}${revisionDirective}`;
             <div className="space-y-2">
               <h3 className="text-sm font-bold text-[#1f2933]">Belum Ada Item Kalender yang Dipilih</h3>
               <p className="text-xs text-stone-600 leading-relaxed">
-                Silakan kembali ke Kalender Utama dan pilih salah satu item konten dengan mengklik tombol <span className="text-[#0f766e] font-semibold">Buka Production Studio</span> pada panel detail item.
+                Silakan kembali ke Kalender Utama dan pilih salah satu item konten dengan mengklik tombol <span className="text-primary font-semibold">Buka Production Studio</span> pada panel detail item.
               </p>
             </div>
             <button
               onClick={() => router.push('/')}
-              className="w-full py-2.5 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white font-bold rounded-xl text-xs transition-all shadow-sm flex items-center justify-center gap-1.5"
+              className="w-full py-2.5 bg-primary hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-all shadow-sm flex items-center justify-center gap-1.5"
             >
               <ArrowLeft size={13} />
               Kembali ke Kalender Utama
@@ -4985,7 +4985,7 @@ ${formatDirection}${revisionDirective}`;
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-4 right-4 z-[9999] bg-[#0f766e] text-white font-bold px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 text-xs border border-[#0f766e]/40"
+            className="fixed top-4 right-4 z-[9999] bg-primary text-white font-bold px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 text-xs border border-primary/40"
           >
             <Sparkles size={14} className="animate-pulse" />
             {toastMessage}
@@ -5024,7 +5024,7 @@ ${formatDirection}${revisionDirective}`;
             <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] uppercase shrink-0 ${
               (activeItem.jenis || '').includes('TOFU') ? 'bg-sky-100 text-sky-800 border border-sky-200' :
               (activeItem.jenis || '').includes('MOFU') ? 'bg-amber-100 text-amber-800 border border-amber-200' :
-              'bg-[#0f766e]/10 text-[#0f766e] border border-[#0f766e]/20'
+              'bg-primary/10 text-primary border border-primary/20'
             }`}>
               {activeItem.jenis || 'KONTEN'}
             </span>
@@ -5045,7 +5045,7 @@ ${formatDirection}${revisionDirective}`;
               className="flex items-center gap-1.5 px-2.5 py-1 bg-[#f6f3ee] hover:bg-stone-200 text-stone-700 font-semibold rounded-lg border border-[#e7e0d4] text-[11px] transition cursor-pointer"
               title="Kelola DNA Karakter & Profil Talent"
             >
-              <BrainCircuit size={12} className={selectedCharacterId ? 'text-[#0f766e]' : 'text-stone-400'} />
+              <BrainCircuit size={12} className={selectedCharacterId ? 'text-primary' : 'text-stone-400'} />
               <span>Karakter:</span>
               <span className="font-bold text-stone-900">
                 {savedCharacters.find(c => c.character_id === selectedCharacterId)?.identity?.display_name || 'No Character'}
@@ -5053,7 +5053,7 @@ ${formatDirection}${revisionDirective}`;
             </button>
             <span className="text-stone-300">|</span>
             <span className="text-stone-500 text-[11px] hidden sm:inline">Mode Aktif:</span>
-            <span className="px-2.5 py-1 bg-[#0f766e]/10 text-[#0f766e] font-bold rounded-lg border border-[#0f766e]/20 text-[11px] uppercase">
+            <span className="px-2.5 py-1 bg-cyan-500/10 text-cyan-800 dark:text-cyan-200 font-bold rounded-lg border border-cyan-500/20 text-[11px] uppercase">
               {activeTab}
             </span>
           </div>
@@ -5079,7 +5079,7 @@ ${formatDirection}${revisionDirective}`;
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border ${
                   (activeItem.jenis || '').includes('TOFU') ? 'bg-sky-100 text-sky-800 border-sky-200' :
                   (activeItem.jenis || '').includes('MOFU') ? 'bg-amber-100 text-amber-800 border-amber-200' :
-                  'bg-[#0f766e]/10 text-[#0f766e] border-[#0f766e]/25'
+                  'bg-primary/10 text-primary border-primary/25'
                 }`}>
                   #{activeItem.no || '1'}
                 </div>
@@ -5092,7 +5092,7 @@ ${formatDirection}${revisionDirective}`;
                 <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold ${
                   (activeItem.jenis || '').includes('TOFU') ? 'bg-sky-100 text-sky-800 border border-sky-200' :
                   (activeItem.jenis || '').includes('MOFU') ? 'bg-amber-100 text-amber-800 border border-amber-200' :
-                  'bg-[#0f766e]/10 text-[#0f766e] border border-[#0f766e]/20'
+                  'bg-primary/10 text-primary border border-primary/20'
                 }`}>
                   {activeItem.jenis}
                 </span>
@@ -5105,7 +5105,7 @@ ${formatDirection}${revisionDirective}`;
             {/* Always visible: Headline and primary summary */}
             <div className="space-y-1">
               <div className="text-[11px] font-semibold text-stone-600 flex items-center gap-1">
-                <Zap size={13} className="text-[#0f766e]" /> Headline Konten
+                <Zap size={13} className="text-primary" /> Headline Konten
               </div>
               <div className="bg-[#f6f3ee] border border-[#e7e0d4] p-3 rounded-xl text-[#1f2933] font-bold text-xs leading-relaxed">
                 {activeItem.headline}
@@ -5132,7 +5132,7 @@ ${formatDirection}${revisionDirective}`;
                 </div>
                 <div className="bg-[#f6f3ee] p-3 rounded-xl border border-[#e7e0d4]">
                   <div className="text-[11px] font-semibold text-stone-500 mb-0.5">Call to Action (CTA)</div>
-                  <p className="text-xs text-[#0f766e] font-bold">{activeItem.cta}</p>
+                  <p className="text-xs text-primary font-bold">{activeItem.cta}</p>
                 </div>
               </div>
 
@@ -5158,7 +5158,7 @@ ${formatDirection}${revisionDirective}`;
             {/* Mobile Collapsible Details Accordion */}
             <details className="lg:hidden group border-t border-[#e7e0d4] pt-2 text-xs">
               <summary className="font-bold text-stone-700 cursor-pointer flex items-center justify-between text-xs py-1.5 list-none select-none">
-                <span className="flex items-center gap-1.5 text-[#0f766e]">
+                <span className="flex items-center gap-1.5 text-primary">
                   <Sliders size={13} />
                   <span>Detail Rencana Konten &amp; Strategi</span>
                 </span>
@@ -5172,7 +5172,7 @@ ${formatDirection}${revisionDirective}`;
                   </div>
                   <div className="bg-[#f6f3ee] p-2.5 rounded-xl border border-[#e7e0d4]">
                     <div className="text-[10px] font-semibold text-stone-500 mb-0.5">CTA</div>
-                    <p className="text-xs text-[#0f766e] font-bold">{activeItem.cta}</p>
+                    <p className="text-xs text-primary font-bold">{activeItem.cta}</p>
                   </div>
                 </div>
 
@@ -5200,9 +5200,9 @@ ${formatDirection}${revisionDirective}`;
 
           {/* Quick Brand Metadata Context Card (Collapsible for Progressive Disclosure) */}
           <details className="hidden lg:block group bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl overflow-hidden shadow-xs">
-            <summary className="p-4 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+            <summary className="p-4 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-[#0f766e]/10 flex items-center justify-center text-[#0f766e] border border-[#0f766e]/20">
+                <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
                   <Target size={13} />
                 </div>
                 <h3 className="text-xs font-bold text-[#1f2933]">Informasi Brand &amp; Audiens</h3>
@@ -5224,7 +5224,7 @@ ${formatDirection}${revisionDirective}`;
 
               <div className="space-y-1">
                 <div className="text-[11px] font-semibold text-stone-600 flex items-center gap-1">
-                  <Users size={12} className="text-[#0f766e]" /> Audiens Utama
+                  <Users size={12} className="text-primary" /> Audiens Utama
                 </div>
                 <p className="text-xs text-stone-800 font-medium leading-relaxed bg-[#f6f3ee] p-2.5 rounded-xl border border-[#e7e0d4]">
                   {activeContext.audience_context?.primary_audience}
@@ -5250,9 +5250,9 @@ ${formatDirection}${revisionDirective}`;
           
           {/* URUTAN KERJA (Collapsible Workflow Guide) */}
           <details className="group bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl overflow-hidden shadow-xs">
-            <summary className="p-3 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+            <summary className="p-3 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
               <div className="flex items-center gap-2">
-                <ListTodo size={15} className="text-[#0f766e]" />
+                <ListTodo size={15} className="text-primary" />
                 <h3 className="text-xs font-bold text-[#1f2933]">Panduan Alur Kerja Produksi</h3>
                 <span className="text-[10px] text-stone-500 font-normal hidden sm:inline">(5 Langkah Praktis Menuju Aset Siap Pakai)</span>
               </div>
@@ -5260,23 +5260,23 @@ ${formatDirection}${revisionDirective}`;
             </summary>
             <div className="p-3 pt-0 border-t border-[#e7e0d4]/60 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-xs mt-2.5">
               <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl p-2.5 flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-[#0f766e]/15 text-[#0f766e] font-bold text-[10px] flex items-center justify-center shrink-0">1</span>
+                <span className="w-5 h-5 rounded-full bg-primary/15 text-primary font-bold text-[10px] flex items-center justify-center shrink-0">1</span>
                 <span className="text-stone-700 font-medium text-[11px] leading-tight">Pilih format</span>
               </div>
               <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl p-2.5 flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-[#0f766e]/15 text-[#0f766e] font-bold text-[10px] flex items-center justify-center shrink-0">2</span>
+                <span className="w-5 h-5 rounded-full bg-primary/15 text-primary font-bold text-[10px] flex items-center justify-center shrink-0">2</span>
                 <span className="text-stone-700 font-medium text-[11px] leading-tight">Klik Buat</span>
               </div>
               <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl p-2.5 flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-[#0f766e]/15 text-[#0f766e] font-bold text-[10px] flex items-center justify-center shrink-0">3</span>
+                <span className="w-5 h-5 rounded-full bg-primary/15 text-primary font-bold text-[10px] flex items-center justify-center shrink-0">3</span>
                 <span className="text-stone-700 font-medium text-[11px] leading-tight">Salin prompt/output</span>
               </div>
               <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl p-2.5 flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-[#0f766e]/15 text-[#0f766e] font-bold text-[10px] flex items-center justify-center shrink-0">4</span>
+                <span className="w-5 h-5 rounded-full bg-primary/15 text-primary font-bold text-[10px] flex items-center justify-center shrink-0">4</span>
                 <span className="text-stone-700 font-medium text-[11px] leading-tight">Buka tool eksternal</span>
               </div>
               <div className="bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl p-2.5 flex items-center gap-2 col-span-2 sm:col-span-1">
-                <span className="w-5 h-5 rounded-full bg-[#0f766e]/15 text-[#0f766e] font-bold text-[10px] flex items-center justify-center shrink-0">5</span>
+                <span className="w-5 h-5 rounded-full bg-primary/15 text-primary font-bold text-[10px] flex items-center justify-center shrink-0">5</span>
                 <span className="text-stone-700 font-medium text-[11px] leading-tight">Paste &amp; eksekusi</span>
               </div>
             </div>
@@ -5321,7 +5321,7 @@ ${formatDirection}${revisionDirective}`;
                     }}
                     className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                       isActive 
-                        ? 'bg-[#0f766e] text-white shadow-xs' 
+                        ? 'bg-primary text-white shadow-xs' 
                         : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
                     }`}
                   >
@@ -5329,7 +5329,7 @@ ${formatDirection}${revisionDirective}`;
                     <span>{tab.label}</span>
                     {isMatch && (
                       <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-tight ${
-                        isActive ? 'bg-white/25 text-white' : 'bg-[#0f766e]/10 text-[#0f766e]'
+                        isActive ? 'bg-white/25 text-white' : 'bg-primary/10 text-primary'
                       }`}>
                         Target
                       </span>
@@ -5343,7 +5343,7 @@ ${formatDirection}${revisionDirective}`;
             <button
               onClick={handleGenerateWithAI}
               disabled={isLoadingAI}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white font-bold rounded-xl text-xs transition-all disabled:opacity-50 min-w-max shadow-xs cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-all disabled:opacity-50 min-w-max shadow-xs cursor-pointer"
             >
               <RefreshCw size={13} className={`${isLoadingAI ? 'animate-spin' : ''}`} />
               <span>{getOptimizationButtonLabel(activeTab, isLoadingAI)}</span>
@@ -5374,10 +5374,10 @@ ${formatDirection}${revisionDirective}`;
                 {/* Workshop Header & Mode Toggle */}
                 <div className="flex items-center justify-between pb-3 border-b border-[#e7e0d4]">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#0f766e]" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-primary" />
                     <div>
                       <h3 className="text-xs font-bold text-[#1f2933]">
-                        Hasil Produksi: <span className="text-[#0f766e] font-bold">{activeTab.toUpperCase()}</span>
+                        Hasil Produksi: <span className="text-primary font-bold">{activeTab.toUpperCase()}</span>
                       </h3>
                       <p className="text-[11px] text-stone-500">Anda dapat beralih ke Mode Edit untuk menyesuaikan copywriting secara manual</p>
                     </div>
@@ -5389,7 +5389,7 @@ ${formatDirection}${revisionDirective}`;
                         onClick={() => setIsEditingMode(false)}
                         className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${
                           !isEditingMode 
-                            ? 'bg-[#0f766e] text-white' 
+                            ? 'bg-primary text-white' 
                             : 'text-stone-600 hover:text-stone-900'
                         }`}
                       >
@@ -5399,7 +5399,7 @@ ${formatDirection}${revisionDirective}`;
                         onClick={() => setIsEditingMode(true)}
                         className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${
                           isEditingMode 
-                            ? 'bg-[#0f766e] text-white' 
+                            ? 'bg-primary text-white' 
                             : 'text-stone-600 hover:text-stone-900'
                         }`}
                       >
@@ -5412,7 +5412,7 @@ ${formatDirection}${revisionDirective}`;
                       className="p-2 hover:bg-stone-100 text-stone-600 hover:text-stone-900 rounded-xl border border-[#e7e0d4] bg-[#fffdf8] transition-all shadow-xs cursor-pointer"
                       title="Salin Naskah"
                     >
-                      {copiedStates[activeTab] ? <Check size={14} className="text-[#0f766e]" /> : <Copy size={14} />}
+                      {copiedStates[activeTab] ? <Check size={14} className="text-primary" /> : <Copy size={14} />}
                     </button>
                   </div>
                 </div>
@@ -5430,8 +5430,8 @@ ${formatDirection}${revisionDirective}`;
                         className="absolute inset-0 bg-[#fffdf8]/90 backdrop-blur-sm z-20 flex flex-col items-center justify-center space-y-3.5"
                       >
                         <div className="relative">
-                          <div className="w-10 h-10 rounded-full border-2 border-[#0f766e]/20 border-t-[#0f766e] animate-spin" />
-                          <Sparkles size={16} className="text-[#0f766e] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+                          <div className="w-10 h-10 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+                          <Sparkles size={16} className="text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
                         </div>
                         <div className="text-center space-y-1 px-4">
                           <p className="text-xs font-bold text-[#1f2933]">Gemini AI Membaca Strategi Anda...</p>
@@ -5448,7 +5448,7 @@ ${formatDirection}${revisionDirective}`;
                     <textarea
                       value={currentOutputText}
                       onChange={(e) => handleUpdateOutputText(e.target.value)}
-                      className="w-full flex-1 p-4 bg-[#f6f3ee] text-stone-900 text-xs font-sans leading-relaxed resize-none focus:outline-none focus:border-[#0f766e] custom-scrollbar"
+                      className="w-full flex-1 p-4 bg-[#f6f3ee] text-stone-900 text-xs font-sans leading-relaxed resize-none focus:outline-none focus:border-primary custom-scrollbar"
                       placeholder="Tuliskan atau sesuaikan draf produksi naskah di sini secara bebas..."
                     />
                   ) : (
@@ -5477,7 +5477,7 @@ ${formatDirection}${revisionDirective}`;
                 <div className="bg-[#fffdf8] p-4 rounded-2xl border border-[#e7e0d4] space-y-2 shadow-xs">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
-                      <Sparkles size={13} className="text-[#0f766e]" />
+                      <Sparkles size={13} className="text-primary" />
                       Instruksi Khusus / Catatan Revisi
                     </label>
                     <span className="text-[11px] text-stone-400">Opsional</span>
@@ -5493,7 +5493,7 @@ ${formatDirection}${revisionDirective}`;
                         }
                       }}
                       placeholder="Contoh: 'Buat gaya naskah lebih kasual', 'Fokuskan pada USP menghemat waktu' (Tekan Enter untuk optimasi)..."
-                      className="flex-1 px-3.5 py-2 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#0f766e]"
+                      className="flex-1 px-3.5 py-2 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-primary"
                     />
                   </div>
                 </div>
@@ -5528,7 +5528,7 @@ ${formatDirection}${revisionDirective}`;
               {/* Modal Header */}
               <div className="p-4 sm:px-6 py-3.5 border-b border-[#e7e0d4] bg-[#f6f3ee] flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-[#0f766e]/10 text-[#0f766e] flex items-center justify-center border border-[#0f766e]/20">
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
                     <BrainCircuit size={17} />
                   </div>
                   <div>

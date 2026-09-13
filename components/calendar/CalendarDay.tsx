@@ -59,12 +59,12 @@ export const SortableItem: React.FC<{ item: ContentItem; onClick?: () => void; i
       }}
       className={`p-2 mb-1.5 rounded-xl border text-xs transition-all cursor-pointer group relative shadow-2xs ${
         isDragging
-          ? 'opacity-60 scale-95 border-[#0f766e] bg-[#0f766e]/10 z-[100]'
+          ? 'opacity-60 scale-95 border-primary bg-primary/10 z-[100]'
           : isTofu
           ? 'bg-sky-50/70 dark:bg-sky-950/30 border-sky-200/80 dark:border-sky-800/40 hover:border-sky-400'
           : isMofu
           ? 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-200/80 dark:border-amber-800/40 hover:border-amber-400'
-          : 'bg-[#0f766e]/5 dark:bg-teal-950/30 border-[#0f766e]/20 dark:border-teal-800/40 hover:border-[#0f766e]/40'
+          : 'bg-primary/5 dark:bg-primary/10 border-primary/20 dark:border-primary/30 hover:border-primary/40'
       }`}
     >
       {/* 1. FUNNEL BADGE & GROWTH BADGE + DRAG GRIP */}
@@ -76,7 +76,7 @@ export const SortableItem: React.FC<{ item: ContentItem; onClick?: () => void; i
                 ? 'text-sky-800 bg-sky-100/90 dark:text-sky-300 dark:bg-sky-900/60'
                 : isMofu
                 ? 'text-amber-800 bg-amber-100/90 dark:text-amber-300 dark:bg-amber-900/60'
-                : 'text-[#0f766e] bg-[#0f766e]/15 dark:text-teal-300 dark:bg-teal-900/60'
+                : 'text-primary bg-primary/15 dark:text-cyan-300 dark:bg-cyan-950/60'
             }`}
           >
             {(item.jenis || '').split(' ')[0]}
@@ -104,7 +104,7 @@ export const SortableItem: React.FC<{ item: ContentItem; onClick?: () => void; i
         {item.primaryAssetType && (
           <>
             <span className="text-stone-300 dark:text-slate-600">•</span>
-            <span className="text-[#0f766e] dark:text-teal-400 font-bold truncate">{item.primaryAssetType}</span>
+            <span className="text-primary dark:text-cyan-400 font-bold truncate">{item.primaryAssetType}</span>
           </>
         )}
       </div>
@@ -197,13 +197,13 @@ export const CalendarDay: React.FC<{
           : 'bg-[#fffdf8] dark:bg-slate-900'
       } ${
         isToday
-          ? 'ring-2 ring-inset ring-[#0f766e]/40 dark:ring-teal-500/50 bg-[#0f766e]/5 dark:bg-teal-950/20'
+          ? 'ring-2 ring-inset ring-primary/40 dark:ring-cyan-500/50 bg-primary/5 dark:bg-cyan-950/20'
           : ''
       } ${
         onClick || totalItems > 0 ? 'cursor-pointer hover:bg-stone-50/80 dark:hover:bg-slate-800/50' : ''
       } ${
         showStartPrompt || resumePrompt || showConfigButton
-          ? 'ring-2 ring-[#0f766e]/40 dark:ring-teal-500/50 z-10 bg-[#0f766e]/5 dark:bg-teal-950/20'
+          ? 'ring-2 ring-primary/40 dark:ring-cyan-500/50 z-10 bg-primary/5 dark:bg-cyan-950/20'
           : ''
       }`}
       style={loadingColor ? { backgroundColor: loadingColor } : {}}
@@ -213,7 +213,7 @@ export const CalendarDay: React.FC<{
           <span
             className={`text-xs md:text-sm font-semibold ${
               isToday
-                ? 'text-[#0f766e] dark:text-teal-400 font-extrabold'
+                ? 'text-primary dark:text-cyan-400 font-extrabold'
                 : !isCurrentMonth
                 ? 'text-stone-400 dark:text-slate-600'
                 : 'text-stone-600 dark:text-slate-300'
@@ -222,14 +222,14 @@ export const CalendarDay: React.FC<{
             {format(day, 'd')}
           </span>
           {isToday && (
-            <span className="w-1.5 h-1.5 rounded-full bg-[#0f766e] dark:bg-teal-400 inline-block" title="Hari Ini" />
+            <span className="w-1.5 h-1.5 rounded-full bg-primary dark:bg-cyan-400 inline-block" title="Hari Ini" />
           )}
         </div>
         {totalItems > 0 && (
           <div className="flex items-center gap-1">
             <button
               onClick={handleSendToCalcer}
-              className="p-1 hover:bg-[#0f766e]/15 text-stone-500 dark:text-slate-400 hover:text-[#0f766e] dark:hover:text-teal-300 rounded-md transition-all"
+              className="p-1 hover:bg-primary/15 text-stone-500 dark:text-slate-400 hover:text-primary dark:hover:text-cyan-300 rounded-md transition-all"
               title="Copy & Send to Calcer"
             >
               <Zap size={12} />
@@ -246,15 +246,15 @@ export const CalendarDay: React.FC<{
           <div className="text-stone-500 dark:text-slate-400 text-xs font-medium text-center px-2 truncate">
             {resumePrompt ? (
               <>
-                Lanjutkan <span className="text-[#0f766e] dark:text-teal-400 font-bold">Strategy</span>
+                Lanjutkan <span className="text-primary dark:text-cyan-400 font-bold">Strategy</span>
               </>
             ) : showConfigButton ? (
               <>
-                Ubah <span className="text-[#0f766e] dark:text-teal-400 font-bold">Konfigurasi</span>
+                Ubah <span className="text-primary dark:text-cyan-400 font-bold">Konfigurasi</span>
               </>
             ) : (
               <>
-                Mulai <span className="text-[#0f766e] dark:text-teal-400 font-bold">Strategy</span>
+                Mulai <span className="text-primary dark:text-cyan-400 font-bold">Strategy</span>
               </>
             )}
           </div>

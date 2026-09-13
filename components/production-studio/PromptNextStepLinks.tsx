@@ -45,12 +45,12 @@ export const PromptNextStepLinks: React.FC<PromptNextStepLinksProps> = ({
 
   return (
     <div
-      className={`p-4 sm:p-5 bg-[#f0fdfa] border-2 border-[#0f766e]/40 rounded-2xl shadow-sm space-y-3 animate-in fade-in slide-in-from-top-2 duration-200 text-stone-800 ${className}`}
+      className={`p-4 sm:p-5 bg-primary/5 border border-primary/20 rounded-2xl shadow-sm space-y-3 animate-in fade-in slide-in-from-top-2 duration-200 text-stone-800 ${className}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 font-bold text-sm text-[#0f766e]">
-            <Sparkles size={16} className="text-[#0f766e] shrink-0" />
+          <div className="flex items-center gap-2 font-bold text-sm text-primary">
+            <Sparkles size={16} className="text-primary shrink-0" />
             <span>{title}</span>
           </div>
           <p className="text-xs text-stone-700 font-medium leading-relaxed">
@@ -79,7 +79,7 @@ export const PromptNextStepLinks: React.FC<PromptNextStepLinksProps> = ({
             rel="noopener noreferrer"
             className={`inline-flex items-center gap-2 px-4 py-2 font-bold text-xs rounded-xl transition-all shadow-xs active:scale-[0.98] cursor-pointer ${
               link.primary
-                ? 'bg-[#0f766e] hover:bg-[#0f766e]/90 text-white'
+                ? 'bg-primary hover:bg-blue-700 text-white'
                 : 'bg-[#1f2933] hover:bg-stone-900 text-white'
             }`}
           >

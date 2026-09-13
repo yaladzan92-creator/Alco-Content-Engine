@@ -39,14 +39,14 @@ export function GeminiApiKeyOnboardingCard() {
       : '••••••••';
 
     return (
-      <div className="bg-[#f0fdfa] border border-[#0f766e]/30 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3">
+      <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start sm:items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center shrink-0">
-              <ShieldCheck size={20} className="text-[#0f766e]" />
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <ShieldCheck size={20} className="text-primary" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-[#0f766e]">Gemini API Key terhubung</h3>
+              <h3 className="text-sm font-bold text-primary">Gemini API Key terhubung</h3>
               <p className="text-xs text-stone-600 mt-0.5">
                 Key Anda ({maskedKey}) aktif dan disimpan di browser ini.
               </p>
@@ -55,7 +55,7 @@ export function GeminiApiKeyOnboardingCard() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsEditing(true)}
-              className="px-3 py-1.5 text-xs font-semibold text-[#0f766e] bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-lg transition-all flex items-center gap-1.5"
+              className="px-3 py-1.5 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 border border-primary/20 rounded-lg transition-all flex items-center gap-1.5"
             >
               <Settings size={14} />
               Ganti Key
@@ -76,8 +76,8 @@ export function GeminiApiKeyOnboardingCard() {
   return (
     <div className="bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl p-5 sm:p-6 shadow-sm space-y-5">
       <div className="flex items-start gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center shrink-0">
-          <Key size={24} className="text-[#0f766e]" />
+        <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+          <Key size={24} className="text-primary" />
         </div>
         <div className="space-y-1.5">
           <h2 className="text-base font-bold text-[#1f2933]">Aktifkan AI dengan Gemini API Key</h2>
@@ -135,7 +135,7 @@ export function GeminiApiKeyOnboardingCard() {
                 value={inputKey}
                 onChange={(e) => setInputKey(e.target.value)}
                 placeholder="AIzaSy..."
-                className="w-full bg-white border border-[#e7e0d4] rounded-xl px-4 py-3 pr-12 text-sm font-mono text-[#1f2933] placeholder:text-[#627d98]/50 focus:outline-none focus:border-[#0f766e] focus:ring-1 focus:ring-[#0f766e] transition-all"
+                className="w-full bg-white border border-[#e7e0d4] rounded-xl px-4 py-3 pr-12 text-sm font-mono text-[#1f2933] placeholder:text-[#627d98]/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               />
               <button
                 type="button"
@@ -152,7 +152,7 @@ export function GeminiApiKeyOnboardingCard() {
             <button
               onClick={handleSave}
               disabled={!inputKey.trim()}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[#0f766e] hover:bg-[#115e59] disabled:bg-[#0f766e]/50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold transition-all shadow-sm"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary hover:bg-primary/90 disabled:bg-primary/50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold transition-all shadow-sm"
             >
               <Check size={16} />
               Validasi & Simpan Key

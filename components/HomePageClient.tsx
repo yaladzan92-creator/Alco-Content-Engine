@@ -789,7 +789,7 @@ export default function HomePageClient() {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="fixed top-4 right-4 z-[9999] bg-[#0f766e] text-white font-bold px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 text-xs border border-teal-600"
+              className="fixed top-4 right-4 z-[9999] bg-primary text-white font-bold px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 text-xs border border-primary/40"
             >
               <Sparkles size={14} />
               {toastMessage}
@@ -839,7 +839,7 @@ export default function HomePageClient() {
             <div className="flex justify-center relative z-10">
               <button
                 onClick={() => setIsIntakeModalOpen(true)}
-                className="flex items-center gap-2 px-6 py-3.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold rounded-xl text-xs shadow-sm transition-all group"
+                className="flex items-center gap-2 px-6 py-3.5 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl text-xs shadow-sm transition-all group"
               >
                 <FileText size={16} className="group-hover:scale-105 transition-transform" />
                 Upload Blueprint
@@ -852,7 +852,7 @@ export default function HomePageClient() {
         {(!activeProjectId || (!isProjectIncomplete && items.length === 0 && !isConfiguring)) && (
           <div className="bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl p-8 md:p-12 text-center space-y-6 shadow-sm relative overflow-hidden">
             <div className="max-w-2xl mx-auto space-y-3 relative z-10">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-[#0f766e] text-xs font-semibold">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold">
                 <Sparkles size={14} />
                 Langkah Pertama Strategy
               </div>
@@ -869,7 +869,7 @@ export default function HomePageClient() {
               {!activeProjectId && (
                 <button
                   onClick={() => setIsIntakeModalOpen(true)}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold rounded-xl text-xs shadow-sm transition-all group"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl text-xs shadow-sm transition-all group"
                 >
                   <FileText size={16} className="group-hover:scale-105 transition-transform" />
                   Mulai Project Baru
@@ -881,12 +881,12 @@ export default function HomePageClient() {
                     onClick={() => setIsIntakeModalOpen(true)}
                     className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-white hover:bg-[#f6f3ee] text-[#1f2933] font-semibold rounded-xl text-xs border border-[#e7e0d4] shadow-xs transition-all group"
                   >
-                    <FileText size={16} className="text-[#0f766e] group-hover:scale-105 transition-transform" />
+                    <FileText size={16} className="text-primary group-hover:scale-105 transition-transform" />
                     Edit Strategy
                   </button>
                   <button
                     onClick={handleOpenConfig}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold rounded-xl text-xs shadow-sm transition-all group"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl text-xs shadow-sm transition-all group"
                   >
                     <Layers size={16} className="group-hover:scale-105 transition-transform" />
                     Buat Kalender Pertama

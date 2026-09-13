@@ -159,7 +159,7 @@ export default function ReviewPanel(props: any) {
       <div className="bg-[#fffdf8] rounded-2xl p-4.5 border border-[#e7e0d4] space-y-3 shadow-xs">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sliders size={14} className="text-[#0f766e]" />
+            <Sliders size={14} className="text-primary" />
             <h4 className="text-xs font-bold text-[#1f2933] uppercase tracking-wider">
               Pilih Format Produksi
             </h4>
@@ -173,14 +173,14 @@ export default function ReviewPanel(props: any) {
           {/* Path Image */}
           <button
             onClick={() => setActiveTab('image')}
-            className="p-3.5 bg-[#f6f3ee] hover:bg-[#fffdf8] hover:border-[#0f766e] border border-[#e7e0d4] rounded-xl text-left transition group shadow-xs cursor-pointer"
+            className="p-3.5 bg-[#f6f3ee] hover:bg-[#fffdf8] hover:border-primary border border-[#e7e0d4] rounded-xl text-left transition group shadow-xs cursor-pointer"
           >
             <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-2 text-stone-900 font-bold text-xs group-hover:text-[#0f766e] transition">
+              <div className="flex items-center gap-2 text-stone-900 font-bold text-xs group-hover:text-primary transition">
                 <ImageIcon size={14} className="text-sky-600" />
                 <span>Single Image</span>
               </div>
-              <ArrowRight size={12} className="text-stone-400 group-hover:text-[#0f766e] group-hover:translate-x-0.5 transition" />
+              <ArrowRight size={12} className="text-stone-400 group-hover:text-primary group-hover:translate-x-0.5 transition" />
             </div>
             <p className="text-[11px] text-stone-500 line-clamp-2 leading-relaxed">
               Prompt visual Imagen/Midjourney siap pakai dengan rasio aspek teroptimasi.
@@ -190,14 +190,14 @@ export default function ReviewPanel(props: any) {
           {/* Path Carousel */}
           <button
             onClick={() => setActiveTab('carousel')}
-            className="p-3.5 bg-[#f6f3ee] hover:bg-[#fffdf8] hover:border-[#0f766e] border border-[#e7e0d4] rounded-xl text-left transition group shadow-xs cursor-pointer"
+            className="p-3.5 bg-[#f6f3ee] hover:bg-[#fffdf8] hover:border-primary border border-[#e7e0d4] rounded-xl text-left transition group shadow-xs cursor-pointer"
           >
             <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-2 text-stone-900 font-bold text-xs group-hover:text-[#0f766e] transition">
-                <Layers size={14} className="text-[#0f766e]" />
+              <div className="flex items-center gap-2 text-stone-900 font-bold text-xs group-hover:text-primary transition">
+                <Layers size={14} className="text-primary" />
                 <span>Carousel</span>
               </div>
-              <ArrowRight size={12} className="text-stone-400 group-hover:text-[#0f766e] group-hover:translate-x-0.5 transition" />
+              <ArrowRight size={12} className="text-stone-400 group-hover:text-primary group-hover:translate-x-0.5 transition" />
             </div>
             <p className="text-[11px] text-stone-500 line-clamp-2 leading-relaxed">
               Struktur slide berurutan dengan hook psikologis, pembuktian, dan CTA swipe.
@@ -207,14 +207,14 @@ export default function ReviewPanel(props: any) {
           {/* Path Video */}
           <button
             onClick={() => setActiveTab('video')}
-            className="p-3.5 bg-[#f6f3ee] hover:bg-[#fffdf8] hover:border-[#0f766e] border border-[#e7e0d4] rounded-xl text-left transition group shadow-xs cursor-pointer"
+            className="p-3.5 bg-[#f6f3ee] hover:bg-[#fffdf8] hover:border-primary border border-[#e7e0d4] rounded-xl text-left transition group shadow-xs cursor-pointer"
           >
             <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-2 text-stone-900 font-bold text-xs group-hover:text-[#0f766e] transition">
+              <div className="flex items-center gap-2 text-stone-900 font-bold text-xs group-hover:text-primary transition">
                 <Video size={14} className="text-rose-600" />
                 <span>Video / Reels</span>
               </div>
-              <ArrowRight size={12} className="text-stone-400 group-hover:text-[#0f766e] group-hover:translate-x-0.5 transition" />
+              <ArrowRight size={12} className="text-stone-400 group-hover:text-primary group-hover:translate-x-0.5 transition" />
             </div>
             <p className="text-[11px] text-stone-500 line-clamp-2 leading-relaxed">
               Naskah monolog dialog, 3 scene Google Flow, dan opsi render JSON2Video.
@@ -228,9 +228,9 @@ export default function ReviewPanel(props: any) {
         
         {/* Detail Konten & Naskah */}
         <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
-          <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+          <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
             <div className="flex items-center gap-2">
-              <FileText size={14} className="text-[#0f766e]" />
+              <FileText size={14} className="text-primary" />
               <span>Detail Konten (Headline, Naskah Kasar, Call to Action)</span>
             </div>
             <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />
@@ -244,7 +244,7 @@ export default function ReviewPanel(props: any) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <span className="text-[10px] font-bold text-stone-500 uppercase block">Call to Action (CTA)</span>
-                <p className="text-[#0f766e] font-bold mt-0.5">{activeItem?.cta || '-'}</p>
+                <p className="text-primary font-bold mt-0.5">{activeItem?.cta || '-'}</p>
               </div>
               <div>
                 <span className="text-[10px] font-bold text-stone-500 uppercase block">Objective / Tujuan</span>
@@ -274,9 +274,9 @@ export default function ReviewPanel(props: any) {
 
         {/* Detail Visual & Format */}
         <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
-          <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+          <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
             <div className="flex items-center gap-2">
-              <ImageIcon size={14} className="text-[#0f766e]" />
+              <ImageIcon size={14} className="text-primary" />
               <span>Detail Visual &amp; Format Target</span>
             </div>
             <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />
@@ -304,9 +304,9 @@ export default function ReviewPanel(props: any) {
 
         {/* Detail Funnel & Konteks Brand */}
         <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
-          <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+          <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
             <div className="flex items-center gap-2">
-              <Target size={14} className="text-[#0f766e]" />
+              <Target size={14} className="text-primary" />
               <span>Detail Funnel &amp; Konteks Strategis Brand</span>
             </div>
             <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />
@@ -328,7 +328,7 @@ export default function ReviewPanel(props: any) {
             </div>
             <div>
               <span className="text-[10px] font-bold text-stone-500 uppercase block">Penawaran Utama (Main Offer)</span>
-              <p className="text-[#0f766e] font-bold mt-0.5">{activeContext?.strategy_context?.main_offer || '-'}</p>
+              <p className="text-primary font-bold mt-0.5">{activeContext?.strategy_context?.main_offer || '-'}</p>
             </div>
             {activeContext?.audience_context?.pain_points && (
               <div className="sm:col-span-2">
@@ -341,7 +341,7 @@ export default function ReviewPanel(props: any) {
 
         {/* Detail Production Checklist */}
         <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
-          <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+          <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
             <div className="flex items-center gap-2">
               <CheckSquare size={14} className="text-emerald-600" />
               <span>Detail Parameter Production Readiness</span>
@@ -353,11 +353,11 @@ export default function ReviewPanel(props: any) {
             <div className="space-y-1">
               <div className="flex justify-between text-xs text-stone-500 font-medium">
                 <span>Kelayakan Parameter</span>
-                <span className="font-bold text-[#0f766e] font-mono">{readinessChecklist?.percentage || 0}%</span>
+                <span className="font-bold text-primary font-mono">{readinessChecklist?.percentage || 0}%</span>
               </div>
               <div className="w-full bg-stone-200 h-2 rounded-full overflow-hidden border border-[#e7e0d4]">
                 <motion.div
-                  className="bg-[#0f766e] h-full rounded-full"
+                  className="bg-primary h-full rounded-full"
                   initial={{ width: 0 }}
                   animate={{ width: `${readinessChecklist?.percentage || 0}%` }}
                   transition={{ duration: 0.8, ease: 'easeOut' }}
@@ -387,9 +387,9 @@ export default function ReviewPanel(props: any) {
 
         {/* AI Strategic Alignment Report */}
         <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
-          <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+          <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
             <div className="flex items-center gap-2">
-              <BrainCircuit size={14} className="text-[#0f766e]" />
+              <BrainCircuit size={14} className="text-primary" />
               <span>AI Strategic Alignment Report &amp; Catatan Evaluasi</span>
             </div>
             <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />
@@ -413,7 +413,7 @@ export default function ReviewPanel(props: any) {
                   className="p-1.5 bg-[#f6f3ee] hover:bg-stone-200 text-stone-600 rounded-xl border border-[#e7e0d4] transition cursor-pointer"
                   title="Salin Laporan"
                 >
-                  {copiedStates['review_report'] ? <Check size={12} className="text-[#0f766e]" /> : <Copy size={12} />}
+                  {copiedStates['review_report'] ? <Check size={12} className="text-primary" /> : <Copy size={12} />}
                 </button>
               </div>
             </div>
@@ -422,7 +422,7 @@ export default function ReviewPanel(props: any) {
               <textarea
                 value={reportText}
                 onChange={(e) => saveReviewOutput?.(e.target.value)}
-                className="w-full h-64 p-3 bg-[#fffdf8] text-stone-800 text-xs font-sans leading-relaxed resize-none focus:outline-none focus:border-[#0f766e] custom-scrollbar rounded-xl border border-[#e7e0d4]"
+                className="w-full h-64 p-3 bg-[#fffdf8] text-stone-800 text-xs font-sans leading-relaxed resize-none focus:outline-none focus:border-primary custom-scrollbar rounded-xl border border-[#e7e0d4]"
                 placeholder="Sesuaikan laporan evaluasi strategis di sini..."
               />
             ) : (

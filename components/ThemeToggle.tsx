@@ -51,7 +51,7 @@ export default function ThemeToggle({
         aria-label="Ubah Tema Tampilan"
         aria-expanded={isOpen}
       >
-        <CurrentIconComponent size={14} className="text-[#0f766e] dark:text-teal-400 shrink-0" />
+        <CurrentIconComponent size={14} className="text-primary dark:text-cyan-400 shrink-0" />
         <span className="capitalize text-[11px] font-bold">
           {variant === 'full' ? `Theme: ${theme}` : theme}
         </span>

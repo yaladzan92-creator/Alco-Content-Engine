@@ -166,7 +166,7 @@ ${s.production_prompt || '-'}`;
       {/* 1. CAROUSEL OVERVIEW (Compact Context Strip) */}
       <div className="bg-[#fffdf8] border border-[#e7e0d4] p-3 rounded-2xl flex flex-wrap items-center justify-between gap-2.5 shadow-xs">
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="px-2.5 py-1 bg-[#0f766e]/10 border border-[#0f766e]/20 rounded-xl text-[#0f766e] font-bold">
+          <span className="px-2.5 py-1 bg-primary/10 border border-primary/20 rounded-xl text-primary font-bold">
             {funnelStage} Carousel Blueprint
           </span>
           <span className="text-stone-400">&bull;</span>
@@ -205,8 +205,8 @@ ${s.production_prompt || '-'}`;
           >
             {copiedStates['carousel_plan_all'] ? (
               <>
-                <Check size={12} className="text-[#0f766e]" />
-                <span className="text-[#0f766e]">Semua Slide Tersalin!</span>
+                <Check size={12} className="text-primary" />
+                <span className="text-primary">Semua Slide Tersalin!</span>
               </>
             ) : (
               <>
@@ -233,7 +233,7 @@ ${s.production_prompt || '-'}`;
                 onClick={() => setActiveSlideNumber(s.slide)}
                 className={`p-2.5 rounded-xl text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
                   isCurrent
-                    ? 'bg-[#0f766e] text-white shadow-xs'
+                    ? 'bg-primary text-white shadow-xs'
                     : 'bg-[#f6f3ee] hover:bg-[#e7e0d4] text-stone-700 border border-[#e7e0d4]'
                 }`}
               >
@@ -257,7 +257,7 @@ ${s.production_prompt || '-'}`;
           {/* Header Info */}
           <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#e7e0d4]">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-lg bg-[#0f766e] text-white text-[11px] font-mono font-bold uppercase tracking-wider shadow-xs">
+              <span className="px-2.5 py-0.5 rounded-lg bg-primary text-white text-[11px] font-mono font-bold uppercase tracking-wider shadow-xs">
                 Slide {activeSlide.slide} / {slides.length}
               </span>
               <span className="px-2.5 py-0.5 rounded-lg bg-stone-100 border border-[#e7e0d4] text-[11px] font-bold text-stone-800 capitalize">
@@ -303,7 +303,7 @@ ${s.production_prompt || '-'}`;
                 const slideCopy = formatSlideFullText(activeSlide);
                 handleCopyText(`slide_main_copy_${activeSlideNum}`, slideCopy, 'promptCopied');
               }}
-              className="px-3.5 py-1.5 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+              className="px-3.5 py-1.5 bg-primary hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
             >
               {copiedStates[`slide_main_copy_${activeSlideNum}`] ? (
                 <>
@@ -332,9 +332,9 @@ ${s.production_prompt || '-'}`;
                 <span className="text-[10px] text-stone-500 font-bold uppercase tracking-wider">Headline Slide</span>
                 <button
                   onClick={() => handleCopyText(`slide_hl_${activeSlide.slide}`, activeSlide.headline, 'none')}
-                  className="text-[10px] font-bold text-stone-600 hover:text-[#0f766e] flex items-center gap-1 transition-colors"
+                  className="text-[10px] font-bold text-stone-600 hover:text-primary flex items-center gap-1 transition-colors"
                 >
-                  {copiedStates[`slide_hl_${activeSlide.slide}`] ? <Check size={11} className="text-[#0f766e]" /> : <Copy size={11} />}
+                  {copiedStates[`slide_hl_${activeSlide.slide}`] ? <Check size={11} className="text-primary" /> : <Copy size={11} />}
                   <span>{copiedStates[`slide_hl_${activeSlide.slide}`] ? 'Tersalin' : 'Salin Headline'}</span>
                 </button>
               </div>
@@ -348,9 +348,9 @@ ${s.production_prompt || '-'}`;
                 <span className="text-[10px] text-stone-500 font-bold uppercase tracking-wider">Isi Naskah / Body Copy</span>
                 <button
                   onClick={() => handleCopyText(`slide_body_${activeSlide.slide}`, activeSlide.body, 'none')}
-                  className="text-[10px] font-bold text-stone-600 hover:text-[#0f766e] flex items-center gap-1 transition-colors"
+                  className="text-[10px] font-bold text-stone-600 hover:text-primary flex items-center gap-1 transition-colors"
                 >
-                  {copiedStates[`slide_body_${activeSlide.slide}`] ? <Check size={11} className="text-[#0f766e]" /> : <Copy size={11} />}
+                  {copiedStates[`slide_body_${activeSlide.slide}`] ? <Check size={11} className="text-primary" /> : <Copy size={11} />}
                   <span>{copiedStates[`slide_body_${activeSlide.slide}`] ? 'Tersalin' : 'Salin Body'}</span>
                 </button>
               </div>
@@ -362,19 +362,19 @@ ${s.production_prompt || '-'}`;
             {activeSlide.swipe_bridge && (
               <div className="flex items-center gap-2 pt-1">
                 <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Swipe Bridge:</span>
-                <span className="text-xs font-semibold text-[#0f766e] bg-[#0f766e]/10 border border-[#0f766e]/20 px-3 py-1 rounded-lg">
+                <span className="text-xs font-semibold text-primary bg-primary/10 border border-primary/20 px-3 py-1 rounded-lg">
                   &rarr; {activeSlide.swipe_bridge}
                 </span>
               </div>
             )}
 
             {/* Visual Direction & Text Overlay Preview */}
-            <div className="bg-[#f0fdfa] border border-[#0f766e]/20 p-3.5 rounded-xl space-y-2">
+            <div className="bg-primary/5 border border-primary/20 p-3.5 rounded-xl space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#0f766e]">Arah Visual (Visual Direction):</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Arah Visual (Visual Direction):</span>
                 {activeSlide.swipe_bridge && (
                   <span className="text-[11px] text-stone-600 font-medium">
-                    Swipe Bridge: <strong className="text-[#0f766e]">&rarr; {activeSlide.swipe_bridge}</strong>
+                    Swipe Bridge: <strong className="text-primary">&rarr; {activeSlide.swipe_bridge}</strong>
                   </span>
                 )}
               </div>
@@ -384,7 +384,7 @@ ${s.production_prompt || '-'}`;
               {creativeStrategy.text_overlay && (
                 <div className="pt-1 flex items-center gap-2 text-xs">
                   <span className="text-stone-500 font-medium text-[10px]">Teks Overlay:</span>
-                  <span className="font-semibold text-[#0f766e] bg-white px-2.5 py-0.5 rounded-md border border-[#0f766e]/20">
+                  <span className="font-semibold text-primary bg-white px-2.5 py-0.5 rounded-md border border-primary/20">
                     &ldquo;{creativeStrategy.text_overlay}&rdquo;
                   </span>
                 </div>
@@ -393,9 +393,9 @@ ${s.production_prompt || '-'}`;
 
             {/* 4. PROMPT DETAILS FOR ACTIVE SLIDE */}
             <details className="group border border-[#e7e0d4] bg-[#fcfaf6] rounded-xl overflow-hidden shadow-xs transition-all">
-              <summary className="p-3 flex items-center justify-between font-bold text-xs text-stone-700 hover:text-[#0f766e] cursor-pointer select-none">
+              <summary className="p-3 flex items-center justify-between font-bold text-xs text-stone-700 hover:text-primary cursor-pointer select-none">
                 <div className="flex items-center gap-2">
-                  <Palette size={13} className="text-[#0f766e]" />
+                  <Palette size={13} className="text-primary" />
                   <span>Prompt Details &bull; Slide {activeSlide.slide}</span>
                 </div>
                 <div className="flex items-center gap-2 text-stone-500 text-[11px]">
@@ -415,7 +415,7 @@ ${s.production_prompt || '-'}`;
                       </div>
                       <button
                         onClick={() => handleCopyText(`slide_img_prompt_only_${activeSlide.slide}`, effectiveSlideImagePrompt, 'promptCopied')}
-                        className="px-2.5 py-1 bg-[#0f766e] hover:bg-[#0f766e]/85 text-white rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+                        className="px-2.5 py-1 bg-primary hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 shadow-xs cursor-pointer"
                       >
                         {copiedStates[`slide_img_prompt_only_${activeSlide.slide}`] ? (
                           <>
@@ -447,7 +447,7 @@ ${s.production_prompt || '-'}`;
                   <div className="bg-[#f6f3ee] text-stone-800 p-3.5 rounded-xl space-y-2 border border-[#e7e0d4]">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5 text-stone-700 text-[11px] font-bold">
-                        <Palette size={12} className="text-[#0f766e]" />
+                        <Palette size={12} className="text-primary" />
                         <span>Prompt Layout Saja &bull; Slide {activeSlide.slide}</span>
                       </div>
                       <button
@@ -456,8 +456,8 @@ ${s.production_prompt || '-'}`;
                       >
                         {copiedStates[`slide_layout_prompt_only_${activeSlide.slide}`] ? (
                           <>
-                            <Check size={11} className="text-[#0f766e]" />
-                            <span className="text-[#0f766e]">Prompt Layout Tersalin!</span>
+                            <Check size={11} className="text-primary" />
+                            <span className="text-primary">Prompt Layout Tersalin!</span>
                           </>
                         ) : (
                           <>
@@ -480,9 +480,9 @@ ${s.production_prompt || '-'}`;
 
       {/* 5. STRATEGY & VISUAL PRODUCTION DETAILS (Progressive Disclosure) */}
       <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
-        <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+        <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
           <div className="flex items-center gap-2">
-            <Compass size={14} className="text-[#0f766e]" />
+            <Compass size={14} className="text-primary" />
             <span>Strategy &amp; Visual Production Details &bull; Slide {activeSlideNum}</span>
             <span className="text-[10px] font-normal text-stone-500">({creativeStrategy.slide_role || activeSlide?.role})</span>
           </div>
@@ -521,9 +521,9 @@ ${s.production_prompt || '-'}`;
 
       {/* 6. BELIEF JOURNEY & SYSTEM NOTES (Progressive Disclosure) */}
       <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
-        <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+        <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
           <div className="flex items-center gap-2">
-            <Layers size={14} className="text-[#0f766e]" />
+            <Layers size={14} className="text-primary" />
             <span>Belief Journey &amp; Sistem Visual Carousel</span>
           </div>
           <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />

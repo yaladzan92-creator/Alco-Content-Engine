@@ -101,7 +101,7 @@ export default function UGCPanel(props: any) {
       {/* 1. CHARACTER AREA (Compact Context) */}
       <div className="bg-[#fffdf8] border border-[#e7e0d4] p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xs">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#0f766e]/10 border border-[#0f766e]/20 flex items-center justify-center text-[#0f766e]">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
             <UserCheck size={18} />
           </div>
           <div>
@@ -128,8 +128,8 @@ export default function UGCPanel(props: any) {
             >
               {copiedStates['ugc_char_ref'] ? (
                 <>
-                  <Check size={12} className="text-[#0f766e]" />
-                  <span className="text-[#0f766e]">Tersalin!</span>
+                  <Check size={12} className="text-primary" />
+                  <span className="text-primary">Tersalin!</span>
                 </>
               ) : (
                 <>
@@ -144,7 +144,7 @@ export default function UGCPanel(props: any) {
             href="https://labs.google/fx/tools/flow"
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3.5 py-1.5 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+            className="px-3.5 py-1.5 bg-primary hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
           >
             <ExternalLink size={13} />
             <span>Buka Google Flow</span>
@@ -162,12 +162,12 @@ export default function UGCPanel(props: any) {
               onClick={() => setActiveSceneNumber(scene.num)}
               className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                 isActive
-                  ? 'bg-[#0f766e] text-white shadow-xs'
+                  ? 'bg-primary text-white shadow-xs'
                   : 'bg-[#fffdf8] text-stone-700 hover:bg-white border border-[#e7e0d4]'
               }`}
             >
               <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-bold ${
-                isActive ? 'bg-white/25 text-white' : 'bg-[#0f766e]/15 text-[#0f766e]'
+                isActive ? 'bg-white/25 text-white' : 'bg-primary/15 text-primary'
               }`}>
                 {scene.num}
               </span>
@@ -196,7 +196,7 @@ export default function UGCPanel(props: any) {
         <div className="p-4 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl space-y-2">
           <div className="flex items-center justify-between text-[11px] flex-wrap gap-1">
             <span className="font-bold text-stone-700 flex items-center gap-1.5">
-              <MessageSquare size={13} className="text-[#0f766e]" />
+              <MessageSquare size={13} className="text-primary" />
               Naskah Dialog Kreator:
             </span>
             <div className="flex items-center gap-2">
@@ -206,7 +206,7 @@ export default function UGCPanel(props: any) {
               <button
                 type="button"
                 onClick={() => handleCopyText(`ugc_dialogue_${activeScene.num}`, activeScene.script, 'none')}
-                className="text-[11px] font-bold text-[#0f766e] hover:underline cursor-pointer flex items-center gap-1"
+                className="text-[11px] font-bold text-primary hover:underline cursor-pointer flex items-center gap-1"
               >
                 {isDialogueCopied ? <Check size={12} /> : <Copy size={12} />}
                 <span>{isDialogueCopied ? 'Tersalin' : 'Salin Dialog'}</span>
@@ -264,8 +264,8 @@ export default function UGCPanel(props: any) {
           <div className="p-4 bg-[#f6f3ee]/60 border border-[#e7e0d4] rounded-xl flex flex-col justify-between space-y-3">
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-[#0f766e] uppercase tracking-wider flex items-center gap-1.5">
-                  <Sparkles size={13} className="text-[#0f766e]" />
+                <span className="text-[11px] font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles size={13} className="text-primary" />
                   2. Google Flow Video Motion Prompt (Veo)
                 </span>
               </div>
@@ -282,7 +282,7 @@ export default function UGCPanel(props: any) {
               className={`w-full py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer border ${
                 isVidCopied
                   ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
-                  : 'bg-[#0f766e] hover:bg-[#0f766e]/90 border-[#0f766e] text-white'
+                  : 'bg-primary hover:bg-blue-700 border-primary text-white'
               }`}
             >
               {isVidCopied ? (
@@ -305,9 +305,9 @@ export default function UGCPanel(props: any) {
 
       {/* 4. PROGRESSIVE DISCLOSURE: DETAIL KARAKTER LENGKAP */}
       <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
-        <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+        <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
           <div className="flex items-center gap-2">
-            <Users size={14} className="text-[#0f766e]" />
+            <Users size={14} className="text-primary" />
             <span>Detail Karakter &amp; Persona Lengkap (Opsional)</span>
           </div>
           <ChevronDown size={14} className="text-stone-400 group-open:rotate-180 transition-transform" />

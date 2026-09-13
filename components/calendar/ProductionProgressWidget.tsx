@@ -67,7 +67,7 @@ export default function ProductionProgressWidget({
       description: 'Draf konsep, hook, dan pesan konten sudah lengkap di kalender.',
       isManual: false,
       checked: progress.briefReady ?? true,
-      icon: <FileText size={15} className="text-[#0f766e]" />,
+      icon: <FileText size={15} className="text-primary" />,
     },
     {
       key: 'promptCopied',
@@ -144,7 +144,7 @@ export default function ProductionProgressWidget({
               {badge.label}
             </span>
             <span className="text-stone-300">&bull;</span>
-            <span className="text-xs font-bold text-[#0f766e]">
+            <span className="text-xs font-bold text-primary">
               {completedCount}/6 selesai
             </span>
           </div>
@@ -152,7 +152,7 @@ export default function ProductionProgressWidget({
           <div className="flex items-center gap-2.5 shrink-0">
             <div className="w-14 bg-stone-200 h-1.5 rounded-full overflow-hidden hidden sm:block">
               <div
-                className="bg-[#0f766e] h-full transition-all duration-300 rounded-full"
+                className="bg-primary h-full transition-all duration-300 rounded-full"
                 style={{ width: `${(completedCount / 6) * 100}%` }}
               />
             </div>
@@ -178,20 +178,20 @@ export default function ProductionProgressWidget({
                   onClick={() => toggleField(step.key)}
                   className={`text-left p-2.5 rounded-xl border transition-all flex items-start gap-2.5 cursor-pointer ${
                     step.checked
-                      ? 'bg-teal-50/70 border-[#0f766e]/30 hover:border-[#0f766e]/50'
+                      ? 'bg-primary/10 border-primary/30 hover:border-primary/50'
                       : 'bg-white border-[#e7e0d4] hover:border-stone-400 hover:bg-stone-50/60'
                   }`}
                 >
                   <div className="mt-0.5 shrink-0">
                     {step.checked ? (
-                      <CheckCircle2 size={16} className="text-[#0f766e] fill-teal-100" />
+                      <CheckCircle2 size={16} className="text-primary fill-primary/20" />
                     ) : (
                       <Circle size={16} className="text-stone-400" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className={`text-xs font-bold ${step.checked ? 'text-[#0f766e]' : 'text-[#1f2933]'}`}>
+                      <span className={`text-xs font-bold ${step.checked ? 'text-primary' : 'text-[#1f2933]'}`}>
                         {step.label}
                       </span>
                       {step.isManual && (
@@ -235,10 +235,10 @@ export default function ProductionProgressWidget({
         {/* Progress counter pill */}
         <div className="flex items-center gap-2 bg-[#f6f3ee] px-3 py-1.5 rounded-xl border border-[#e7e0d4] self-start sm:self-auto">
           <span className="text-xs font-semibold text-stone-600">Selesai:</span>
-          <span className="text-xs font-extrabold text-[#0f766e]">{completedCount}/6</span>
+          <span className="text-xs font-extrabold text-primary">{completedCount}/6</span>
           <div className="w-14 bg-stone-200 h-2 rounded-full overflow-hidden">
             <div
-              className="bg-[#0f766e] h-full transition-all duration-300 rounded-full"
+              className="bg-primary h-full transition-all duration-300 rounded-full"
               style={{ width: `${(completedCount / 6) * 100}%` }}
             />
           </div>
@@ -254,20 +254,20 @@ export default function ProductionProgressWidget({
             onClick={() => toggleField(step.key)}
             className={`text-left p-3 rounded-xl border transition-all flex items-start gap-3 cursor-pointer ${
               step.checked
-                ? 'bg-teal-50/60 border-[#0f766e]/30 hover:border-[#0f766e]/50'
+                ? 'bg-primary/10 border-primary/30 hover:border-primary/50'
                 : 'bg-white border-[#e7e0d4] hover:border-stone-400 hover:bg-stone-50/60'
             }`}
           >
             <div className="mt-0.5 shrink-0">
               {step.checked ? (
-                <CheckCircle2 size={18} className="text-[#0f766e] fill-teal-100" />
+                <CheckCircle2 size={18} className="text-primary fill-primary/20" />
               ) : (
                 <Circle size={18} className="text-stone-400" />
               )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className={`text-xs font-bold ${step.checked ? 'text-[#0f766e]' : 'text-[#1f2933]'}`}>
+                <span className={`text-xs font-bold ${step.checked ? 'text-primary' : 'text-[#1f2933]'}`}>
                   {step.label}
                 </span>
                 {step.isManual && (

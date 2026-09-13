@@ -133,9 +133,9 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({ isOpen, onClose }) =
               </div>
               <div>
                 <h3 className="text-lg font-bold text-[#1f2933] dark:text-slate-100 flex items-center gap-2">
-                  ALCO License Center
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-stone-200 dark:bg-slate-800 text-stone-700 dark:text-slate-300">
-                    Standard v2.1
+                  <span>ALCO License Center</span>
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20">
+                    Content Engine
                   </span>
                 </h3>
                 <p className="text-xs text-stone-500 dark:text-slate-400">
@@ -157,7 +157,7 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({ isOpen, onClose }) =
               onClick={() => setActiveTab('status')}
               className={`px-4 py-2.5 rounded-t-xl transition-all border-b-2 flex items-center gap-2 ${
                 activeTab === 'status'
-                  ? 'border-[#0f766e] text-[#0f766e] dark:text-teal-400 bg-[#fffdf8] dark:bg-slate-900 font-bold'
+                  ? 'border-primary text-primary dark:text-blue-400 bg-[#fffdf8] dark:bg-slate-900 font-bold'
                   : 'border-transparent text-stone-500 dark:text-slate-400 hover:text-stone-800 dark:hover:text-slate-200'
               }`}
             >
@@ -167,7 +167,7 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({ isOpen, onClose }) =
               onClick={() => setActiveTab('request')}
               className={`px-4 py-2.5 rounded-t-xl transition-all border-b-2 flex items-center gap-2 ${
                 activeTab === 'request'
-                  ? 'border-[#0f766e] text-[#0f766e] dark:text-teal-400 bg-[#fffdf8] dark:bg-slate-900 font-bold'
+                  ? 'border-primary text-primary dark:text-blue-400 bg-[#fffdf8] dark:bg-slate-900 font-bold'
                   : 'border-transparent text-stone-500 dark:text-slate-400 hover:text-stone-800 dark:hover:text-slate-200'
               }`}
             >
@@ -177,7 +177,7 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({ isOpen, onClose }) =
               onClick={() => setActiveTab('activate')}
               className={`px-4 py-2.5 rounded-t-xl transition-all border-b-2 flex items-center gap-2 ${
                 activeTab === 'activate'
-                  ? 'border-[#0f766e] text-[#0f766e] dark:text-teal-400 bg-[#fffdf8] dark:bg-slate-900 font-bold'
+                  ? 'border-primary text-primary dark:text-blue-400 bg-[#fffdf8] dark:bg-slate-900 font-bold'
                   : 'border-transparent text-stone-500 dark:text-slate-400 hover:text-stone-800 dark:hover:text-slate-200'
               }`}
             >
@@ -253,7 +253,7 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({ isOpen, onClose }) =
                       </div>
                       <div className="p-3 bg-white/70 dark:bg-slate-900/70 rounded-xl border border-black/5 dark:border-white/5 sm:col-span-2">
                         <span className="text-stone-500 dark:text-slate-400 block mb-0.5">Device Binding:</span>
-                        <span className="font-mono font-bold text-[#0f766e] dark:text-teal-400">
+                        <span className="font-mono font-bold text-primary dark:text-blue-400">
                           {state.license.deviceId}
                         </span>
                       </div>
@@ -265,7 +265,7 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({ isOpen, onClose }) =
                     {!isLicensed ? (
                       <button
                         onClick={() => setActiveTab('request')}
-                        className="px-4 py-2 bg-[#0f766e] hover:bg-[#0d655e] text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
+                        className="px-4 py-2 bg-primary hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
                       >
                         <Sparkles size={14} /> Minta Lisensi Baru
                       </button>
@@ -284,17 +284,17 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({ isOpen, onClose }) =
                 <div className="p-4 bg-[#f6f3ee]/70 dark:bg-slate-950/70 rounded-2xl border border-[#e7e0d4] dark:border-slate-800 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-stone-600 dark:text-slate-300 flex items-center gap-1.5">
-                      <Laptop size={14} className="text-[#0f766e] dark:text-teal-400" /> ALCO Device Fingerprint
+                      <Laptop size={14} className="text-primary dark:text-blue-400" /> ALCO Device Fingerprint
                     </span>
                     <button
                       onClick={handleCopyDeviceId}
-                      className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-white dark:bg-slate-900 border border-[#e7e0d4] dark:border-slate-800 text-stone-700 dark:text-slate-300 hover:text-[#0f766e] dark:hover:text-teal-300 flex items-center gap-1 transition-colors shadow-2xs"
+                      className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-white dark:bg-slate-900 border border-[#e7e0d4] dark:border-slate-800 text-stone-700 dark:text-slate-300 hover:text-primary dark:hover:text-blue-300 flex items-center gap-1 transition-colors shadow-2xs"
                     >
                       {devCopied ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
                       {devCopied ? 'Tersalin' : 'Salin Device ID'}
                     </button>
                   </div>
-                  <div className="font-mono text-xs font-bold p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-[#e7e0d4] dark:border-slate-800 text-[#0f766e] dark:text-teal-400 select-all">
+                  <div className="font-mono text-xs font-bold p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-[#e7e0d4] dark:border-slate-800 text-primary dark:text-blue-400 select-all">
                     {deviceId}
                   </div>
                   <p className="text-[11px] text-stone-500 dark:text-slate-400">
@@ -324,28 +324,28 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({ isOpen, onClose }) =
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs font-bold text-stone-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-                      <User size={13} className="text-[#0f766e]" /> Nama Lengkap / Customer Name *
+                      <User size={13} className="text-primary" /> Nama Lengkap / Customer Name *
                     </label>
                     <input
                       type="text"
                       value={custName}
                       onChange={(e) => setCustName(e.target.value)}
                       placeholder="Contoh: Budi Santoso"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-white dark:bg-slate-900 text-xs text-stone-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0f766e]/30"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-white dark:bg-slate-900 text-xs text-stone-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/30"
                       required
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-stone-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-                      <Mail size={13} className="text-[#0f766e]" /> Email Pengguna *
+                      <Mail size={13} className="text-primary" /> Email Pengguna *
                     </label>
                     <input
                       type="email"
                       value={custEmail}
                       onChange={(e) => setCustEmail(e.target.value)}
                       placeholder="Contoh: budi@corpora.id"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-white dark:bg-slate-900 text-xs text-stone-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0f766e]/30"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-white dark:bg-slate-900 text-xs text-stone-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/30"
                       required
                     />
                   </div>
@@ -359,7 +359,7 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({ isOpen, onClose }) =
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       placeholder="Contoh: Order #ALCO-2026-09"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-white dark:bg-slate-900 text-xs text-stone-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0f766e]/30"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-white dark:bg-slate-900 text-xs text-stone-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
                   </div>
                 </div>
@@ -367,7 +367,7 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({ isOpen, onClose }) =
                 <div className="pt-2">
                   <button
                     type="submit"
-                    className="w-full py-2.5 px-4 bg-[#0f766e] hover:bg-[#0d655e] text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2"
+                    className="w-full py-2.5 px-4 bg-primary hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2"
                   >
                     <Sparkles size={14} /> Generate Request Code v2
                   </button>
@@ -413,21 +413,21 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({ isOpen, onClose }) =
                 <div className="p-3.5 bg-stone-100/70 dark:bg-slate-950/70 border border-[#e7e0d4] dark:border-slate-800 rounded-2xl text-xs text-stone-600 dark:text-slate-400">
                   <p className="leading-relaxed">
                     Tempelkan <strong>License Code</strong> yang diterbitkan oleh ALCO License Generator (format:{' '}
-                    <code className="font-mono font-bold text-[#0f766e]">ALCO-LIC-v1.*</code>). Sistem akan
+                    <code className="font-mono font-bold text-primary">ALCO-LIC-v1.*</code>). Sistem akan
                     memverifikasi Ed25519 digital signature dan device binding secara lokal &amp; aman.
                   </p>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-stone-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                    <Key size={13} className="text-[#0f766e]" /> Kode Lisensi Resmi (ALCO-LIC-v1.*)
+                    <Key size={13} className="text-primary" /> Kode Lisensi Resmi (ALCO-LIC-v1.*)
                   </label>
                   <textarea
                     value={licenseInput}
                     onChange={(e) => setLicenseInput(e.target.value)}
                     placeholder="ALCO-LIC-v1.eyJsaWNlbnNlVmVyc2lvbiI6IjEuMCIs..."
                     rows={4}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-mono text-stone-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0f766e]/30 resize-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-mono text-stone-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                     required
                   />
                 </div>
@@ -466,7 +466,7 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({ isOpen, onClose }) =
                   <button
                     type="submit"
                     disabled={isActivating || !licenseInput.trim()}
-                    className="w-full py-2.5 px-4 bg-[#0f766e] hover:bg-[#0d655e] disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2"
+                    className="w-full py-2.5 px-4 bg-primary hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2"
                   >
                     {isActivating ? (
                       <>

@@ -132,6 +132,6 @@ export function getCachedAlcoDeviceId(): string {
       // Ignore
     }
   }
-  return 'ALCO-DEV-INIT-0000-0000';
+  return '';
 }
 

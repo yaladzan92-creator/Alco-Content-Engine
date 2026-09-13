@@ -81,7 +81,7 @@ export const CalendarDatePickerModal: React.FC<CalendarDatePickerModalProps> = (
                           }}
                           className={`py-2.5 rounded-xl text-xs font-semibold transition-all border ${
                             isSelected
-                              ? 'bg-[#0f766e] text-white border-[#0f766e] shadow-sm'
+                              ? 'bg-primary text-white border-primary shadow-sm'
                               : 'bg-[#f6f3ee] text-stone-700 border-[#e7e0d4] hover:border-stone-400 hover:text-stone-900'
                           }`}
                         >

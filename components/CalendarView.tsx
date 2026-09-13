@@ -696,12 +696,12 @@ Keterangan: ${editingItem.keterangan}`;
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowDatePicker(true)}
-              className="text-base sm:text-lg font-bold text-[#1f2933] dark:text-slate-100 hover:text-[#0f766e] dark:hover:text-teal-400 transition-colors px-3 py-1.5 rounded-xl hover:bg-stone-100 dark:hover:bg-slate-800 flex items-center gap-2 group min-h-[38px] border border-[#e7e0d4] dark:border-slate-800 bg-[#fffdf8] dark:bg-slate-900 shadow-sm"
+              className="text-base sm:text-lg font-bold text-[#1f2933] dark:text-slate-100 hover:text-primary dark:hover:text-blue-400 transition-colors px-3 py-1.5 rounded-xl hover:bg-stone-100 dark:hover:bg-slate-800 flex items-center gap-2 group min-h-[38px] border border-[#e7e0d4] dark:border-slate-800 bg-[#fffdf8] dark:bg-slate-900 shadow-sm"
             >
               <span>{format(monthStart, 'MMMM yyyy')}</span>
               <ChevronDown
                 size={16}
-                className="text-stone-400 dark:text-slate-500 group-hover:text-[#0f766e] dark:group-hover:text-teal-400 transition-colors"
+                className="text-stone-400 dark:text-slate-500 group-hover:text-primary dark:group-hover:text-blue-400 transition-colors"
               />
             </motion.button>
             <motion.button
@@ -727,12 +727,12 @@ Keterangan: ${editingItem.keterangan}`;
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setShowHistoryModal(true)}
-                className="p-2 text-stone-500 dark:text-slate-400 hover:text-[#0f766e] dark:hover:text-teal-300 hover:bg-stone-100 dark:hover:bg-slate-800 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-[#fffdf8] dark:bg-slate-900 transition-colors relative min-h-[38px] min-w-[38px] flex items-center justify-center shadow-sm"
+                className="p-2 text-stone-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 hover:bg-stone-100 dark:hover:bg-slate-800 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-[#fffdf8] dark:bg-slate-900 transition-colors relative min-h-[38px] min-w-[38px] flex items-center justify-center shadow-sm"
                 title="Histori Generate"
               >
                 <Layers size={16} />
                 {history.length > 0 && (
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-[#0f766e] dark:bg-teal-400 rounded-full" />
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-primary dark:bg-blue-400 rounded-full" />
                 )}
               </motion.button>
             </div>
@@ -742,7 +742,7 @@ Keterangan: ${editingItem.keterangan}`;
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={() => setShowRawOutput(true)}
-                  className="p-2 text-stone-500 dark:text-slate-400 hover:text-[#0f766e] dark:hover:text-teal-300 hover:bg-stone-100 dark:hover:bg-slate-800 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-[#fffdf8] dark:bg-slate-900 transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center shadow-sm"
+                  className="p-2 text-stone-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 hover:bg-stone-100 dark:hover:bg-slate-800 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-[#fffdf8] dark:bg-slate-900 transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center shadow-sm"
                   title="View Raw Output (Markdown & TAB)"
                 >
                   <FileText size={16} />
@@ -750,7 +750,7 @@ Keterangan: ${editingItem.keterangan}`;
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={onCopy}
-                  className="p-2 text-stone-500 dark:text-slate-400 hover:text-[#0f766e] dark:hover:text-teal-300 hover:bg-stone-100 dark:hover:bg-slate-800 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-[#fffdf8] dark:bg-slate-900 transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center shadow-sm"
+                  className="p-2 text-stone-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 hover:bg-stone-100 dark:hover:bg-slate-800 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-[#fffdf8] dark:bg-slate-900 transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center shadow-sm"
                   title="Copy for Spreadsheet (TSV)"
                 >
                   <Copy size={16} />
@@ -758,7 +758,7 @@ Keterangan: ${editingItem.keterangan}`;
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={onDownload}
-                  className="p-2 text-stone-500 dark:text-slate-400 hover:text-[#0f766e] dark:hover:text-teal-300 hover:bg-stone-100 dark:hover:bg-slate-800 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-[#fffdf8] dark:bg-slate-900 transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center shadow-sm"
+                  className="p-2 text-stone-500 dark:text-slate-400 hover:text-primary dark:hover:text-blue-400 hover:bg-stone-100 dark:hover:bg-slate-800 rounded-xl border border-[#e7e0d4] dark:border-slate-800 bg-[#fffdf8] dark:bg-slate-900 transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center shadow-sm"
                   title="Download CSV"
                 >
                   <Download size={16} />
@@ -772,7 +772,7 @@ Keterangan: ${editingItem.keterangan}`;
         <div className="block md:hidden space-y-4">
           {items.length === 0 ? (
             <div className="p-6 rounded-3xl border border-[#e7e0d4] bg-[#fffdf8] text-center space-y-4 shadow-sm">
-              <div className="w-12 h-12 rounded-2xl bg-[#0f766e]/10 border border-[#0f766e]/20 text-[#0f766e] flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center mx-auto">
                 <Calendar size={22} />
               </div>
               <div className="space-y-1">
@@ -786,7 +786,7 @@ Keterangan: ${editingItem.keterangan}`;
               </div>
               <button
                 onClick={() => setIsConfiguring(true)}
-                className="w-full min-h-[44px] px-4 py-2.5 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white font-bold rounded-2xl text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-98"
+                className="w-full min-h-[44px] px-4 py-2.5 bg-primary hover:bg-blue-700 text-white font-bold rounded-2xl text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-98"
               >
                 <Layers size={14} />
                 Mulai Setup Kalender
@@ -817,14 +817,14 @@ Keterangan: ${editingItem.keterangan}`;
                       <div className="flex items-center gap-2">
                         <div
                           className={`w-2.5 h-2.5 rounded-full ${
-                            isGroupToday ? 'bg-[#0f766e]' : 'bg-stone-400'
+                            isGroupToday ? 'bg-primary' : 'bg-stone-400'
                           }`}
                         />
                         <h3 className="text-xs font-bold text-[#1f2933]">
                           {format(group.date, 'EEEE, d MMMM yyyy')}
                         </h3>
                         {isGroupToday && (
-                          <span className="px-1.5 py-0.5 rounded-md bg-[#0f766e]/10 border border-[#0f766e]/30 text-[#0f766e] text-[10px] font-semibold">
+                          <span className="px-1.5 py-0.5 rounded-md bg-primary/10 border border-primary/30 text-primary text-[10px] font-semibold">
                             Hari Ini
                           </span>
                         )}
@@ -850,7 +850,7 @@ Keterangan: ${editingItem.keterangan}`;
                                 : isMofu
                                 ? 'bg-amber-50/60 border-amber-200'
                                 : isBofu
-                                ? 'bg-[#0f766e]/5 border-[#0f766e]/20'
+                                ? 'bg-primary/5 border-primary/20'
                                 : 'bg-[#fffdf8] border-[#e7e0d4]'
                             }`}
                           >
@@ -873,7 +873,7 @@ Keterangan: ${editingItem.keterangan}`;
                                     ? 'bg-sky-100 text-sky-800 border-sky-200'
                                     : isMofu
                                     ? 'bg-amber-100 text-amber-800 border-amber-200'
-                                    : 'bg-[#0f766e]/10 text-[#0f766e] border-[#0f766e]/20'
+                                    : 'bg-primary/10 text-primary border-primary/20'
                                 }`}
                               >
                                 {item.jenis || 'TOFU'}
@@ -885,7 +885,7 @@ Keterangan: ${editingItem.keterangan}`;
                               </span>
 
                               {item.primaryAssetType && (
-                                <span className="px-2 py-0.5 rounded-md bg-[#0f766e]/10 text-[#0f766e] border border-[#0f766e]/20 text-[10px] font-semibold">
+                                <span className="px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-800 dark:text-cyan-200 border border-cyan-500/20 text-[10px] font-semibold">
                                   {item.primaryAssetType}
                                 </span>
                               )}
@@ -920,7 +920,7 @@ Keterangan: ${editingItem.keterangan}`;
                                 }}
                                 className="flex-1 min-h-[40px] px-3 bg-[#fffdf8] hover:bg-stone-100 text-stone-800 font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition border border-[#e7e0d4] shadow-sm"
                               >
-                                <FileText size={14} className="text-[#0f766e]" />
+                                <FileText size={14} className="text-primary" />
                                 Buka Detail
                               </button>
 
@@ -959,7 +959,7 @@ Keterangan: ${editingItem.keterangan}`;
                                       : 'image';
                                   router.push(`/production-studio?tab=${tab}`);
                                 }}
-                                className="min-h-[40px] px-3.5 bg-[#0f766e]/10 hover:bg-[#0f766e] text-[#0f766e] hover:text-white border border-[#0f766e]/30 font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition"
+                                className="min-h-[40px] px-3.5 bg-primary/10 hover:bg-primary text-primary hover:text-white border border-primary/30 font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition"
                                 title="Buka di Production Studio"
                               >
                                 <Sparkles size={13} />

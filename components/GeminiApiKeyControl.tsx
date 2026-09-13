@@ -58,18 +58,18 @@ export function GeminiApiKeyControl({ variant = 'badge', onToast }: GeminiApiKey
           aria-label="Buka Pengaturan Gemini API Key"
           className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs ${
             hasCustomKey
-              ? 'bg-teal-50 border-teal-200 text-[#0f766e] hover:bg-teal-100/70'
+              ? 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/15'
               : 'bg-white border-[#e7e0d4] text-[#1f2933] hover:bg-[#f6f3ee]'
           }`}
           title="Pengaturan Gemini API Key Pribadi"
         >
-          <Key size={13} className={hasCustomKey ? 'text-[#0f766e]' : 'text-[#627d98]'} />
+          <Key size={13} className={hasCustomKey ? 'text-primary' : 'text-[#627d98]'} />
           <span className="hidden sm:inline">
             {hasCustomKey ? 'Custom API Key' : 'Gemini Key'}
           </span>
           <span
             className={`w-2 h-2 rounded-full ${
-              hasCustomKey ? 'bg-[#0f766e]' : 'bg-[#e7e0d4]'
+              hasCustomKey ? 'bg-primary' : 'bg-[#e7e0d4]'
             }`}
           />
         </button>
@@ -80,19 +80,19 @@ export function GeminiApiKeyControl({ variant = 'badge', onToast }: GeminiApiKey
           aria-label="Buka Pengaturan Gemini API Key"
           className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all shadow-xs ${
             hasCustomKey
-              ? 'bg-teal-50 border-teal-200 text-[#0f766e] hover:bg-teal-100/70'
+              ? 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/15'
               : 'bg-white border-[#e7e0d4] text-[#1f2933] hover:bg-[#f6f3ee]'
           }`}
         >
           <div className="flex items-center gap-1.5">
-            <Key size={13} className={hasCustomKey ? 'text-[#0f766e]' : 'text-[#627d98]'} />
+            <Key size={13} className={hasCustomKey ? 'text-primary' : 'text-[#627d98]'} />
             <span className="font-medium">
               {hasCustomKey ? 'API Key Pribadi' : 'Set Gemini Key'}
             </span>
           </div>
           <span
             className={`w-2 h-2 rounded-full ${
-              hasCustomKey ? 'bg-[#0f766e]' : 'bg-amber-400'
+              hasCustomKey ? 'bg-primary' : 'bg-amber-400'
             }`}
             title={hasCustomKey ? 'API Key Pribadi Aktif' : 'Default / Belum Diisi'}
           />
@@ -122,7 +122,7 @@ export function GeminiApiKeyControl({ variant = 'badge', onToast }: GeminiApiKey
               {/* Header */}
               <div className="flex items-center justify-between pb-3 border-b border-[#e7e0d4]">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0f766e]">
+                  <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
                     <Key size={18} />
                   </div>
                   <div>
@@ -144,11 +144,11 @@ export function GeminiApiKeyControl({ variant = 'badge', onToast }: GeminiApiKey
               <div
                 className={`p-4 rounded-xl border text-xs flex items-start gap-3 ${
                   hasCustomKey
-                    ? 'bg-teal-50 border-teal-200 text-[#0f766e]'
+                    ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-900'
                     : 'bg-[#f6f3ee] border-[#e7e0d4] text-[#627d98]'
                 }`}
               >
-                <ShieldCheck size={18} className={hasCustomKey ? 'text-[#0f766e] mt-0.5 shrink-0' : 'text-[#627d98] mt-0.5 shrink-0'} />
+                <ShieldCheck size={18} className={hasCustomKey ? 'text-cyan-700 mt-0.5 shrink-0' : 'text-[#627d98] mt-0.5 shrink-0'} />
                 <div className="space-y-1">
                   <p className="font-semibold text-xs text-[#1f2933]">
                     {hasCustomKey ? 'API Key Pribadi Tersimpan' : 'Menggunakan Konfigurasi Standar / Server'}
@@ -172,7 +172,7 @@ export function GeminiApiKeyControl({ variant = 'badge', onToast }: GeminiApiKey
                     value={inputKey}
                     onChange={(e) => setInputKey(e.target.value)}
                     placeholder="AIzaSy..."
-                    className="w-full bg-white border border-[#e7e0d4] rounded-xl px-3.5 py-2.5 pr-20 text-xs font-mono text-[#1f2933] placeholder:text-[#627d98]/50 focus:outline-none focus:border-[#0f766e] transition"
+                    className="w-full bg-white border border-[#e7e0d4] rounded-xl px-3.5 py-2.5 pr-20 text-xs font-mono text-[#1f2933] placeholder:text-[#627d98]/50 focus:outline-none focus:border-primary transition"
                     autoFocus
                   />
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -193,7 +193,7 @@ export function GeminiApiKeyControl({ variant = 'badge', onToast }: GeminiApiKey
                     href="https://aistudio.google.com/app/apikey"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[#0f766e] hover:underline flex items-center gap-1 font-semibold"
+                    className="text-primary hover:underline flex items-center gap-1 font-semibold"
                   >
                     Buka AI Studio <ExternalLink size={11} />
                   </a>
@@ -229,7 +229,7 @@ export function GeminiApiKeyControl({ variant = 'badge', onToast }: GeminiApiKey
                     onClick={handleSave}
                     type="button"
                     aria-label="Simpan Gemini API Key"
-                    className="flex items-center gap-1.5 px-4 py-2 bg-[#0f766e] hover:bg-[#115e59] text-white rounded-xl text-xs font-bold transition shadow-sm"
+                    className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
                   >
                     <Check size={14} />
                     Simpan Key

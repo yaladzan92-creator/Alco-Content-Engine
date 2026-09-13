@@ -36,7 +36,7 @@ const InputField = ({
 }) => (
   <div className="space-y-2">
     <label className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
-      <Icon size={14} className="text-[#0f766e]" />
+      <Icon size={14} className="text-primary" />
       {label}
     </label>
     {children}
@@ -119,7 +119,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
           {/* Header */}
           <div className="px-5 sm:px-7 py-4 border-b border-[#e7e0d4] bg-[#f6f3ee]/80 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0f766e] shadow-xs shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-xs shrink-0">
                 <Zap size={18} />
               </div>
               <div>
@@ -149,19 +149,19 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e7e0d4]/80 pb-3">
                 <div className="flex items-center gap-2 text-xs">
                   <span className="text-stone-500 font-medium">Project Aktif:</span>
-                  <span className="font-bold text-[#0f766e] bg-teal-50 px-2.5 py-0.5 rounded-lg border border-teal-200">
+                  <span className="font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded-lg border border-primary/20">
                     {projectName}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 text-[11px] text-stone-500">
-                  <ShieldCheck size={13} className="text-[#0f766e]" />
+                  <ShieldCheck size={13} className="text-primary" />
                   <span>Trust-Building Formula</span>
                 </div>
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
-                  <Zap size={14} className="text-[#0f766e]" />
+                  <Zap size={14} className="text-primary" />
                   Topik / Fokus Kampanye
                 </label>
                 <input
@@ -169,7 +169,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                   value={configData.coreTopic || ''}
                   onChange={(e) => configData.setCoreTopic(e.target.value)}
                   placeholder="Contoh: Edukasi Funnel & Solusi Produk Digital"
-                  className="w-full bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-3.5 py-2.5 text-xs text-[#1f2933] placeholder:text-stone-400 focus:outline-none focus:border-[#0f766e] transition-colors font-medium"
+                  className="w-full bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-3.5 py-2.5 text-xs text-[#1f2933] placeholder:text-stone-400 focus:outline-none focus:border-primary transition-colors font-medium"
                 />
               </div>
             </div>
@@ -179,20 +179,20 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
-                    <Calendar size={14} className="text-[#0f766e]" />
+                    <Calendar size={14} className="text-primary" />
                     Tanggal Mulai Publikasi
                   </label>
                   <input
                     type="date"
                     value={configData.startDate || ''}
                     onChange={(e) => configData.setStartDate(e.target.value)}
-                    className="w-full bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#0f766e] text-stone-800 font-medium"
+                    className="w-full bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-primary text-stone-800 font-medium"
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
-                    <Clock size={14} className="text-[#0f766e]" />
+                    <Clock size={14} className="text-primary" />
                     Hari Libur / Skip Posting (Opsional)
                   </label>
                   <div className="grid grid-cols-7 gap-1">
@@ -206,7 +206,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                           className={`py-2 rounded-lg text-[11px] font-semibold border transition-all text-center ${
                             isSkipped
                               ? 'bg-rose-50 border-rose-200 text-rose-600 line-through'
-                              : 'bg-[#f6f3ee] border-[#e7e0d4] text-stone-700 hover:border-teal-400'
+                              : 'bg-[#f6f3ee] border-[#e7e0d4] text-stone-700 hover:border-primary/40'
                           }`}
                           title={isSkipped ? `Hari ${day} dilewati (tidak posting)` : `Posting pada hari ${day}`}
                         >
@@ -223,7 +223,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
             <div className="bg-white border border-[#e7e0d4] rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
-                  <LayoutGrid size={14} className="text-[#0f766e]" />
+                  <LayoutGrid size={14} className="text-primary" />
                   Format Konten
                 </label>
                 <span className="text-[11px] text-stone-500">Pilih format yang ingin dibuat</span>
@@ -242,7 +242,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                       onClick={() => configData.toggleFormat(fmt.id)}
                       className={`p-3 rounded-xl border text-left transition-all ${
                         isSelected
-                          ? 'bg-[#0f766e] border-[#0f766e] text-white shadow-xs'
+                          ? 'bg-primary border-primary text-white shadow-xs'
                           : 'bg-[#f6f3ee] border-[#e7e0d4] text-stone-700 hover:border-stone-400'
                       }`}
                     >
@@ -250,7 +250,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                         <span className="text-xs font-bold">{fmt.title}</span>
                         {isSelected && <CheckCircle2 size={13} className="text-white shrink-0" />}
                       </div>
-                      <p className={`text-[10px] mt-1 line-clamp-1 ${isSelected ? 'text-teal-100' : 'text-stone-500'}`}>
+                      <p className={`text-[10px] mt-1 line-clamp-1 ${isSelected ? 'text-blue-100' : 'text-stone-500'}`}>
                         {fmt.desc}
                       </p>
                     </button>
@@ -263,10 +263,10 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
             <div className="bg-white border border-[#e7e0d4] rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
-                  <Layers size={14} className="text-[#0f766e]" />
+                  <Layers size={14} className="text-primary" />
                   Alokasi Funnel (Jumlah Postingan)
                 </label>
-                <span className="text-xs font-bold text-[#0f766e] bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
+                <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
                   Total: {totalPosts} Postingan
                 </span>
               </div>
@@ -277,7 +277,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                     key: 'tofu',
                     label: 'TOFU (Awareness)',
                     desc: 'Jangkau audiens baru & bangun rasa ingin tahu',
-                    badge: 'bg-teal-50 text-teal-800 border-teal-200'
+                    badge: 'bg-primary/10 text-primary border-primary/20'
                   },
                   {
                     key: 'mofu',
@@ -311,7 +311,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                             [key]: Math.max(0, parseInt(e.target.value) || 0),
                           })
                         }
-                        className="w-full bg-white border border-[#e7e0d4] rounded-lg py-1.5 text-center text-xs font-bold text-stone-900 focus:outline-none focus:border-[#0f766e]"
+                        className="w-full bg-white border border-[#e7e0d4] rounded-lg py-1.5 text-center text-xs font-bold text-stone-900 focus:outline-none focus:border-primary"
                       />
                       <span className="text-[11px] text-stone-500 font-medium">post</span>
                     </div>
@@ -321,8 +321,8 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
             </div>
 
             {/* 5. Blok Rekomendasi ALCO */}
-            <div className="bg-teal-50/60 border border-teal-200/80 rounded-2xl p-4 sm:p-4.5 text-xs text-stone-700 space-y-2">
-              <div className="flex items-center gap-1.5 font-bold text-[#0f766e]">
+            <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 sm:p-4.5 text-xs text-stone-700 space-y-2">
+              <div className="flex items-center gap-1.5 font-bold text-primary">
                 <Sparkles size={14} />
                 <span>Rekomendasi ALCO Content Engine</span>
               </div>
@@ -341,7 +341,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                 className="w-full px-4 sm:px-5 py-3.5 bg-[#f6f3ee]/60 hover:bg-[#f6f3ee] flex items-center justify-between text-xs font-bold text-stone-700 transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  <Sliders size={14} className="text-[#0f766e]" />
+                  <Sliders size={14} className="text-primary" />
                   <span>Pengaturan Lanjutan (Opsional untuk Penyesuaian Detail)</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-stone-500 text-[11px]">
@@ -363,7 +363,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                             onClick={() => configData.setGender(g)}
                             className={`py-1.5 rounded-lg text-xs font-semibold border transition-all ${
                               configData.gender === g
-                                ? 'bg-[#0f766e] border-[#0f766e] text-white'
+                                ? 'bg-primary border-primary text-white'
                                 : 'bg-[#f6f3ee] border-[#e7e0d4] text-stone-700 hover:border-stone-400'
                             }`}
                           >
@@ -389,7 +389,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                               configData.ageRange[1],
                             ])
                           }
-                          className="w-full accent-[#0f766e] bg-stone-200"
+                          className="w-full accent-primary bg-stone-200"
                         />
                         <input
                           type="range"
@@ -402,7 +402,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                               parseInt(e.target.value),
                             ])
                           }
-                          className="w-full accent-[#0f766e] bg-stone-200"
+                          className="w-full accent-primary bg-stone-200"
                         />
                       </div>
                     </InputField>
@@ -427,7 +427,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                               onClick={() => configData.toggleVoice(v)}
                               className={`p-2.5 text-left border rounded-xl text-xs transition-all ${
                                 isSel
-                                  ? 'border-[#0f766e] bg-teal-50 font-bold text-[#0f766e]'
+                                  ? 'border-primary bg-primary/10 font-bold text-primary'
                                   : 'border-[#e7e0d4] bg-[#f6f3ee] text-stone-700 hover:border-stone-400'
                               }`}
                             >
@@ -448,7 +448,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                             <select
                               value={configData.hookMix?.[i]?.type || 'Call-Out'}
                               onChange={(e) => configData.updateHookMix(i, 'type', e.target.value)}
-                              className="flex-1 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-3 py-2 text-xs text-stone-900 focus:outline-none focus:border-[#0f766e]"
+                              className="flex-1 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-3 py-2 text-xs text-stone-900 focus:outline-none focus:border-primary"
                             >
                               {['Call-Out', 'Curiosity Gap', 'Social Proof', 'Negativity Bias', 'Authority', 'Relatability'].map((h) => (
                                 <option key={h} value={h}>{h}</option>
@@ -458,7 +458,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                               type="number"
                               value={configData.hookMix?.[i]?.percentage || 0}
                               onChange={(e) => configData.updateHookMix(i, 'percentage', parseInt(e.target.value) || 0)}
-                              className="w-20 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-center text-xs text-stone-900 focus:outline-none focus:border-[#0f766e]"
+                              className="w-20 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-center text-xs text-stone-900 focus:outline-none focus:border-primary"
                             />
                           </div>
                         ))}
@@ -470,10 +470,10 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                             <div
                               onClick={() => configData.setReferenceType(type)}
                               className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                                configData.referenceType === type ? 'border-[#0f766e] bg-[#0f766e]/15' : 'border-stone-300 bg-white'
+                                configData.referenceType === type ? 'border-primary bg-primary/15' : 'border-stone-300 bg-white'
                               }`}
                             >
-                              {configData.referenceType === type && <div className="w-2 h-2 bg-[#0f766e] rounded-full" />}
+                              {configData.referenceType === type && <div className="w-2 h-2 bg-primary rounded-full" />}
                             </div>
                             <span className={configData.referenceType === type ? 'text-[#1f2933] font-bold' : 'text-stone-600'}>
                               {type}
@@ -501,7 +501,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                               type="button"
                               onClick={() => configData.setSelectedFormula(formula.title)}
                               className={`p-2.5 text-left border rounded-xl transition-all ${
-                                isSel ? 'border-[#0f766e] bg-teal-50 font-bold' : 'border-[#e7e0d4] bg-[#f6f3ee] hover:border-stone-400'
+                                isSel ? 'border-primary bg-primary/10 font-bold' : 'border-[#e7e0d4] bg-[#f6f3ee] hover:border-stone-400'
                               }`}
                             >
                               <h4 className="text-xs font-bold text-[#1f2933]">{formula.title}</h4>
@@ -522,7 +522,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                                 type="button"
                                 onClick={() => configData.toggleCTA(cta)}
                                 className={`px-3 py-1.5 rounded-lg text-xs border transition-all ${
-                                  isSel ? 'bg-[#0f766e] border-[#0f766e] text-white font-bold' : 'bg-[#f6f3ee] border-[#e7e0d4] text-stone-700 hover:border-stone-400'
+                                  isSel ? 'bg-primary border-primary text-white font-bold' : 'bg-[#f6f3ee] border-[#e7e0d4] text-stone-700 hover:border-stone-400'
                                 }`}
                               >
                                 {cta}
@@ -544,7 +544,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                         max="10"
                         value={configData.carouselSlides}
                         onChange={(e) => configData.setCarouselSlides(parseInt(e.target.value) || 5)}
-                        className="w-full bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-3 py-2 text-xs text-stone-900 focus:outline-none focus:border-[#0f766e]"
+                        className="w-full bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-3 py-2 text-xs text-stone-900 focus:outline-none focus:border-primary"
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -552,7 +552,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                       <select
                         value={configData.reelsDuration}
                         onChange={(e) => configData.setReelsDuration(e.target.value)}
-                        className="w-full bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-3 py-2 text-xs text-stone-900 focus:outline-none focus:border-[#0f766e]"
+                        className="w-full bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-3 py-2 text-xs text-stone-900 focus:outline-none focus:border-primary"
                       >
                         <option value="15s">15 Detik (Ringkas / Hook Cepat)</option>
                         <option value="30s">30 Detik (Standar Edukasi Funnel)</option>
@@ -578,7 +578,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
             {/* Short summary text */}
             <div className="flex items-start sm:items-center justify-between gap-2 text-xs text-stone-600">
               <div className="flex items-center gap-1.5">
-                <Info size={14} className="text-[#0f766e] shrink-0 mt-0.5 sm:mt-0" />
+                <Info size={14} className="text-primary shrink-0 mt-0.5 sm:mt-0" />
                 <span>
                   Anda akan membuat kalender konten <strong>[{formatList}]</strong> untuk <strong>[{projectName}]</strong> mulai <strong>[{formattedStartDate}]</strong>.
                 </span>
@@ -587,11 +587,11 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
 
             {/* Loading Indicator inside modal */}
             {isLoading && (
-              <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl flex items-center gap-3 text-xs text-teal-800 animate-pulse">
-                <Loader2 size={16} className="animate-spin text-[#0f766e] shrink-0" />
+              <div className="p-3 bg-primary/10 border border-primary/20 rounded-xl flex items-center gap-3 text-xs text-primary animate-pulse">
+                <Loader2 size={16} className="animate-spin text-primary shrink-0" />
                 <div className="space-y-0.5">
                   <p className="font-bold">Sedang merancang strategi konten via Gemini AI...</p>
-                  <p className="text-[11px] text-teal-600">Menyusun headline, naskah hook, alur funnel, dan konsep visual. Mohon tunggu beberapa detik.</p>
+                  <p className="text-[11px] text-blue-700">Menyusun headline, naskah hook, alur funnel, dan konsep visual. Mohon tunggu beberapa detik.</p>
                 </div>
               </div>
             )}
@@ -615,7 +615,7 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                 className={`w-full sm:w-auto px-6 py-3 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-sm ${
                   isGenerateDisabled
                     ? 'bg-stone-200 text-stone-400 cursor-not-allowed'
-                    : 'bg-[#0f766e] hover:bg-[#115e59] text-white shadow-teal-900/10'
+                    : 'bg-primary hover:bg-blue-700 text-white shadow-blue-900/10'
                 }`}
               >
                 {isLoading ? (

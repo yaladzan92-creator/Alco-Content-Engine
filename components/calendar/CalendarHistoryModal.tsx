@@ -43,7 +43,7 @@ export const CalendarHistoryModal: React.FC<CalendarHistoryModalProps> = ({
               <div className="bg-[#fffdf8] border border-[#e7e0d4] rounded-3xl shadow-xl flex flex-col max-h-[80vh] overflow-hidden">
                 <div className="p-5 border-b border-[#e7e0d4] flex items-center justify-between bg-[#f6f3ee]/60">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[#0f766e] bg-[#0f766e]/10 border border-[#0f766e]/20">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-primary bg-primary/10 border border-primary/20">
                       <Layers size={16} />
                     </div>
                     <h3 className="text-sm font-semibold text-[#1f2933]">
@@ -81,7 +81,7 @@ export const CalendarHistoryModal: React.FC<CalendarHistoryModalProps> = ({
                     history.map((entry: any) => (
                       <div
                         key={entry.id}
-                        className="p-4 bg-[#f6f3ee]/50 border border-[#e7e0d4] rounded-2xl hover:border-[#0f766e]/40 transition-all group"
+                        className="p-4 bg-[#f6f3ee]/50 border border-[#e7e0d4] rounded-2xl hover:border-primary/40 transition-all group"
                       >
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex flex-col gap-0.5">
@@ -89,7 +89,7 @@ export const CalendarHistoryModal: React.FC<CalendarHistoryModalProps> = ({
                               {format(new Date(entry.timestamp), 'dd MMM yyyy, HH:mm')}
                             </span>
                             {entry.itemCount !== undefined && (
-                              <span className="text-xs text-[#0f766e] font-semibold mt-0.5">
+                              <span className="text-xs text-primary font-semibold mt-0.5">
                                 {entry.itemCount} Konten Tergenerate
                               </span>
                             )}
@@ -110,7 +110,7 @@ export const CalendarHistoryModal: React.FC<CalendarHistoryModalProps> = ({
                             onLoadHistory(entry);
                             onClose();
                           }}
-                          className="w-full py-2 bg-[#0f766e]/10 hover:bg-[#0f766e] text-[#0f766e] hover:text-white rounded-xl text-xs font-semibold transition-all border border-[#0f766e]/20"
+                          className="w-full py-2 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded-xl text-xs font-semibold transition-all border border-primary/20"
                         >
                           Muat Data ke Kalender
                         </button>

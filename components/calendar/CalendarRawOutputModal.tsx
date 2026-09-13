@@ -49,7 +49,7 @@ export const CalendarRawOutputModal: React.FC<CalendarRawOutputModalProps> = ({
               <div className="bg-[#fffdf8] border border-[#e7e0d4] rounded-3xl shadow-xl overflow-hidden flex flex-col">
                 <div className="p-5 border-b border-[#e7e0d4] flex items-center justify-between bg-[#f6f3ee]/60">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[#0f766e] bg-[#0f766e]/10 border border-[#0f766e]/20">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-primary bg-primary/10 border border-primary/20">
                       <FileText size={16} />
                     </div>
                     <h3 className="text-sm font-semibold text-[#1f2933]">
@@ -74,7 +74,7 @@ export const CalendarRawOutputModal: React.FC<CalendarRawOutputModalProps> = ({
                         onClick={() => {
                           void safeCopyToClipboard(rawOutputData.markdown);
                         }}
-                        className="text-xs font-semibold text-[#0f766e] hover:underline flex items-center gap-1"
+                        className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
                       >
                         <Copy size={12} /> Salin Tabel
                       </button>
@@ -95,7 +95,7 @@ export const CalendarRawOutputModal: React.FC<CalendarRawOutputModalProps> = ({
                         onClick={() => {
                           void safeCopyToClipboard(rawOutputData.tab);
                         }}
-                        className="text-xs font-semibold text-[#0f766e] hover:underline flex items-center gap-1"
+                        className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
                       >
                         <Copy size={12} /> Salin Data TAB
                       </button>

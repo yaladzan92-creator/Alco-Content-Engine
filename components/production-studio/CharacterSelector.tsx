@@ -40,7 +40,7 @@ export default function CharacterSelector({
     <div className={`flex items-center gap-2 flex-wrap ${className}`}>
       <div className="flex items-center gap-1.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-2.5 py-1.5 shadow-2xs">
         <label htmlFor="character-select" className="flex items-center gap-1 text-[11px] font-bold text-stone-600 shrink-0 select-none">
-          <UserCheck size={13} className={selectedCharacter ? 'text-[#0f766e]' : 'text-stone-400'} />
+          <UserCheck size={13} className={selectedCharacter ? 'text-primary' : 'text-stone-400'} />
           <span>Karakter:</span>
         </label>
 
@@ -65,14 +65,14 @@ export default function CharacterSelector({
       </div>
 
       {selectedCharacter && (
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#0f766e]/10 border border-[#0f766e]/20 text-xs text-[#0f766e] font-semibold animate-fadeIn">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#0f766e]" />
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 border border-primary/20 text-xs text-primary font-semibold animate-fadeIn">
+          <span className="w-1.5 h-1.5 rounded-full bg-primary" />
           <span>{selectedCharacter.identity?.display_name} Aktif</span>
           {onCreateCharacter && (
             <button
               type="button"
               onClick={onCreateCharacter}
-              className="text-[10px] underline font-bold hover:text-[#0f766e]/80 ml-1 cursor-pointer"
+              className="text-[10px] underline font-bold hover:text-primary/80 ml-1 cursor-pointer"
               title="Edit atau Lihat Profil Karakter"
             >
               Lihat/Edit

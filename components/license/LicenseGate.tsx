@@ -122,9 +122,9 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
           </div>
 
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold tracking-wider uppercase">
-              <Zap size={13} />
-              ALCO Content Engine v2.2
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20 text-xs font-semibold tracking-wider uppercase">
+              <Zap size={13} className="text-cyan-600 dark:text-cyan-400" />
+              <span>ALCO Content Engine v2.2</span>
             </div>
             <h1 className="text-xl font-bold text-foreground">Memeriksa Integritas Lisensi</h1>
             <p className="text-sm text-muted-foreground">
@@ -132,16 +132,19 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
             </p>
           </div>
 
-          {deviceId && (
+          {deviceId ? (
             <div className="w-full bg-muted/50 border border-border/80 rounded-xl p-3 text-left">
               <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1">
                 Hardware Device ID
               </div>
-              <div className="font-mono text-xs text-foreground font-semibold tracking-widest break-all">
+              <div
+                suppressHydrationWarning
+                className="font-mono text-xs text-foreground font-semibold tracking-widest break-all"
+              >
                 {deviceId}
               </div>
             </div>
-          )}
+          ) : null}
 
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Loader2 className="w-4 h-4 animate-spin text-primary" />
@@ -167,7 +170,12 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
             <Zap size={20} />
           </div>
           <div>
-            <div className="text-sm font-black tracking-tight text-foreground">ALCO Content Engine</div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-black tracking-tight text-foreground">ALCO Content Engine</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20">
+                Cyan Accent
+              </span>
+            </div>
             <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               License Protocol v2.2 &bull; App ID: {ALCO_APP_ID}
             </div>
@@ -247,7 +255,10 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
                   )}
                 </button>
               </div>
-              <div className="font-mono text-sm font-bold tracking-widest text-foreground bg-muted/40 px-3 py-2 rounded-lg border border-border/60 select-all break-all">
+              <div
+                suppressHydrationWarning
+                className="font-mono text-sm font-bold tracking-widest text-foreground bg-muted/40 px-3 py-2 rounded-lg border border-border/60 select-all break-all"
+              >
                 {deviceId || 'ALCO-DEV-UNKNOWN'}
               </div>
               <p className="text-[11px] text-muted-foreground mt-1.5">

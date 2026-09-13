@@ -90,7 +90,7 @@ export const VideoAssetUrlInput: React.FC<VideoAssetUrlInputProps> = ({
           {label}
         </label>
         {badgeText && (
-          <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-teal-50 border border-teal-200 text-[#0f766e]">
+          <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-cyan-500/10 border border-cyan-500/20 text-cyan-700 dark:text-cyan-300">
             {badgeText}
           </span>
         )}
@@ -107,7 +107,7 @@ export const VideoAssetUrlInput: React.FC<VideoAssetUrlInputProps> = ({
               ? 'border-rose-400 focus:border-rose-500 text-rose-900 bg-rose-50/20'
               : hasValue && imageLoaded
               ? 'border-emerald-400 focus:border-emerald-500 text-[#1f2933]'
-              : 'border-[#e7e0d4] focus:border-[#0f766e]'
+              : 'border-[#e7e0d4] focus:border-primary'
           }`}
         />
         {hasValue && (
@@ -201,7 +201,7 @@ export const VideoAssetUrlInput: React.FC<VideoAssetUrlInputProps> = ({
                   href={trimmedValue}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs font-semibold text-[#0f766e] hover:underline flex items-center gap-1"
+                  className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
                 >
                   Buka Link <ExternalLink size={10} />
                 </a>
@@ -238,7 +238,7 @@ export const VideoAssetUrlInput: React.FC<VideoAssetUrlInputProps> = ({
       {/* Prompt guidance if character URL is empty */}
       {!hasValue && isCharacterUrl && (
         <div className="flex items-start gap-1.5 p-2.5 bg-[#f6f3ee] border border-[#e7e0d4] rounded-lg text-[#627d98] text-xs">
-          <HelpCircle size={14} className="shrink-0 mt-0.5 text-[#0f766e]" />
+          <HelpCircle size={14} className="shrink-0 mt-0.5 text-primary" />
           <span>
             Wajib berupa URL publik HTTPS (contoh dari Cloudinary, Supabase Storage, atau Imgur). Format <code className="text-[#1f2933] font-semibold">blob:</code> atau <code className="text-[#1f2933] font-semibold">data:</code> akan ditolak.
           </span>

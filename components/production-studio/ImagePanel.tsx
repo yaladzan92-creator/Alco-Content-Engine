@@ -41,14 +41,14 @@ export default function ImagePanel(props: any) {
       <div className="bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl p-6 space-y-3 shadow-xs">
         <div className="flex items-center justify-between pb-3 border-b border-[#e7e0d4]">
           <div className="flex items-center gap-2">
-            <ImageIcon size={16} className="text-[#0f766e]" />
+            <ImageIcon size={16} className="text-primary" />
             <h3 className="text-xs font-bold text-[#1f2933]">Draft Naskah Image</h3>
           </div>
           <button
             onClick={() => handleCopyText('image_raw_draft', rawFallback, 'none')}
             className="px-3 py-1.5 bg-[#f6f3ee] hover:bg-[#e7e0d4] text-[#1f2933] text-xs font-bold rounded-xl transition flex items-center gap-1.5 border border-[#e7e0d4]"
           >
-            {copiedStates['image_raw_draft'] ? <Check size={13} className="text-[#0f766e]" /> : <Copy size={13} />}
+            {copiedStates['image_raw_draft'] ? <Check size={13} className="text-primary" /> : <Copy size={13} />}
             <span>{copiedStates['image_raw_draft'] ? 'Tersalin' : 'Salin Naskah'}</span>
           </button>
         </div>
@@ -81,7 +81,7 @@ export default function ImagePanel(props: any) {
                 onClick={() => setSelectedAngleId(angle.id)}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                   isSelected
-                    ? 'bg-[#0f766e] text-white shadow-xs'
+                    ? 'bg-primary text-white shadow-xs'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-[#f6f3ee] border border-transparent'
                 }`}
               >
@@ -150,7 +150,7 @@ export default function ImagePanel(props: any) {
               {/* Dominant Action */}
               <button
                 onClick={() => handleDownloadImage(generatedImg.imageDataUrl, activeAngle.id)}
-                className="px-5 py-2.5 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-xs cursor-pointer"
+                className="px-5 py-2.5 bg-primary hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-xs cursor-pointer"
               >
                 <Download size={14} />
                 <span>Download Image</span>
@@ -163,8 +163,8 @@ export default function ImagePanel(props: any) {
               >
                 {copiedStates[`prompt_${selectedAngleId}`] ? (
                   <>
-                    <Check size={13} className="text-[#0f766e]" />
-                    <span className="text-[#0f766e]">Prompt Tersalin!</span>
+                    <Check size={13} className="text-primary" />
+                    <span className="text-primary">Prompt Tersalin!</span>
                   </>
                 ) : (
                   <>
@@ -182,7 +182,7 @@ export default function ImagePanel(props: any) {
               >
                 {isGenerating ? (
                   <>
-                    <Loader2 size={13} className="animate-spin text-[#0f766e]" />
+                    <Loader2 size={13} className="animate-spin text-primary" />
                     <span>Regenerating...</span>
                   </>
                 ) : (
@@ -197,7 +197,7 @@ export default function ImagePanel(props: any) {
         ) : (
           /* STATE B: BELUM DIBUAT / SEDANG DIBUAT (Clean Empty State with Dominant Action) */
           <div className="py-10 px-4 text-center border-2 border-dashed border-[#e7e0d4] rounded-xl bg-[#fcfaf6] flex flex-col items-center justify-center space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-[#0f766e]/10 text-[#0f766e] flex items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
               <ImageIcon size={24} />
             </div>
 
@@ -207,7 +207,7 @@ export default function ImagePanel(props: any) {
                 Generate visual resolusi tinggi berdasarkan strategi konten Angle {activeAngle.id} ({activeAngle.name}) langsung menggunakan model Imagen.
               </p>
               {characterDNA?.identity?.display_name && (
-                <p className="text-[11px] text-[#0f766e] font-semibold flex items-center justify-center gap-1">
+                <p className="text-[11px] text-primary font-semibold flex items-center justify-center gap-1">
                   <UserCheck size={12} />
                   <span>Karakter Aktif: {characterDNA.identity.display_name}</span>
                 </p>
@@ -219,7 +219,7 @@ export default function ImagePanel(props: any) {
               <button
                 onClick={() => handleGenerateImage(effectivePrompt, activeAngle.id)}
                 disabled={isGenerating}
-                className="px-6 py-2.5 bg-[#0f766e] hover:bg-[#0f766e]/90 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-xs disabled:opacity-50 cursor-pointer"
+                className="px-6 py-2.5 bg-primary hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-xs disabled:opacity-50 cursor-pointer"
               >
                 {isGenerating ? (
                   <>
@@ -240,8 +240,8 @@ export default function ImagePanel(props: any) {
               >
                 {copiedStates[`prompt_${selectedAngleId}`] ? (
                   <>
-                    <Check size={13} className="text-[#0f766e]" />
-                    <span className="text-[#0f766e]">Prompt Tersalin!</span>
+                    <Check size={13} className="text-primary" />
+                    <span className="text-primary">Prompt Tersalin!</span>
                   </>
                 ) : (
                   <>
@@ -266,7 +266,7 @@ export default function ImagePanel(props: any) {
         <div className="bg-[#fffdf8] border border-[#e7e0d4] p-4.5 rounded-2xl space-y-2.5 shadow-xs">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <FileText size={14} className="text-[#0f766e]" />
+              <FileText size={14} className="text-primary" />
               <span className="text-xs font-bold text-[#1f2933]">Caption Postingan (Siap Publish)</span>
             </div>
             <button
@@ -275,8 +275,8 @@ export default function ImagePanel(props: any) {
             >
               {copiedStates[`caption_${activeAngle.id}`] ? (
                 <>
-                  <Check size={12} className="text-[#0f766e]" />
-                  <span className="text-[#0f766e]">Caption Tersalin</span>
+                  <Check size={12} className="text-primary" />
+                  <span className="text-primary">Caption Tersalin</span>
                 </>
               ) : (
                 <>
@@ -300,9 +300,9 @@ export default function ImagePanel(props: any) {
       {/* 4. PROGRESSIVE DISCLOSURE: STRATEGY DETAILS (Default Collapsed) */}
       {activeAngle.strategyBrief && (
         <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
-          <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+          <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
             <div className="flex items-center gap-2">
-              <Target size={14} className="text-[#0f766e]" />
+              <Target size={14} className="text-primary" />
               <span>Strategy Details</span>
               <span className="text-[10px] font-normal text-stone-500">({activeAngle.strategyBrief.funnelStage || activeAngle.funnelStage || 'TOFU'})</span>
             </div>
@@ -329,8 +329,8 @@ export default function ImagePanel(props: any) {
             </div>
 
             {activeAngle.visualObjective && (
-              <div className="bg-[#f0fdfa] p-2.5 rounded-xl border border-[#0f766e]/20">
-                <span className="text-[#0f766e] font-bold block text-[10px] uppercase tracking-wide">Visual Objective:</span>
+              <div className="bg-primary/5 p-2.5 rounded-xl border border-primary/20">
+                <span className="text-primary font-bold block text-[10px] uppercase tracking-wide">Visual Objective:</span>
                 <p className="text-stone-800 text-xs mt-0.5">{activeAngle.visualObjective}</p>
               </div>
             )}
@@ -347,9 +347,9 @@ export default function ImagePanel(props: any) {
 
       {/* 5. PROGRESSIVE DISCLOSURE: PROMPT DETAILS (Default Collapsed) */}
       <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
-        <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+        <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
           <div className="flex items-center gap-2">
-            <ImageIcon size={14} className="text-[#0f766e]" />
+            <ImageIcon size={14} className="text-primary" />
             <span>Prompt Details</span>
             <span className="text-[10px] font-normal text-stone-500">(Midjourney / Imagen Prompt)</span>
           </div>
@@ -360,7 +360,7 @@ export default function ImagePanel(props: any) {
             <span className="text-[11px] text-stone-500 font-medium">Salin prompt lengkap untuk digunakan di Midjourney atau platform lain:</span>
             <button
               onClick={() => handleCopyText(`prompt_${selectedAngleId}`, effectivePrompt, 'promptCopied')}
-              className="text-xs font-bold text-[#0f766e] hover:underline flex items-center gap-1 cursor-pointer"
+              className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
             >
               <Copy size={12} />
               <span>Salin Prompt</span>
@@ -370,7 +370,7 @@ export default function ImagePanel(props: any) {
             {effectivePrompt}
           </div>
           {characterDNA?.identity?.display_name && (
-            <div className="text-[11px] text-[#0f766e] font-medium flex items-center gap-1">
+            <div className="text-[11px] text-primary font-medium flex items-center gap-1">
               <CheckCircle2 size={12} />
               <span>Karakter &quot;{characterDNA.identity.display_name}&quot; aktif diinjeksikan ke prompt.</span>
             </div>
@@ -378,7 +378,7 @@ export default function ImagePanel(props: any) {
           {activeAngle.textOverlay && (
             <div className="flex items-center gap-2 pt-1 text-xs">
               <span className="text-stone-500 font-medium text-[10px]">Teks Overlay:</span>
-              <span className="font-semibold text-[#0f766e] bg-[#0f766e]/10 px-2 py-0.5 rounded-md border border-[#0f766e]/20">
+              <span className="font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
                 &ldquo;{activeAngle.textOverlay}&rdquo;
               </span>
             </div>
@@ -388,9 +388,9 @@ export default function ImagePanel(props: any) {
 
       {/* 6. PROGRESSIVE DISCLOSURE: ADVANCED (Default Collapsed) */}
       <details className="group border border-[#e7e0d4] bg-[#fffdf8] rounded-2xl overflow-hidden shadow-xs transition-all">
-        <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-[#0f766e] cursor-pointer select-none">
+        <summary className="p-3.5 flex items-center justify-between font-bold text-xs text-stone-800 hover:text-primary cursor-pointer select-none">
           <div className="flex items-center gap-2">
-            <Sliders size={14} className="text-[#0f766e]" />
+            <Sliders size={14} className="text-primary" />
             <span>Advanced Details</span>
             <span className="text-[10px] font-normal text-stone-500">(Komposisi, Layout &amp; Psikologi Warna)</span>
           </div>

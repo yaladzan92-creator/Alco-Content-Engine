@@ -128,7 +128,7 @@ export function StrategyIntakeModal({
           {/* Modal Header */}
           <div className="p-5 border-b border-[#e7e0d4] flex items-center justify-between bg-[#f6f3ee]">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0f766e]">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
                 <Sparkles size={20} />
               </div>
               <div>
@@ -154,7 +154,7 @@ export function StrategyIntakeModal({
               onClick={() => setActiveTab('upload')}
               className={`pb-3 px-3 font-semibold border-b-2 flex items-center gap-1.5 transition ${
                 activeTab === 'upload'
-                  ? 'border-[#0f766e] text-[#0f766e] font-bold'
+                  ? 'border-primary text-primary font-bold'
                   : 'border-transparent text-[#627d98] hover:text-[#1f2933]'
               }`}
             >
@@ -164,7 +164,7 @@ export function StrategyIntakeModal({
               onClick={() => setActiveTab('paste')}
               className={`pb-3 px-3 font-semibold border-b-2 flex items-center gap-1.5 transition ${
                 activeTab === 'paste'
-                  ? 'border-[#0f766e] text-[#0f766e] font-bold'
+                  ? 'border-primary text-primary font-bold'
                   : 'border-transparent text-[#627d98] hover:text-[#1f2933]'
               }`}
             >
@@ -174,7 +174,7 @@ export function StrategyIntakeModal({
               onClick={() => setActiveTab('form')}
               className={`pb-3 px-3 font-semibold border-b-2 flex items-center gap-1.5 transition ${
                 activeTab === 'form'
-                  ? 'border-[#0f766e] text-[#0f766e] font-bold'
+                  ? 'border-primary text-primary font-bold'
                   : 'border-transparent text-[#627d98] hover:text-[#1f2933]'
               }`}
             >
@@ -184,7 +184,7 @@ export function StrategyIntakeModal({
             <div className="ml-auto">
               <button
                 onClick={handleLoadSample}
-                className="mb-2 px-3 py-1.5 bg-teal-50 hover:bg-teal-100 border border-teal-200 text-[#0f766e] text-xs font-semibold rounded-lg transition flex items-center gap-1.5"
+                className="mb-2 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary text-xs font-semibold rounded-lg transition flex items-center gap-1.5"
               >
                 <Sparkles size={13} /> Load Demo Blueprint
               </button>
@@ -203,8 +203,8 @@ export function StrategyIntakeModal({
             {/* TAB 1: UPLOAD JSON */}
             {activeTab === 'upload' && (
               <div className="space-y-4">
-                <div className="border-2 border-dashed border-[#e7e0d4] hover:border-[#0f766e] bg-[#f6f3ee]/50 rounded-2xl p-10 text-center transition flex flex-col items-center justify-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-[#0f766e]">
+                <div className="border-2 border-dashed border-[#e7e0d4] hover:border-primary bg-[#f6f3ee]/50 rounded-2xl p-10 text-center transition flex flex-col items-center justify-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
                     <Upload size={22} />
                   </div>
                   <div>
@@ -215,7 +215,7 @@ export function StrategyIntakeModal({
                       Export file JSON dari ALCO Creative System Anda di sini
                     </p>
                   </div>
-                  <label className="mt-2 px-5 py-2.5 bg-[#0f766e] text-white font-bold text-xs rounded-xl cursor-pointer hover:bg-[#115e59] shadow-xs transition">
+                  <label className="mt-2 px-5 py-2.5 bg-primary text-white font-bold text-xs rounded-xl cursor-pointer hover:bg-blue-700 shadow-xs transition">
                     Pilih File JSON
                     <input
                       type="file"
@@ -239,11 +239,11 @@ export function StrategyIntakeModal({
                   onChange={(e) => setPastedJson(e.target.value)}
                   placeholder={`{\n  "project_name": "Course Launch 2026",\n  "brand_identity": {\n    "brand_name": "ALCO Academy"\n  }\n}`}
                   rows={10}
-                  className="w-full bg-white border border-[#e7e0d4] rounded-xl p-3.5 text-xs font-mono text-[#1f2933] focus:outline-none focus:border-[#0f766e]"
+                  className="w-full bg-white border border-[#e7e0d4] rounded-xl p-3.5 text-xs font-mono text-[#1f2933] focus:outline-none focus:border-primary"
                 />
                 <button
                   onClick={handleParsePastedJson}
-                  className="px-5 py-2.5 bg-[#0f766e] text-white font-bold text-xs rounded-xl hover:bg-[#115e59] shadow-xs transition flex items-center gap-2"
+                  className="px-5 py-2.5 bg-primary text-white font-bold text-xs rounded-xl hover:bg-blue-700 shadow-xs transition flex items-center gap-2"
                 >
                   Proses & Impor JSON
                   <ArrowRight size={14} />
@@ -256,11 +256,11 @@ export function StrategyIntakeModal({
               <div className="space-y-6">
                 {/* ALCO Ecosystem Blueprint Success Status Banner */}
                 {importStatus?.type === 'alco_ecosystem_blueprint' && (
-                  <div className="p-4 bg-teal-50 border border-teal-200 rounded-xl text-teal-900 text-xs flex items-center gap-3">
-                    <CheckCircle2 size={18} className="text-teal-600 shrink-0" />
+                  <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-900 text-xs flex items-center gap-3">
+                    <CheckCircle2 size={18} className="text-cyan-600 shrink-0" />
                     <div>
-                      <span className="font-bold text-xs text-teal-950">Blueprint ALCO berhasil dibaca</span>
-                      <p className="text-xs text-teal-700 mt-0.5">
+                      <span className="font-bold text-xs text-cyan-950">Blueprint ALCO berhasil dibaca</span>
+                      <p className="text-xs text-cyan-700 mt-0.5">
                         Ecosystem Blueprint resmi ALCO telah dimuat lengkap dengan identitas visual, positioning, dan strategi konten.
                       </p>
                     </div>
@@ -332,7 +332,7 @@ export function StrategyIntakeModal({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Brand Identity */}
                   <div className="bg-[#f6f3ee]/60 p-4 border border-[#e7e0d4] rounded-xl space-y-3">
-                    <div className="flex items-center gap-2 text-[#0f766e] font-bold text-xs uppercase tracking-wider">
+                    <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
                       <Building2 size={14} /> Brand Identity
                     </div>
 
@@ -349,7 +349,7 @@ export function StrategyIntakeModal({
                             brand_identity: { ...blueprint.brand_identity, brand_name: e.target.value }
                           })
                         }
-                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-[#0f766e] focus:outline-none"
+                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-primary focus:outline-none"
                       />
                     </div>
 
@@ -366,14 +366,14 @@ export function StrategyIntakeModal({
                             brand_identity: { ...blueprint.brand_identity, category: e.target.value }
                           })
                         }
-                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-[#0f766e] focus:outline-none"
+                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-primary focus:outline-none"
                       />
                     </div>
                   </div>
 
                   {/* Target Audience */}
                   <div className="bg-[#f6f3ee]/60 p-4 border border-[#e7e0d4] rounded-xl space-y-3">
-                    <div className="flex items-center gap-2 text-[#0f766e] font-bold text-xs uppercase tracking-wider">
+                    <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
                       <Target size={14} /> Target Audience
                     </div>
 
@@ -393,7 +393,7 @@ export function StrategyIntakeModal({
                             }
                           })
                         }
-                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-[#0f766e] focus:outline-none"
+                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-primary focus:outline-none"
                       />
                     </div>
 
@@ -413,14 +413,14 @@ export function StrategyIntakeModal({
                             }
                           })
                         }
-                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-[#0f766e] focus:outline-none"
+                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-primary focus:outline-none"
                       />
                     </div>
                   </div>
 
                   {/* Positioning & Offer */}
                   <div className="bg-[#f6f3ee]/60 p-4 border border-[#e7e0d4] rounded-xl space-y-3">
-                    <div className="flex items-center gap-2 text-[#0f766e] font-bold text-xs uppercase tracking-wider">
+                    <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
                       <Briefcase size={14} /> Positioning & Offer
                     </div>
 
@@ -437,7 +437,7 @@ export function StrategyIntakeModal({
                             positioning: { ...blueprint.positioning, core_positioning: e.target.value }
                           })
                         }
-                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-[#0f766e] focus:outline-none"
+                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-primary focus:outline-none"
                       />
                     </div>
 
@@ -454,14 +454,14 @@ export function StrategyIntakeModal({
                             offer: { ...blueprint.offer, main_offer: e.target.value }
                           })
                         }
-                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-[#0f766e] focus:outline-none"
+                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-primary focus:outline-none"
                       />
                     </div>
                   </div>
 
                   {/* Messaging & Copy Direction */}
                   <div className="bg-[#f6f3ee]/60 p-4 border border-[#e7e0d4] rounded-xl space-y-3">
-                    <div className="flex items-center gap-2 text-[#0f766e] font-bold text-xs uppercase tracking-wider">
+                    <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
                       <Megaphone size={14} /> Core Message & Messaging
                     </div>
 
@@ -478,7 +478,7 @@ export function StrategyIntakeModal({
                             messaging: { ...blueprint.messaging, core_message: e.target.value }
                           })
                         }
-                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-[#0f766e] focus:outline-none"
+                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-primary focus:outline-none"
                       />
                     </div>
 
@@ -495,7 +495,7 @@ export function StrategyIntakeModal({
                             messaging: { ...blueprint.messaging, brand_voice: e.target.value }
                           })
                         }
-                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-[#0f766e] focus:outline-none"
+                        className="w-full bg-white border border-[#e7e0d4] rounded-lg p-2.5 text-xs text-[#1f2933] focus:border-primary focus:outline-none"
                       />
                     </div>
                   </div>
@@ -524,7 +524,7 @@ export function StrategyIntakeModal({
               )}
               <button
                 onClick={() => handleSaveAndApply(true)}
-                className="px-6 py-2.5 bg-[#0f766e] hover:bg-[#115e59] text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-xs"
+                className="px-6 py-2.5 bg-primary hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-xs"
               >
                 <Sparkles size={16} />
                 {hasActiveProject ? 'Buat Project Baru dari JSON' : 'Terapkan Strategy Blueprint'}
