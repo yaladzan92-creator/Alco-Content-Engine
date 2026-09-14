@@ -159,6 +159,14 @@ if (fs.existsSync(authorityKeyPath)) {
   } else {
     successes.push('Security Audit: authority-key.ts bebas dari Private Key (Authority Public Key only).');
   }
+
+  // ALCO LICENSE STANDARD v1.0 Section 3: Official Authority Public Key verification
+  const OFFICIAL_HEX = '7a8e99b9ba45bc9f8847bc9fc4952a87b7fa22a3b0c09a5b22ed939de0ed5162';
+  if (keyContent.includes(OFFICIAL_HEX)) {
+    successes.push('ALCO LICENSE STANDARD v1.0 Section 3 terverifikasi: Official Authority Public Key HEX identik.');
+  } else {
+    errors.push('ALCO LICENSE STANDARD v1.0 Section 3: Authority Public Key HEX wajib bernilai 7a8e99b9ba45bc9f8847bc9fc4952a87b7fa22a3b0c09a5b22ed939de0ed5162!');
+  }
 }
 
 // 7. Check Electron Production Runtime & Health Check Route
@@ -198,9 +206,32 @@ if (fs.existsSync(electronMainPath) && fs.existsSync(electronPreloadPath)) {
 }
 
 if (fs.existsSync(healthRoutePath)) {
-  successes.push('Endpoint health check production (/api/health) terpasang.');
+  const healthContent = fs.readFileSync(healthRoutePath, 'utf8');
+  if (healthContent.includes('alco-content-engine')) {
+    successes.push('Endpoint health check production (/api/health) terpasang dengan app identity "alco-content-engine".');
+  } else {
+    errors.push('app/api/health/route.ts wajib menyertakan app identity "alco-content-engine"!');
+  }
 } else {
   errors.push('app/api/health/route.ts wajib ada untuk health check!');
+}
+
+if (fs.existsSync(electronMainPath)) {
+  const mainContent = fs.readFileSync(electronMainPath, 'utf8');
+  if (mainContent.includes('alco-content-engine')) {
+    successes.push('Health check client di electron/main.cjs memvalidasi app identity (ALCO APP STANDARD v2.4 Section 5A).');
+  } else {
+    errors.push('electron/main.cjs wajib memvalidasi app identity "alco-content-engine" pada health check!');
+  }
+}
+
+// 9. Check Icons & Assets Configuration (ALCO APP STANDARD v2.4 Section 7)
+const iconIcoPath = path.join(projectRoot, 'assets', 'icon.ico');
+const iconPngPath = path.join(projectRoot, 'assets', 'icon.png');
+if (fs.existsSync(iconIcoPath) && fs.existsSync(iconPngPath)) {
+  successes.push('Asset icon terpasang lengkap (assets/icon.ico dan assets/icon.png).');
+} else {
+  errors.push('File assets/icon.ico atau assets/icon.png tidak ditemukan!');
 }
 
 if (fs.existsSync(electronBuilderPath)) {
@@ -210,8 +241,76 @@ if (fs.existsSync(electronBuilderPath)) {
   } else {
     errors.push('electron-builder.json appId atau productName tidak sesuai!');
   }
+
+  if (builderConfig.icon === 'assets/icon.ico' && builderConfig.win?.icon === 'assets/icon.ico') {
+    successes.push('Konfigurasi icon Windows di electron-builder.json terpasang valid.');
+  } else {
+    errors.push('electron-builder.json harus mengarahkan icon dan win.icon ke assets/icon.ico!');
+  }
 } else {
   errors.push('electron-builder.json tidak ditemukan!');
+}
+
+// 10. Check ALCO APP STANDARD v2.5 Section 14A: Official Wire Format Contract
+const verificationPath = path.join(projectRoot, 'lib', 'license', 'verification.ts');
+const apiVerifyPath = path.join(projectRoot, 'app', 'api', 'license', 'verify', 'route.ts');
+
+if (fs.existsSync(verificationPath) && fs.existsSync(apiVerifyPath)) {
+  const verifyCode = fs.readFileSync(verificationPath, 'utf8');
+  const apiCode = fs.readFileSync(apiVerifyPath, 'utf8');
+
+  const hex128Regex = /\[0-9a-fA-F\]\{128\}/;
+  const hasClientHexCheck = hex128Regex.test(verifyCode) && verifyCode.includes('signatureHex');
+  const hasApiHexCheck = hex128Regex.test(apiCode) && apiCode.includes('signatureHex');
+
+  if (hasClientHexCheck && hasApiHexCheck) {
+    successes.push('Section 14A Signature Contract terverifikasi: Ed25519 wire format tepat 128 karakter hex divalidasi pada client & API.');
+  } else {
+    errors.push('Section 14A: verification.ts dan route.ts wajib memvalidasi signature wire format tepat 128 karakter hexadecimal (/^[0-9a-fA-F]{128}$/)!');
+  }
+} else {
+  errors.push('File verification.ts atau api/license/verify/route.ts tidak ditemukan!');
+}
+
+// 11. Check ALCO APP STANDARD v2.5 Section 15B: License Activation UX Standard
+const licenseGatePath = path.join(projectRoot, 'components', 'license', 'LicenseGate.tsx');
+if (fs.existsSync(licenseGatePath)) {
+  const gateCode = fs.readFileSync(licenseGatePath, 'utf8');
+  const mandatoryGuidance = 'Request Code berhasil disalin. Langkah berikutnya: kirim Request Code kepada Admin ALCO untuk mendapatkan License Code. Setelah menerima License Code, kembali ke halaman ini dan lanjutkan ke tahap Aktivasi.';
+
+  const hasMandatoryGuidance = gateCode.includes(mandatoryGuidance);
+  const has3Stages = gateCode.includes('Tahap 1') && gateCode.includes('Tahap 2') && gateCode.includes('Tahap 3');
+  const hasNextToActivation = gateCode.includes('btn-next-to-activation') || gateCode.includes('Lanjutkan ke Tahap 3');
+
+  if (hasMandatoryGuidance && has3Stages && hasNextToActivation) {
+    successes.push('Section 15B UX Standard terverifikasi: Pola 3 tahap (Buat, Dapatkan, Aktivasi) dan instruksi wajib next action terpasang tanpa dead-end.');
+  } else {
+    errors.push('Section 15B: LicenseGate.tsx wajib mematuhi standar UX ALCO (3 tahap aktivasi dan instruksi wajib setelah Request Code disalin)!');
+  }
+} else {
+  errors.push('components/license/LicenseGate.tsx tidak ditemukan!');
+}
+
+// 12. Check ALCO LICENSE STANDARD v1.0 Section 4: Request Code Checksum Contract
+const crcPath = path.join(projectRoot, 'lib', 'license', 'crc16.ts');
+const requestCodePath = path.join(projectRoot, 'lib', 'license', 'request-code.ts');
+
+if (fs.existsSync(crcPath) && fs.existsSync(requestCodePath)) {
+  const crcCode = fs.readFileSync(crcPath, 'utf8');
+  const reqCode = fs.readFileSync(requestCodePath, 'utf8');
+
+  const has0xA001 = crcCode.includes('0xA001');
+  const hasReflected = crcCode.includes('>> 1') && crcCode.includes('& 0x0001');
+  const hasOnlyPayloadChecksum = reqCode.includes('calculateChecksum(base64UrlPayload)') || reqCode.includes('calculateCRC16(base64UrlPayload)');
+  const noPrefixInChecksum = !reqCode.includes('calculateChecksum(prefixAndPayload)') && !reqCode.includes('calculateCRC16(prefixAndPayload)');
+
+  if (has0xA001 && hasReflected && hasOnlyPayloadChecksum && noPrefixInChecksum) {
+    successes.push('ALCO LICENSE STANDARD v1.0 Section 4 terverifikasi: Polynomial 0xA001 reflected & Checksum dihitung HANYA dari Base64URL payload.');
+  } else {
+    errors.push('ALCO LICENSE STANDARD v1.0 Section 4: Checksum wajib menggunakan polynomial 0xA001 reflected dan dihitung HANYA dari string Base64URL payload!');
+  }
+} else {
+  errors.push('lib/license/crc16.ts atau lib/license/request-code.ts tidak ditemukan!');
 }
 
 // Summary output

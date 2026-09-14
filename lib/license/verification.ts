@@ -1,5 +1,5 @@
 import { AlcoLicensePayload, AlcoVerificationResult } from './types';
-import { canonicalize, base64UrlDecode, base64UrlToUint8Array } from './canonical';
+import { canonicalize, base64UrlDecode, hexToUint8Array } from './canonical';
 import { ALCO_APP_ID, ALCO_AUTHORITY_PUBLIC_KEY_SPKI } from './authority-key';
 import { isValidAlcoDeviceId } from './device-fingerprint';
 
@@ -74,7 +74,14 @@ export function isLicenseExpired(license: AlcoLicensePayload): boolean {
 
 /**
  * Parses and verifies an ALCO License Code string.
- * Format: ALCO-LIC-v1.<BASE64URL_CANONICAL_PAYLOAD>.<BASE64URL_SIGNATURE>
+ * ALCO LICENSE STANDARD v1.0 Section 6 Official Wire Format:
+ * Format: ALCO-LIC-v1.<BASE64URL_CANONICAL_PAYLOAD>.<SIGNATURE_HEX>
+ * Signature Contract:
+ * - Algoritma: Ed25519
+ * - Signature: 64 bytes
+ * - Representasi wire: HEX
+ * - Panjang: tepat 128 karakter hexadecimal (/^[0-9a-fA-F]{128}$/)
+ * - DILARANG mengubah SIGNATURE_HEX menjadi Base64, Base64URL, atau encoding lain.
  */
 export async function verifyLicenseCode(
   rawLicenseCode: string,
@@ -88,13 +95,22 @@ export async function verifyLicenseCode(
   const segments = trimmed.split('.');
 
   if (segments.length !== 3) {
-    return { valid: false, status: 'malformed', error: 'Format kode lisensi tidak valid (harus 3 segmen ALCO-LIC-v1.*)' };
+    return { valid: false, status: 'malformed', error: 'Format kode lisensi tidak valid (harus 3 segmen ALCO-LIC-v1.<payload>.<signature_hex>)' };
   }
 
-  const [prefix, base64Payload, base64Signature] = segments;
+  const [prefix, base64Payload, signatureHex] = segments;
 
   if (prefix !== 'ALCO-LIC-v1') {
     return { valid: false, status: 'malformed', error: `Prefix lisensi tidak dikenali: ${prefix}. Diharapkan ALCO-LIC-v1` };
+  }
+
+  // ALCO LICENSE STANDARD v1.0 Section 6: Signature wire representation MUST be exactly 128 hex chars
+  if (!signatureHex || !/^[0-9a-fA-F]{128}$/.test(signatureHex)) {
+    return {
+      valid: false,
+      status: 'malformed',
+      error: 'Format signature lisensi tidak valid: wajib tepat 128 karakter hexadecimal sesuai ALCO LICENSE STANDARD v1.0 Section 6',
+    };
   }
 
   // 1. Decode payload
@@ -175,7 +191,9 @@ export async function verifyLicenseCode(
   try {
     const nodeCrypto = await import('crypto');
     const dataBuffer = Buffer.from(canonicalData, 'utf8');
-    const sigBuffer = Buffer.from(base64UrlToUint8Array(base64Signature));
+    const sigBuffer = typeof Buffer !== 'undefined'
+      ? Buffer.from(signatureHex, 'hex')
+      : Buffer.from(hexToUint8Array(signatureHex));
 
     const publicKey = nodeCrypto.createPublicKey({
       key: ALCO_AUTHORITY_PUBLIC_KEY_SPKI,

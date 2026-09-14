@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { AlcoLicensePayload, AlcoVerificationResult } from '@/lib/license/types';
-import { canonicalize, base64UrlDecode, base64UrlToUint8Array } from '@/lib/license/canonical';
+import { canonicalize, base64UrlDecode } from '@/lib/license/canonical';
 import { ALCO_APP_ID, ALCO_AUTHORITY_PUBLIC_KEY_SPKI } from '@/lib/license/authority-key';
 import { validateLicensePayloadSchema, isLicenseExpired } from '@/lib/license/verification';
 
@@ -27,11 +27,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const [prefix, base64Payload, base64Signature] = segments;
+    const [prefix, base64Payload, signatureHex] = segments;
 
     if (prefix !== 'ALCO-LIC-v1') {
       return NextResponse.json(
         { valid: false, status: 'malformed', error: `Prefix lisensi tidak dikenali: ${prefix}. Diharapkan ALCO-LIC-v1` } satisfies AlcoVerificationResult,
+        { status: 400 }
+      );
+    }
+
+    // ALCO LICENSE STANDARD v1.0 Section 6: Signature wire representation MUST be exactly 128 hex chars
+    if (!signatureHex || !/^[0-9a-fA-F]{128}$/.test(signatureHex)) {
+      return NextResponse.json(
+        {
+          valid: false,
+          status: 'malformed',
+          error: 'Format signature lisensi tidak valid: wajib tepat 128 karakter hexadecimal sesuai ALCO LICENSE STANDARD v1.0 Section 6',
+        } satisfies AlcoVerificationResult,
         { status: 400 }
       );
     }
@@ -106,7 +118,7 @@ export async function POST(req: NextRequest) {
 
     // 7. Verify Ed25519 Digital Signature with Node.js crypto
     const dataBuffer = Buffer.from(canonicalData, 'utf8');
-    const sigBuffer = Buffer.from(base64UrlToUint8Array(base64Signature));
+    const sigBuffer = Buffer.from(signatureHex, 'hex');
 
     const publicKey = crypto.createPublicKey({
       key: ALCO_AUTHORITY_PUBLIC_KEY_SPKI,

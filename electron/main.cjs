@@ -134,6 +134,9 @@ function findAvailablePort(defaultPort = 3000) {
 
 /**
  * Performs HTTP GET health check against /api/health with timeout.
+ * ALCO APP STANDARD v2.4 Section 5A Requirement:
+ * Health check MUST validate application identity (e.g. app: "alco-content-engine").
+ * If the response belongs to another application or fails identity check, do not reuse the server.
  */
 function checkServerHealth(port, timeoutMs = 2000) {
   return new Promise((resolve) => {
@@ -146,7 +149,25 @@ function checkServerHealth(port, timeoutMs = 2000) {
       },
       (res) => {
         if (res.statusCode >= 200 && res.statusCode < 400) {
-          resolve(true);
+          let rawData = '';
+          res.setEncoding('utf8');
+          res.on('data', (chunk) => {
+            rawData += chunk;
+          });
+          res.on('end', () => {
+            try {
+              const data = JSON.parse(rawData);
+              if (data && data.status === 'ok' && data.app === 'alco-content-engine') {
+                resolve(true);
+              } else {
+                log(`Health check on port ${port} returned unexpected app identity: "${data?.app}" (expected "alco-content-engine")`);
+                resolve(false);
+              }
+            } catch {
+              log(`Health check on port ${port} returned non-JSON response`);
+              resolve(false);
+            }
+          });
         } else {
           resolve(false);
         }
@@ -281,12 +302,19 @@ async function stopProductionServer() {
    ========================================================================== */
 
 function createWindow(port) {
+  const iconIco = path.join(__dirname, '../assets/icon.ico');
+  const iconPng = path.join(__dirname, '../assets/icon.png');
+  const windowIcon = process.platform === 'win32' && fs.existsSync(iconIco)
+    ? iconIco
+    : (fs.existsSync(iconPng) ? iconPng : undefined);
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 1024,
     minHeight: 700,
     title: 'ALCO Content Engine',
+    ...(windowIcon ? { icon: windowIcon } : {}),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
@@ -335,13 +363,19 @@ if (!gotTheLock) {
       let port = 3102;
 
       if (isDev) {
-        const isDevHealthy = await checkServerHealth(3102, 800);
+        let isDevHealthy = await checkServerHealth(3102, 800);
         if (isDevHealthy) {
           log('Connected to existing development server on port 3102.');
           port = 3102;
         } else {
-          log('Dev server not detected on port 3102, starting production server runtime...');
-          port = await startProductionServer();
+          isDevHealthy = await checkServerHealth(3000, 800);
+          if (isDevHealthy) {
+            log('Connected to existing development server on port 3000.');
+            port = 3000;
+          } else {
+            log('Dev server not detected on port 3102 or 3000, starting production server runtime...');
+            port = await startProductionServer();
+          }
         }
       } else {
         port = await startProductionServer();

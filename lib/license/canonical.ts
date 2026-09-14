@@ -85,3 +85,17 @@ export function uint8ArrayToBase64Url(bytes: Uint8Array): string {
   }
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
+
+/**
+ * ALCO APP STANDARD v2.5 Section 14A:
+ * Converts a 128-character hexadecimal Ed25519 signature string to Uint8Array (64 bytes)
+ */
+export function hexToUint8Array(hex: string): Uint8Array {
+  const cleanHex = hex.trim();
+  const len = cleanHex.length;
+  const bytes = new Uint8Array(len / 2);
+  for (let i = 0; i < len; i += 2) {
+    bytes[i / 2] = parseInt(cleanHex.substring(i, i + 2), 16);
+  }
+  return bytes;
+}

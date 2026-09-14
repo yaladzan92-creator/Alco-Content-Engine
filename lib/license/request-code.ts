@@ -1,5 +1,5 @@
 import { AlcoRequestCodePayload } from './types';
-import { calculateCRC16, verifyCRC16 } from './crc16';
+import { calculateChecksum, verifyChecksum } from './crc16';
 import { base64UrlEncode, base64UrlDecode } from './canonical';
 import { isValidAlcoDeviceId } from './device-fingerprint';
 
@@ -14,8 +14,15 @@ export interface GenerateRequestCodeParams {
 }
 
 /**
- * Generates an ALCO Request Code v2 compliant with ALCO APP STANDARD v2.2
- * Format: ALCO-REQ-v2.<BASE64URL_PAYLOAD>.<CRC16>
+ * Generates an ALCO Request Code v2 compliant with ALCO LICENSE STANDARD v1.0 Section 4:
+ *
+ * Format: ALCO-REQ-v2.<BASE64URL_PAYLOAD>.<CHECKSUM>
+ *
+ * HARD CONTRACT RULES:
+ * 1. Serialization: Payload Object -> JSON.stringify -> UTF-8 -> Base64URL without padding
+ * 2. Checksum Contract: Checksum is calculated ONLY from the Base64URL payload string.
+ *    Dilarang menghitung checksum dari prefix, prefix+payload, JSON mentah, dll.
+ * 3. Final Assembly: 'ALCO-REQ-v2' + '.' + Base64URL Payload + '.' + Checksum
  */
 export function generateRequestCodeV2(params: GenerateRequestCodeParams): string {
   const { name, email, deviceId, notes, requestId } = params;
@@ -46,12 +53,15 @@ export function generateRequestCodeV2(params: GenerateRequestCodeParams): string
     payload.notes = notes.trim();
   }
 
+  // 4.2 Serialization: JSON.stringify -> UTF-8 -> Base64URL without padding
   const payloadJson = JSON.stringify(payload);
   const base64UrlPayload = base64UrlEncode(payloadJson);
-  const prefixAndPayload = `ALCO-REQ-v2.${base64UrlPayload}`;
-  const crc = calculateCRC16(prefixAndPayload);
 
-  return `${prefixAndPayload}.${crc}`;
+  // 4.3 Checksum Contract: Checksum dihitung HANYA dari string Base64URL payload
+  const checksum = calculateChecksum(base64UrlPayload);
+
+  // 4.5 Final Assembly
+  return `ALCO-REQ-v2.${base64UrlPayload}.${checksum}`;
 }
 
 export interface ParseRequestCodeResult {
@@ -61,7 +71,7 @@ export interface ParseRequestCodeResult {
 }
 
 /**
- * Validates and decodes an ALCO Request Code (v2 or legacy v1 fail-closed).
+ * Validates and decodes an ALCO Request Code compliant with ALCO LICENSE STANDARD v1.0 Section 4.
  */
 export function parseAndValidateRequestCode(code: string): ParseRequestCodeResult {
   if (!code || typeof code !== 'string') {
@@ -78,16 +88,15 @@ export function parseAndValidateRequestCode(code: string): ParseRequestCodeResul
     return { valid: false, error: 'Invalid Request Code segment structure. Expected 3 segments.' };
   }
 
-  const [prefix, base64Payload, crc] = segments;
+  const [prefix, base64Payload, checksum] = segments;
 
   if (prefix !== 'ALCO-REQ-v2') {
     return { valid: false, error: `Unsupported Request Code prefix: ${prefix}. Expected ALCO-REQ-v2` };
   }
 
-  // Verify CRC16
-  const dataToVerify = `${prefix}.${base64Payload}`;
-  if (!verifyCRC16(dataToVerify, crc)) {
-    return { valid: false, error: 'Request Code CRC checksum mismatch (data may be corrupted)' };
+  // Verify Checksum (HANYA dari string Base64URL payload sesuai ALCO LICENSE STANDARD v1.0 Section 4.3)
+  if (!verifyChecksum(base64Payload, checksum)) {
+    return { valid: false, error: 'Request Code checksum mismatch (data may be corrupted)' };
   }
 
   // Decode payload

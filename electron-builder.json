@@ -23,6 +23,7 @@
     "node_modules/@img/**/*"
   ],
   "win": {
+    "icon": "assets/icon.ico",
     "target": [
       {
         "target": "nsis",
@@ -37,6 +38,9 @@
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
-    "artifactName": "ALCO Content Engine Setup ${version}.${ext}"
+    "installerIcon": "assets/icon.ico",
+    "uninstallerIcon": "assets/icon.ico",
+    "artifactName": "ALCO Content Engine Setup ${version}.${ext}",
+    "deleteAppDataOnUninstall": false
   }
 }

@@ -398,10 +398,18 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({ isOpen, onClose }) =
                       {generatedRequestCode}
                     </div>
 
-                    <p className="text-[11px] text-stone-500 dark:text-slate-400">
-                      Silakan kirimkan kode di atas ke Owner / support Aladzan Corpora untuk diterbitkan License Code
-                      resmi. Setelah menerima License Code, buka tab &quot;Aktivasi License Code&quot;.
-                    </p>
+                    <div className="p-3 bg-emerald-100/60 dark:bg-emerald-950/50 rounded-xl border border-emerald-300 dark:border-emerald-800 text-[11px] text-emerald-900 dark:text-emerald-200 space-y-2">
+                      <p className="font-medium leading-relaxed">
+                        Request Code berhasil disalin. Langkah berikutnya: kirim Request Code kepada Admin ALCO untuk mendapatkan License Code. Setelah menerima License Code, kembali ke halaman ini dan lanjutkan ke tahap Aktivasi.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('activate')}
+                        className="px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-bold hover:bg-primary/90 transition-all flex items-center gap-1.5"
+                      >
+                        <span>Lanjut ke Tahap Aktivasi</span>
+                      </button>
+                    </div>
                   </motion.div>
                 )}
               </form>

@@ -18,6 +18,7 @@ import {
   ArrowRight,
   HelpCircle,
   Zap,
+  Send,
 } from 'lucide-react';
 import { useLicense } from '@/lib/license/license-context';
 import { AlcoVerificationResult } from '@/lib/license/types';
@@ -27,10 +28,13 @@ interface LicenseGateProps {
   children: React.ReactNode;
 }
 
+type LicenseStage = 'step1' | 'step2' | 'step3' | 'guide';
+
 export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
   const { state, deviceId, isLoading, activateLicense, generateRequestCode, reverifyLicense } = useLicense();
 
-  const [activeTab, setActiveTab] = useState<'activate' | 'request' | 'guide'>('activate');
+  // ALCO APP STANDARD v2.5 Section 15B: Baseline 3-stage activation flow
+  const [activeTab, setActiveTab] = useState<LicenseStage>('step1');
 
   // Request Code Generator state
   const [custName, setCustName] = useState('');
@@ -75,6 +79,8 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
         notes: notes.trim() || undefined,
       });
       setGeneratedRequestCode(code);
+      // ALCO APP STANDARD v2.5 Section 15B: Automatic seamless progression to Tahap 2
+      setActiveTab('step2');
     } catch (err: unknown) {
       setReqError(err instanceof Error ? err.message : 'Gagal membuat Request Code');
     }
@@ -84,7 +90,7 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
     if (!generatedRequestCode) return;
     navigator.clipboard.writeText(generatedRequestCode);
     setReqCopied(true);
-    setTimeout(() => setReqCopied(false), 2000);
+    setTimeout(() => setReqCopied(false), 3500);
   };
 
   const handleActivate = async (e: React.FormEvent) => {
@@ -124,7 +130,7 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20 text-xs font-semibold tracking-wider uppercase">
               <Zap size={13} className="text-cyan-600 dark:text-cyan-400" />
-              <span>ALCO Content Engine v2.2</span>
+              <span>ALCO Content Engine v2.5</span>
             </div>
             <h1 className="text-xl font-bold text-foreground">Memeriksa Integritas Lisensi</h1>
             <p className="text-sm text-muted-foreground">
@@ -148,7 +154,7 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
 
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Loader2 className="w-4 h-4 animate-spin text-primary" />
-            <span>ALCO License Protocol v2.2 Fail-Closed Gate</span>
+            <span>ALCO License Protocol v2.5 Fail-Closed Gate</span>
           </div>
         </div>
       </div>
@@ -177,7 +183,7 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
               </span>
             </div>
             <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              License Protocol v2.2 &bull; App ID: {ALCO_APP_ID}
+              License Protocol v1.0 &bull; App ID: {ALCO_APP_ID}
             </div>
           </div>
         </div>
@@ -199,11 +205,11 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
               <div className="space-y-1">
                 <div className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-md bg-primary/10 text-primary uppercase tracking-wider mb-1">
                   <Lock size={12} />
-                  Startup License Gate
+                  Startup License Gate (ALCO LICENSE STANDARD v1.0)
                 </div>
                 <h1 className="text-2xl font-black tracking-tight text-foreground">Aktivasi Lisensi Diperlukan</h1>
                 <p className="text-sm text-muted-foreground max-w-lg">
-                  Sesuai <strong>ALCO APP STANDARD v2.2</strong>, workspace aplikasi hanya dapat dibuka setelah lisensi perangkat keras diverifikasi secara lokal menggunakan Authority Public Key Ed25519.
+                  Sesuai <strong>ALCO LICENSE STANDARD v1.0</strong>, workspace aplikasi hanya dapat dibuka setelah lisensi perangkat keras diverifikasi secara lokal menggunakan Authority Public Key Ed25519 resmi.
                 </p>
               </div>
 
@@ -267,104 +273,89 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
             </div>
           </div>
 
-          {/* Navigation Tabs */}
-          <div className="flex border-b border-border bg-muted/40 px-6">
-            <button
-              id="tab-activate-license"
-              onClick={() => setActiveTab('activate')}
-              className={`py-3.5 px-4 text-xs font-bold uppercase tracking-wider border-b-2 flex items-center gap-2 transition-colors ${
-                activeTab === 'activate'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Key size={15} />
-              <span>Masukkan Kode Lisensi</span>
-            </button>
+          {/* Section 15B Baseline 3-Stage Stepper Navigation */}
+          <div className="flex border-b border-border bg-muted/40 px-4 sm:px-6 overflow-x-auto">
             <button
               id="tab-request-code"
-              onClick={() => setActiveTab('request')}
-              className={`py-3.5 px-4 text-xs font-bold uppercase tracking-wider border-b-2 flex items-center gap-2 transition-colors ${
-                activeTab === 'request'
+              onClick={() => setActiveTab('step1')}
+              className={`py-3.5 px-3 sm:px-4 text-xs font-bold border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap ${
+                activeTab === 'step1'
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
-              <FileText size={15} />
-              <span>Buat Request Code v2</span>
+              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black ${
+                activeTab === 'step1' ? 'bg-primary text-primary-foreground' : 'bg-muted-foreground/20 text-muted-foreground'
+              }`}>
+                1
+              </span>
+              <span>Tahap 1: Buat Request Code</span>
             </button>
+
+            <button
+              id="tab-step-2"
+              onClick={() => setActiveTab('step2')}
+              className={`py-3.5 px-3 sm:px-4 text-xs font-bold border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap ${
+                activeTab === 'step2'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black ${
+                activeTab === 'step2' ? 'bg-primary text-primary-foreground' : 'bg-muted-foreground/20 text-muted-foreground'
+              }`}>
+                2
+              </span>
+              <span>Tahap 2: Dapatkan License Code</span>
+            </button>
+
+            <button
+              id="tab-activate-license"
+              onClick={() => setActiveTab('step3')}
+              className={`py-3.5 px-3 sm:px-4 text-xs font-bold border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap ${
+                activeTab === 'step3'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black ${
+                activeTab === 'step3' ? 'bg-primary text-primary-foreground' : 'bg-muted-foreground/20 text-muted-foreground'
+              }`}>
+                3
+              </span>
+              <span>Tahap 3: Aktivasi Lisensi</span>
+            </button>
+
             <button
               id="tab-license-guide"
               onClick={() => setActiveTab('guide')}
-              className={`py-3.5 px-4 text-xs font-bold uppercase tracking-wider border-b-2 flex items-center gap-2 transition-colors ${
+              className={`py-3.5 px-3 sm:px-4 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ml-auto ${
                 activeTab === 'guide'
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
-              <HelpCircle size={15} />
+              <HelpCircle size={14} />
               <span>Panduan</span>
             </button>
           </div>
 
           {/* Tab Content */}
           <div className="p-6 sm:p-8">
-            {/* TAB 1: ACTIVATE LICENSE */}
-            {activeTab === 'activate' && (
-              <form onSubmit={handleActivate} className="space-y-4">
-                <div>
-                  <label htmlFor="input-license-code" className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                    ALCO Signed License Code
-                  </label>
-                  <textarea
-                    id="input-license-code"
-                    rows={4}
-                    value={licenseInput}
-                    onChange={(e) => setLicenseInput(e.target.value)}
-                    placeholder="ALCO-LIC-v1.eyJsaWNlbnNlVmVyc2lvbiI6IjEuMCIs... (Tempel kode lisensi dari Owner di sini)"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground font-mono text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
-                    required
-                  />
-                  <p className="text-[11px] text-muted-foreground mt-1.5">
-                    Format resmi: <code className="font-mono text-foreground font-semibold">ALCO-LIC-v1.&lt;PAYLOAD&gt;.&lt;SIGNATURE&gt;</code>
+            {/* TAHAP 1: BUAT REQUEST CODE (Section 15B) */}
+            {activeTab === 'step1' && (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+                    <FileText size={16} className="text-primary" />
+                    <span>Tahap 1 — Buat Request Code</span>
+                  </h2>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Isi identitas Anda untuk menghasilkan Request Code resmi v2. Kode ini akan diikat secara aman dengan Device ID komputer Anda.
                   </p>
                 </div>
 
-                {activationResult && !activationResult.valid && (
-                  <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-start gap-2.5">
-                    <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-semibold">Aktivasi Ditolak:</div>
-                      <div className="text-destructive/90 mt-0.5">{activationResult.error}</div>
-                    </div>
-                  </div>
-                )}
-
-                <button
-                  id="btn-submit-license-activation"
-                  type="submit"
-                  disabled={isActivating || !licenseInput.trim()}
-                  className="w-full py-3 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-bold shadow-md hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isActivating ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      <span>Memverifikasi Signature Ed25519...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Key size={16} />
-                      <span>Verifikasi & Aktifkan Workspace</span>
-                    </>
-                  )}
-                </button>
-              </form>
-            )}
-
-            {/* TAB 2: GENERATE REQUEST CODE v2 */}
-            {activeTab === 'request' && (
-              <div className="space-y-4">
-                <form onSubmit={handleGenerateRequest} className="space-y-3.5">
+                <form onSubmit={handleGenerateRequest} className="space-y-3.5 pt-1">
                   <div>
                     <label htmlFor="input-customer-name" className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                       Nama Lengkap Pelanggan
@@ -410,7 +401,7 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
                       type="text"
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Contoh: Paket Pro Tahunan / Lisensi Lifetime"
+                      placeholder="Contoh: Paket Lisensi Lifetime / Konten Studio"
                       className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                     />
                   </div>
@@ -424,79 +415,195 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
                   <button
                     id="btn-generate-request-code"
                     type="submit"
-                    className="w-full py-2.5 px-4 rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/80 text-xs font-bold border border-border transition-all flex items-center justify-center gap-2"
+                    className="w-full py-3 px-4 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2"
                   >
                     <FileText size={15} />
-                    <span>Hasilkan Request Code v2</span>
+                    <span>Hasilkan Request Code v2 & Lanjut ke Tahap 2</span>
+                    <ArrowRight size={14} />
                   </button>
                 </form>
+              </div>
+            )}
 
-                {generatedRequestCode && (
-                  <div className="mt-4 p-4 rounded-xl bg-muted/40 border border-border space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                        <Check size={14} className="text-green-600 dark:text-green-400" />
-                        <span>Request Code v2 Berhasil Dibuat</span>
+            {/* TAHAP 2: DAPATKAN LICENSE CODE (Section 15B) */}
+            {activeTab === 'step2' && (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+                    <Send size={16} className="text-primary" />
+                    <span>Tahap 2 — Dapatkan License Code</span>
+                  </h2>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Salin Request Code di bawah ini dan kirimkan kepada Admin ALCO untuk mendapatkan License Code resmi Anda.
+                  </p>
+                </div>
+
+                {generatedRequestCode ? (
+                  <div className="space-y-4 pt-1">
+                    <div className="p-4 rounded-xl bg-muted/40 border border-border space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                          <Check size={14} className="text-green-600 dark:text-green-400" />
+                          <span>Request Code v2 Siap Dikirim</span>
+                        </div>
+                        <button
+                          id="btn-copy-request-code"
+                          onClick={handleCopyRequestCode}
+                          className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+                        >
+                          {reqCopied ? (
+                            <>
+                              <Check size={13} className="text-green-600 dark:text-green-400" />
+                              <span className="text-green-600 dark:text-green-400">Tersalin!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy size={13} />
+                              <span>Salin Request Code</span>
+                            </>
+                          )}
+                        </button>
                       </div>
-                      <button
-                        id="btn-copy-request-code"
-                        onClick={handleCopyRequestCode}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
-                      >
-                        {reqCopied ? (
-                          <>
-                            <Check size={13} className="text-green-600 dark:text-green-400" />
-                            <span className="text-green-600 dark:text-green-400">Tersalin!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy size={13} />
-                            <span>Salin Request Code</span>
-                          </>
-                        )}
-                      </button>
+
+                      <div className="font-mono text-xs text-foreground bg-background p-3 rounded-lg border border-border break-all select-all max-h-28 overflow-y-auto">
+                        {generatedRequestCode}
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground">
+                        Format resmi: <code className="font-mono text-foreground font-semibold">ALCO-REQ-v2.&lt;PAYLOAD&gt;.&lt;CRC16&gt;</code>
+                      </p>
                     </div>
 
-                    <div className="font-mono text-xs text-foreground bg-background p-3 rounded-lg border border-border break-all select-all max-h-28 overflow-y-auto">
-                      {generatedRequestCode}
+                    {/* ALCO APP STANDARD v2.5 Section 15B Mandatory Action Message Banner */}
+                    <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-foreground space-y-2.5">
+                      <div className="flex items-center gap-2 text-cyan-700 dark:text-cyan-300 font-bold text-xs">
+                        <ArrowRight size={14} />
+                        <span>Arahan Langkah Berikutnya (Wajib):</span>
+                      </div>
+                      <p className="text-xs leading-relaxed text-foreground font-medium">
+                        Request Code berhasil disalin. Langkah berikutnya: kirim Request Code kepada Admin ALCO untuk mendapatkan License Code. Setelah menerima License Code, kembali ke halaman ini dan lanjutkan ke tahap Aktivasi.
+                      </p>
+                      <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                        <button
+                          id="btn-next-to-activation"
+                          onClick={() => setActiveTab('step3')}
+                          className="py-2.5 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-sm hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
+                        >
+                          <span>Lanjutkan ke Tahap 3: Aktivasi Lisensi</span>
+                          <ArrowRight size={14} />
+                        </button>
+                      </div>
                     </div>
-
-                    <p className="text-[11px] text-muted-foreground">
-                      Kirimkan kode ini ke Owner atau admin ALCO Ecosystem. Request Code dilengkapi checksum CRC16 untuk mencegah kerusakan teks.
+                  </div>
+                ) : (
+                  <div className="p-6 rounded-xl border border-dashed border-border bg-muted/20 text-center space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      Anda belum membuat Request Code. Silakan selesaikan Tahap 1 terlebih dahulu.
                     </p>
+                    <button
+                      onClick={() => setActiveTab('step1')}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all"
+                    >
+                      <FileText size={14} />
+                      <span>Kembali ke Tahap 1: Buat Request Code</span>
+                    </button>
                   </div>
                 )}
               </div>
             )}
 
-            {/* TAB 3: GUIDELINES */}
+            {/* TAHAP 3: AKTIVASI LISENSI (Section 15B) */}
+            {activeTab === 'step3' && (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+                    <Key size={16} className="text-primary" />
+                    <span>Tahap 3 — Aktivasi Lisensi</span>
+                  </h2>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Tempelkan kode lisensi yang Anda terima dari Admin ALCO di bawah ini untuk membuka akses workspace aplikasi.
+                  </p>
+                </div>
+
+                <form onSubmit={handleActivate} className="space-y-4 pt-1">
+                  <div>
+                    <label htmlFor="input-license-code" className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                      ALCO Signed License Code
+                    </label>
+                    <textarea
+                      id="input-license-code"
+                      rows={4}
+                      value={licenseInput}
+                      onChange={(e) => setLicenseInput(e.target.value)}
+                      placeholder="ALCO-LIC-v1.eyJsaWNlbnNlVmVyc2lvbiI6IjEuMCIs... (Tempel kode lisensi resmi dari Admin ALCO di sini)"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground font-mono text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
+                      required
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1.5">
+                      Format resmi (ALCO LICENSE STANDARD v1.0 Section 6):{' '}
+                      <code className="font-mono text-foreground font-semibold">
+                        ALCO-LIC-v1.&lt;PAYLOAD&gt;.&lt;SIGNATURE_HEX (128 karakter)&gt;
+                      </code>
+                    </p>
+                  </div>
+
+                  {activationResult && !activationResult.valid && (
+                    <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-start gap-2.5">
+                      <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-semibold">Aktivasi Ditolak:</div>
+                        <div className="text-destructive/90 mt-0.5">{activationResult.error}</div>
+                        <div className="text-[11px] text-destructive/80 mt-1">
+                          Pastikan License Code diterbitkan untuk App ID &quot;{ALCO_APP_ID}&quot; dan Hardware Device ID &quot;{deviceId}&quot;.
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    id="btn-submit-license-activation"
+                    type="submit"
+                    disabled={isActivating || !licenseInput.trim()}
+                    className="w-full py-3 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-bold shadow-md hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isActivating ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>Memverifikasi Signature Ed25519...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Key size={16} />
+                        <span>Verifikasi &amp; Aktifkan Workspace</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* TAB: PANDUAN */}
             {activeTab === 'guide' && (
               <div className="space-y-4 text-xs text-muted-foreground">
                 <div className="p-4 rounded-xl bg-muted/30 border border-border space-y-3">
-                  <div className="text-sm font-bold text-foreground">Alur Aktivasi 4 Langkah:</div>
+                  <div className="text-sm font-bold text-foreground">Alur Aktivasi Standar ALCO (v2.5):</div>
                   <div className="space-y-2.5">
                     <div className="flex items-start gap-2.5">
                       <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">1</div>
                       <div>
-                        <strong className="text-foreground">Buat Request Code:</strong> Buka tab &quot;Buat Request Code v2&quot;, isi nama dan email Anda, lalu salin kode yang dihasilkan.
+                        <strong className="text-foreground">Tahap 1 — Buat Request Code:</strong> Isi nama lengkap dan email Anda, lalu buat Request Code v2.
                       </div>
                     </div>
                     <div className="flex items-start gap-2.5">
                       <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">2</div>
                       <div>
-                        <strong className="text-foreground">Kirim ke Owner ALCO:</strong> Kirimkan Request Code tersebut kepada Owner / License Generator resmi Aladzan Corpora.
+                        <strong className="text-foreground">Tahap 2 — Dapatkan License Code:</strong> Salin Request Code dan kirimkan ke Admin ALCO.
                       </div>
                     </div>
                     <div className="flex items-start gap-2.5">
                       <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">3</div>
                       <div>
-                        <strong className="text-foreground">Terima License Code:</strong> Owner akan memproses kode dan menandatangani License Code resmi dengan kunci privat otoritas Ed25519.
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2.5">
-                      <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">4</div>
-                      <div>
-                        <strong className="text-foreground">Aktifkan Aplikasi:</strong> Tempelkan License Code pada tab &quot;Masukkan Kode Lisensi&quot; dan tekan tombol &quot;Verifikasi &amp; Aktifkan Workspace&quot;.
+                        <strong className="text-foreground">Tahap 3 — Aktivasi Lisensi:</strong> Tempelkan License Code yang diterima, tekan tombol aktivasi, dan sistem akan memverifikasi integritas Ed25519 secara lokal.
                       </div>
                     </div>
                   </div>
@@ -505,7 +612,7 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
                 <div className="p-3.5 rounded-xl border border-border/80 bg-background flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <ShieldCheck size={16} className="text-primary shrink-0" />
-                    <span>Keamanan Terjamin: Lisensi diverifikasi secara lokal dan offline menggunakan Authority Public Key.</span>
+                    <span>Keamanan Terjamin: Lisensi diverifikasi secara lokal dan offline menggunakan Authority Public Key resmi.</span>
                   </div>
                 </div>
               </div>
