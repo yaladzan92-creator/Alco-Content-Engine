@@ -332,15 +332,15 @@ if (!gotTheLock) {
   app.whenReady().then(async () => {
     try {
       const isDev = !app.isPackaged;
-      let port = 3000;
+      let port = 3102;
 
       if (isDev) {
-        const isDevHealthy = await checkServerHealth(3000, 800);
+        const isDevHealthy = await checkServerHealth(3102, 800);
         if (isDevHealthy) {
-          log('Connected to existing development server on port 3000.');
-          port = 3000;
+          log('Connected to existing development server on port 3102.');
+          port = 3102;
         } else {
-          log('Dev server not detected on port 3000, starting production server runtime...');
+          log('Dev server not detected on port 3102, starting production server runtime...');
           port = await startProductionServer();
         }
       } else {
