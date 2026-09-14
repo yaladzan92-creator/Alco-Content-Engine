@@ -23,6 +23,7 @@
     "node_modules/@img/**/*"
   ],
   "win": {
+    "executableName": "ALCO Content Engine",
     "icon": "assets/icon.ico",
     "target": [
       {

@@ -134,7 +134,7 @@ function findAvailablePort(defaultPort = 3000) {
 
 /**
  * Performs HTTP GET health check against /api/health with timeout.
- * ALCO APP STANDARD v2.4 Section 5A Requirement:
+ * ALCO APP STANDARD v2.7 Section 4 Requirement:
  * Health check MUST validate application identity (e.g. app: "alco-content-engine").
  * If the response belongs to another application or fails identity check, do not reuse the server.
  */
