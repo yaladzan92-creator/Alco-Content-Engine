@@ -191,9 +191,7 @@ export async function verifyLicenseCode(
   try {
     const nodeCrypto = await import('crypto');
     const dataBuffer = Buffer.from(canonicalData, 'utf8');
-    const sigBuffer = typeof Buffer !== 'undefined'
-      ? Buffer.from(signatureHex, 'hex')
-      : Buffer.from(hexToUint8Array(signatureHex));
+    const sigBuffer = Buffer.from(signatureHex, 'hex');
 
     const publicKey = nodeCrypto.createPublicKey({
       key: ALCO_AUTHORITY_PUBLIC_KEY_SPKI,

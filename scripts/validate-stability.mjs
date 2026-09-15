@@ -254,7 +254,7 @@ if (fs.existsSync(electronBuilderPath)) {
     builderConfig.asarUnpack.includes('public/**/*') &&
     builderConfig.asarUnpack.includes('assets/**/*') &&
     builderConfig.asarUnpack.includes('electron/**/*') &&
-    builderConfig.asarUnpack.includes('node_modules/next/**/*');
+    (builderConfig.asarUnpack.includes('node_modules/**/*') || builderConfig.asarUnpack.includes('node_modules/next/**/*'));
 
   if (hasFiles && hasAsarUnpack) {
     successes.push('ALCO APP STANDARD v2.9 Section 5: Production Dependency Contract terpenuhi (files packaging & asarUnpack runtime dependencies lengkap).');
