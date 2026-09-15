@@ -188,7 +188,10 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          <span className="text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider bg-muted text-muted-foreground border border-border">
+            Plan: {state.license?.plan?.toUpperCase() || 'UNLICENSED'}
+          </span>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-destructive/10 text-destructive text-xs font-semibold">
             <ShieldAlert size={14} />
             <span>Akses Dibatasi &bull; Belum Berlisensi</span>
@@ -586,7 +589,7 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
             {activeTab === 'guide' && (
               <div className="space-y-4 text-xs text-muted-foreground">
                 <div className="p-4 rounded-xl bg-muted/30 border border-border space-y-3">
-                  <div className="text-sm font-bold text-foreground">Alur Aktivasi Standar ALCO (v2.5):</div>
+                  <div className="text-sm font-bold text-foreground">Alur Aktivasi Resmi (ALCO LICENSE STANDARD v1.0):</div>
                   <div className="space-y-2.5">
                     <div className="flex items-start gap-2.5">
                       <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">1</div>

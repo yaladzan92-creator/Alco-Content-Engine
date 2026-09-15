@@ -15,12 +15,40 @@ function errorLog(msg, err) {
 let activeHttpServer = null;
 let activeNextApp = null;
 
+function resolveServerAppDir(dirArg) {
+  if (dirArg) {
+    const cleaned = dirArg.trim();
+    if (fs.existsSync(path.join(cleaned, '.next'))) {
+      return cleaned;
+    }
+  }
+  if (process.env.APP_DIR && fs.existsSync(path.join(process.env.APP_DIR, '.next'))) {
+    return process.env.APP_DIR;
+  }
+
+  const candidates = [];
+  if (process.resourcesPath) {
+    candidates.push(path.join(process.resourcesPath, 'app.asar.unpacked'));
+    candidates.push(path.join(process.resourcesPath, 'app'));
+  }
+  candidates.push(path.resolve(__dirname, '..'));
+  candidates.push(path.resolve(__dirname));
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(path.join(candidate, '.next'))) {
+      return candidate;
+    }
+  }
+
+  return path.resolve(__dirname, '..');
+}
+
 async function startServer(options = {}) {
   const port = options.port || 3000;
   const host = options.host || '127.0.0.1';
-  const appDir = options.appDir || path.resolve(__dirname, '..');
+  const appDir = resolveServerAppDir(options.appDir);
 
-  log(`Initializing Next.js production server from directory: ${appDir} on ${host}:${port}`);
+  log(`[RESOURCE PATH] Initializing Next.js production server from directory: ${appDir} on ${host}:${port}`);
 
   process.env.NODE_ENV = 'production';
   process.env.PORT = String(port);
@@ -115,11 +143,9 @@ if (require.main === module) {
   const port = portArg
     ? parseInt(portArg.split('=')[1], 10)
     : parseInt(process.env.PORT || '3000', 10);
-  const appDir = dirArg
-    ? dirArg.split('=')[1]
-    : (process.env.APP_DIR || path.resolve(__dirname, '..'));
+  const appDirArg = dirArg ? dirArg.split('=')[1] : undefined;
 
-  startServer({ port, appDir })
+  startServer({ port, appDir: appDirArg })
     .then(({ port, host }) => {
       log(`Production server ready on http://${host}:${port}`);
       if (process.send) {

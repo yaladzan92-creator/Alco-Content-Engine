@@ -85,26 +85,64 @@ ipcMain.handle('alco:get-device-id', async () => {
 });
 
 /* ==========================================================================
-   2. PRODUCTION RUNTIME & SERVER LIFECYCLE
+   2. PRODUCTION RUNTIME & SERVER LIFECYCLE (ALCO APP STANDARD v2.9)
    ========================================================================== */
 
 /**
  * Resolves the application root directory containing .next build.
+ * ALCO APP STANDARD v2.9 Section 6: Production Resource Path Contract
+ * Never relies on process.cwd() or working directory assumptions.
  */
 function resolveAppDirectory() {
+  const candidates = [];
+
   if (app.isPackaged) {
     const resourcesPath = process.resourcesPath;
-    const asarUnpacked = path.join(resourcesPath, 'app.asar.unpacked');
-    if (fs.existsSync(asarUnpacked) && fs.existsSync(path.join(asarUnpacked, '.next'))) {
-      return asarUnpacked;
+    if (resourcesPath) {
+      candidates.push(path.join(resourcesPath, 'app.asar.unpacked'));
+      candidates.push(path.join(resourcesPath, 'app'));
     }
-    const appDir = path.join(resourcesPath, 'app');
-    if (fs.existsSync(appDir) && fs.existsSync(path.join(appDir, '.next'))) {
-      return appDir;
-    }
-    return path.resolve(__dirname, '..');
+    try {
+      if (typeof app.getAppPath === 'function') {
+        const appPath = app.getAppPath();
+        candidates.push(appPath);
+        candidates.push(path.join(path.dirname(appPath), 'app.asar.unpacked'));
+      }
+    } catch {}
   }
-  return path.resolve(__dirname, '..');
+
+  candidates.push(path.resolve(__dirname, '..'));
+  candidates.push(path.resolve(__dirname));
+
+  for (const candidate of candidates) {
+    if (candidate && fs.existsSync(path.join(candidate, '.next'))) {
+      log(`[RESOURCE PATH] Resolved production app directory: ${candidate}`);
+      return candidate;
+    }
+  }
+
+  const fallback = path.resolve(__dirname, '..');
+  log(`[RESOURCE PATH] Falling back to default app directory: ${fallback}`);
+  return fallback;
+}
+
+/**
+ * Resolves the server.cjs script path.
+ */
+function resolveServerScript() {
+  const candidates = [
+    path.join(__dirname, 'server.cjs'),
+  ];
+  if (app.isPackaged && process.resourcesPath) {
+    candidates.unshift(path.join(process.resourcesPath, 'app.asar.unpacked', 'electron', 'server.cjs'));
+    candidates.unshift(path.join(process.resourcesPath, 'app', 'electron', 'server.cjs'));
+  }
+  for (const c of candidates) {
+    if (fs.existsSync(c)) {
+      return c;
+    }
+  }
+  return path.join(__dirname, 'server.cjs');
 }
 
 /**
@@ -134,7 +172,7 @@ function findAvailablePort(defaultPort = 3000) {
 
 /**
  * Performs HTTP GET health check against /api/health with timeout.
- * ALCO APP STANDARD v2.7 Section 4 Requirement:
+ * ALCO APP STANDARD v2.9 Section 4 Requirement:
  * Health check MUST validate application identity (e.g. app: "alco-content-engine").
  * If the response belongs to another application or fails identity check, do not reuse the server.
  */
@@ -186,16 +224,61 @@ function checkServerHealth(port, timeoutMs = 2000) {
 }
 
 /**
- * Polls the health check endpoint with retry until healthy or max retries exceeded.
+ * Verifies that GET / returns HTTP 200 (or redirect).
+ * ALCO APP STANDARD v2.9 Section 6 Requirement:
+ * Packaged App -> Start Local Server -> GET / -> UI Entry Point ditemukan -> HTTP 200 -> UI tampil
+ * Health endpoint yang PASS tidak cukup bila route utama aplikasi (/) gagal menampilkan UI (404).
+ */
+function checkUiEntryPoint(port, timeoutMs = 2000) {
+  return new Promise((resolve) => {
+    const req = http.get(
+      {
+        hostname: '127.0.0.1',
+        port: port,
+        path: '/',
+        timeout: timeoutMs,
+        headers: {
+          Accept: 'text/html,application/xhtml+xml',
+        },
+      },
+      (res) => {
+        const statusCode = res.statusCode || 0;
+        res.resume(); // drain response
+        if (statusCode >= 200 && statusCode < 400) {
+          resolve(true);
+        } else {
+          log(`UI entry point check on port ${port} returned HTTP status ${statusCode} (expected 200)`);
+          resolve(false);
+        }
+      }
+    );
+
+    req.on('error', () => {
+      resolve(false);
+    });
+
+    req.on('timeout', () => {
+      req.destroy();
+      resolve(false);
+    });
+  });
+}
+
+/**
+ * Polls both health check and UI entry point endpoints with retry until healthy or max retries exceeded.
  */
 async function waitForServerHealthy(port, maxAttempts = 30, intervalMs = 1000) {
-  log(`Waiting for production server at port ${port} to pass health check...`);
+  log(`Waiting for production server at port ${port} to pass health check and UI entry point check...`);
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     if (isShuttingDown) return false;
     const isHealthy = await checkServerHealth(port, 1500);
     if (isHealthy) {
-      log(`Server passed health check on attempt ${attempt}.`);
-      return true;
+      const isUiReady = await checkUiEntryPoint(port, 1500);
+      if (isUiReady) {
+        log(`Server passed health check AND UI entry point check on attempt ${attempt}.`);
+        return true;
+      }
+      log(`Health check passed, but UI entry point (GET /) not yet ready (attempt ${attempt}). Retrying...`);
     }
     await new Promise((r) => setTimeout(r, intervalMs));
   }
@@ -208,9 +291,9 @@ async function waitForServerHealthy(port, maxAttempts = 30, intervalMs = 1000) {
 async function startProductionServer() {
   const port = await findAvailablePort(3000);
   const appDir = resolveAppDirectory();
-  const serverScript = path.join(__dirname, 'server.cjs');
+  const serverScript = resolveServerScript();
 
-  log(`Starting internal production server process... (Port: ${port}, AppDir: ${appDir})`);
+  log(`Starting internal production server process... (Port: ${port}, AppDir: ${appDir}, Script: ${serverScript})`);
 
   const env = {
     ...process.env,
@@ -301,12 +384,39 @@ async function stopProductionServer() {
    3. BROWSER WINDOW CREATION & LIFECYCLE
    ========================================================================== */
 
+function resolveWindowIcon() {
+  const icoCandidates = [
+    path.join(__dirname, '../assets/icon.ico'),
+    path.join(__dirname, 'assets/icon.ico'),
+  ];
+  const pngCandidates = [
+    path.join(__dirname, '../assets/icon.png'),
+    path.join(__dirname, 'assets/icon.png'),
+  ];
+
+  if (process.resourcesPath) {
+    icoCandidates.unshift(path.join(process.resourcesPath, 'app.asar.unpacked', 'assets', 'icon.ico'));
+    icoCandidates.unshift(path.join(process.resourcesPath, 'assets', 'icon.ico'));
+    pngCandidates.unshift(path.join(process.resourcesPath, 'app.asar.unpacked', 'assets', 'icon.png'));
+    pngCandidates.unshift(path.join(process.resourcesPath, 'assets', 'icon.png'));
+  }
+
+  if (process.platform === 'win32') {
+    for (const p of icoCandidates) {
+      if (fs.existsSync(p)) return p;
+    }
+  }
+  for (const p of pngCandidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  for (const p of icoCandidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return undefined;
+}
+
 function createWindow(port) {
-  const iconIco = path.join(__dirname, '../assets/icon.ico');
-  const iconPng = path.join(__dirname, '../assets/icon.png');
-  const windowIcon = process.platform === 'win32' && fs.existsSync(iconIco)
-    ? iconIco
-    : (fs.existsSync(iconPng) ? iconPng : undefined);
+  const windowIcon = resolveWindowIcon();
 
   mainWindow = new BrowserWindow({
     width: 1280,

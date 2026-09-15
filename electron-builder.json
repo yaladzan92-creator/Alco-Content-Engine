@@ -14,6 +14,8 @@
   ],
   "asarUnpack": [
     ".next/**/*",
+    "public/**/*",
+    "assets/**/*",
     "electron/**/*",
     "node_modules/next/**/*",
     "node_modules/@google/genai/**/*",

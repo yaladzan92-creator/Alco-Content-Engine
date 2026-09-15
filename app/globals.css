@@ -68,34 +68,41 @@
   }
 }
 
-/* Dark mode ALCO Hub palette overrides for legacy cream/beige tokens */
+/* ==========================================================================
+   ALCO UI/UX STANDARD v1.0 Normalization (Section 3.1 & Section 28)
+   Map legacy hardcoded color tokens to canonical ALCO semantic tokens
+   ========================================================================== */
+.bg-\[\#fffdf8\] {
+  background-color: var(--card) !important;
+}
+
+.bg-\[\#f6f3ee\] {
+  background-color: var(--muted) !important;
+}
+
+.border-\[\#e7e0d4\] {
+  border-color: var(--border) !important;
+}
+
+.text-\[\#1f2933\] {
+  color: var(--foreground) !important;
+}
+
+.text-\[\#627d98\] {
+  color: var(--muted-foreground) !important;
+}
+
 .dark body {
-  background-color: #0b0f17 !important;
-  color: #f8fafc !important;
-}
-
-.dark .bg-\[\#fffdf8\] {
-  background-color: #0f172a !important;
-}
-
-.dark .bg-\[\#f6f3ee\] {
-  background-color: #1e293b !important;
-}
-
-.dark .border-\[\#e7e0d4\] {
-  border-color: #1e293b !important;
-}
-
-.dark .text-\[\#1f2933\] {
-  color: #f8fafc !important;
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
 }
 
 .dark .bg-white {
-  background-color: #0f172a !important;
+  background-color: var(--card) !important;
 }
 
 .dark .text-stone-900 {
-  color: #f8fafc !important;
+  color: var(--foreground) !important;
 }
 
 .dark .text-stone-800 {
@@ -107,7 +114,7 @@
 }
 
 .dark .text-stone-600 {
-  color: #94a3b8 !important;
+  color: var(--muted-foreground) !important;
 }
 
 .dark .text-stone-500 {
@@ -115,15 +122,15 @@
 }
 
 .dark .bg-stone-50 {
-  background-color: #1e293b !important;
+  background-color: var(--muted) !important;
 }
 
 .dark .bg-stone-100 {
-  background-color: #1e293b !important;
+  background-color: var(--muted) !important;
 }
 
 .dark .border-stone-200 {
-  border-color: #334155 !important;
+  border-color: var(--border) !important;
 }
 
 .custom-scrollbar::-webkit-scrollbar {

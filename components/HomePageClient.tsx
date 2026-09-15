@@ -824,22 +824,22 @@ export default function HomePageClient() {
 
         {/* Incomplete Project State Warning Card */}
         {activeProjectId && isProjectIncomplete && (
-          <div className="bg-[#fffdf8] border border-amber-300 rounded-2xl p-8 md:p-12 text-center space-y-6 shadow-sm relative overflow-hidden">
+          <div className="bg-card border border-amber-500/40 rounded-2xl p-8 md:p-12 text-center space-y-6 shadow-sm relative overflow-hidden">
             <div className="max-w-md mx-auto space-y-3 relative z-10">
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 mx-auto shadow-xs">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 mx-auto shadow-xs">
                 <AlertTriangle size={24} />
               </div>
-              <h2 className="text-xl md:text-2xl font-bold text-[#1f2933]">
+              <h2 className="text-xl md:text-2xl font-bold text-foreground">
                 Project ini tidak lengkap. Silakan upload blueprint ulang.
               </h2>
-              <p className="text-xs md:text-sm text-[#627d98] leading-relaxed">
+              <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">
                 Data blueprint atau context strategi untuk project ini tidak ditemukan atau rusak. Silakan upload blueprint untuk mengaktifkan kembali perancangan kalender.
               </p>
             </div>
             <div className="flex justify-center relative z-10">
               <button
                 onClick={() => setIsIntakeModalOpen(true)}
-                className="flex items-center gap-2 px-6 py-3.5 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl text-xs shadow-sm transition-all group"
+                className="flex items-center gap-2 px-6 py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl text-xs shadow-sm transition-all group"
               >
                 <FileText size={16} className="group-hover:scale-105 transition-transform" />
                 Upload Blueprint
@@ -850,16 +850,16 @@ export default function HomePageClient() {
 
         {/* Empty state / Welcome card when no active project or no items yet */}
         {(!activeProjectId || (!isProjectIncomplete && items.length === 0 && !isConfiguring)) && (
-          <div className="bg-[#fffdf8] border border-[#e7e0d4] rounded-2xl p-8 md:p-12 text-center space-y-6 shadow-sm relative overflow-hidden">
+          <div className="bg-card border border-border rounded-2xl p-8 md:p-12 text-center space-y-6 shadow-sm relative overflow-hidden">
             <div className="max-w-2xl mx-auto space-y-3 relative z-10">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold">
                 <Sparkles size={14} />
                 Langkah Pertama Strategy
               </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-[#1f2933] tracking-tight">
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">
                 {activeProjectId ? 'Buat Kalender Konten Anda' : 'Belum Ada Project Aktif'}
               </h2>
-              <p className="text-sm text-[#627d98] leading-relaxed">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 {activeProjectId 
                   ? 'Sistem otomatisasi kalender konten berbasis strategi funnel (TOFU, MOFU, BOFU). Silakan pilih langkah awal untuk mulai menyusun kalender strategi konten Anda.'
                   : 'Sistem penyimpanan sekarang berbasis project agar data tidak tercampur. Mulai Strategy Intake baru untuk membuat project pertama Anda.'}
@@ -869,7 +869,7 @@ export default function HomePageClient() {
               {!activeProjectId && (
                 <button
                   onClick={() => setIsIntakeModalOpen(true)}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl text-xs shadow-sm transition-all group"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl text-xs shadow-sm transition-all group"
                 >
                   <FileText size={16} className="group-hover:scale-105 transition-transform" />
                   Mulai Project Baru
@@ -879,14 +879,14 @@ export default function HomePageClient() {
                 <>
                   <button
                     onClick={() => setIsIntakeModalOpen(true)}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-white hover:bg-[#f6f3ee] text-[#1f2933] font-semibold rounded-xl text-xs border border-[#e7e0d4] shadow-xs transition-all group"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-secondary hover:bg-muted text-foreground font-semibold rounded-xl text-xs border border-border shadow-xs transition-all group"
                   >
                     <FileText size={16} className="text-primary group-hover:scale-105 transition-transform" />
                     Edit Strategy
                   </button>
                   <button
                     onClick={handleOpenConfig}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl text-xs shadow-sm transition-all group"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl text-xs shadow-sm transition-all group"
                   >
                     <Layers size={16} className="group-hover:scale-105 transition-transform" />
                     Buat Kalender Pertama

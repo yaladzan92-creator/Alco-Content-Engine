@@ -52,7 +52,7 @@ if (!foundNextConfig) {
 }
 
 // ============================================================================
-// 2. Package.json Scripts & Port Registry (ALCO APP STANDARD v2.7 Section 3)
+// 2. Package.json Scripts & Port Registry (ALCO APP STANDARD v2.9 Section 3)
 // ============================================================================
 const packageJsonPath = path.join(projectRoot, 'package.json');
 if (!fs.existsSync(packageJsonPath)) {
@@ -74,11 +74,11 @@ if (!fs.existsSync(packageJsonPath)) {
       successes.push('package.json "start" script valid ("next start").');
     }
 
-    // ALCO APP STANDARD v2.7 Section 3: ALCO Content Engine Dev Port is 3102
+    // ALCO APP STANDARD v2.9 Section 3: ALCO Content Engine Dev Port is 3102
     if (scripts['desktop:dev'] && scripts['desktop:dev'].includes('3102')) {
-      successes.push('ALCO APP STANDARD v2.7 Section 3: Development Port 3102 terdaftar di script desktop:dev.');
+      successes.push('ALCO APP STANDARD v2.9 Section 3: Development Port 3102 terdaftar di script desktop:dev.');
     } else {
-      errors.push('ALCO APP STANDARD v2.7 Section 3: Script desktop:dev wajib menggunakan port resmi 3102!');
+      errors.push('ALCO APP STANDARD v2.9 Section 3: Script desktop:dev wajib menggunakan port resmi 3102!');
     }
   } catch {
     errors.push('Gagal mem-parse package.json!');
@@ -177,7 +177,7 @@ if (fs.existsSync(authorityKeyPath)) {
 }
 
 // ============================================================================
-// 6. ALCO APP STANDARD v2.7 Section 4: Production Runtime & Health Verification
+// 6. ALCO APP STANDARD v2.9 Section 4 & 6: Production Runtime & Health Verification
 // ============================================================================
 const electronMainPath = path.join(projectRoot, 'electron', 'main.cjs');
 const electronServerPath = path.join(projectRoot, 'electron', 'server.cjs');
@@ -188,7 +188,7 @@ const electronBuilderPath = path.join(projectRoot, 'electron-builder.json');
 if (fs.existsSync(electronMainPath) && fs.existsSync(electronServerPath)) {
   const mainContent = fs.readFileSync(electronMainPath, 'utf8');
   if (mainContent.includes('checkServerHealth') && mainContent.includes('findAvailablePort') && mainContent.includes('stopProductionServer')) {
-    successes.push('ALCO APP STANDARD v2.7 Section 4: Production runtime terpasang (dynamic port, health retry, child process management).');
+    successes.push('ALCO APP STANDARD v2.9 Section 4: Production runtime terpasang (dynamic port, health retry, child process management).');
   } else {
     errors.push('electron/main.cjs harus mengimplementasikan findAvailablePort, checkServerHealth, dan stopProductionServer!');
   }
@@ -229,52 +229,94 @@ if (fs.existsSync(healthRoutePath)) {
 if (fs.existsSync(electronMainPath)) {
   const mainContent = fs.readFileSync(electronMainPath, 'utf8');
   if (mainContent.includes('alco-content-engine')) {
-    successes.push('ALCO APP STANDARD v2.7 Section 4: Health check client memvalidasi App Identity "alco-content-engine".');
+    successes.push('ALCO APP STANDARD v2.9 Section 4: Health check client memvalidasi App Identity "alco-content-engine".');
   } else {
     errors.push('electron/main.cjs wajib memvalidasi app identity "alco-content-engine" pada health check!');
   }
 }
 
 // ============================================================================
-// 7. ALCO APP STANDARD v2.7 Section 2 & 6: App Identity & Windows Icon Contract
+// 7. ALCO APP STANDARD v2.9 Section 5 & 6: Production Dependency & Resource Path Contract
 // ============================================================================
-const iconIcoPath = path.join(projectRoot, 'assets', 'icon.ico');
-const iconPngPath = path.join(projectRoot, 'assets', 'icon.png');
-if (fs.existsSync(iconIcoPath) && fs.existsSync(iconPngPath)) {
-  successes.push('ALCO APP STANDARD v2.7 Section 6: Source Icon terpasang lengkap (assets/icon.ico dan assets/icon.png).');
-} else {
-  errors.push('File assets/icon.ico atau assets/icon.png tidak ditemukan!');
-}
-
 if (fs.existsSync(electronBuilderPath)) {
   const builderConfig = JSON.parse(fs.readFileSync(electronBuilderPath, 'utf8'));
 
-  // Section 2: App Identity
-  if (builderConfig.appId === 'com.alco.contentengine' && builderConfig.productName === 'ALCO Content Engine') {
-    successes.push('ALCO APP STANDARD v2.7 Section 2: App Identity stabil (appId: com.alco.contentengine, productName: ALCO Content Engine).');
+  // Section 5: Production Dependency Contract
+  const hasFiles = Array.isArray(builderConfig.files) &&
+    builderConfig.files.includes('.next/**/*') &&
+    builderConfig.files.includes('public/**/*') &&
+    builderConfig.files.includes('electron/**/*') &&
+    builderConfig.files.includes('assets/**/*') &&
+    builderConfig.files.includes('package.json');
+
+  const hasAsarUnpack = Array.isArray(builderConfig.asarUnpack) &&
+    builderConfig.asarUnpack.includes('.next/**/*') &&
+    builderConfig.asarUnpack.includes('public/**/*') &&
+    builderConfig.asarUnpack.includes('assets/**/*') &&
+    builderConfig.asarUnpack.includes('electron/**/*') &&
+    builderConfig.asarUnpack.includes('node_modules/next/**/*');
+
+  if (hasFiles && hasAsarUnpack) {
+    successes.push('ALCO APP STANDARD v2.9 Section 5: Production Dependency Contract terpenuhi (files packaging & asarUnpack runtime dependencies lengkap).');
   } else {
-    errors.push('electron-builder.json appId atau productName tidak sesuai!');
+    errors.push('ALCO APP STANDARD v2.9 Section 5: electron-builder.json wajib menyertakan .next, public, assets, electron, dan next di files & asarUnpack!');
   }
 
-  // Section 6: Windows Icon Contract
+  // Section 2: App Identity
+  if (builderConfig.appId === 'com.alco.contentengine' && builderConfig.productName === 'ALCO Content Engine' && builderConfig.win?.executableName === 'ALCO Content Engine') {
+    successes.push('ALCO APP STANDARD v2.9 Section 2: App Identity stabil (appId: com.alco.contentengine, productName: ALCO Content Engine, executableName: ALCO Content Engine).');
+  } else {
+    errors.push('electron-builder.json appId, productName, atau executableName tidak sesuai!');
+  }
+
+  // Section 8: Windows Icon Contract
   const hasRootIcon = builderConfig.icon === 'assets/icon.ico';
   const hasWinIcon = builderConfig.win?.icon === 'assets/icon.ico';
   const hasNsisIcons = builderConfig.nsis?.installerIcon === 'assets/icon.ico' && builderConfig.nsis?.uninstallerIcon === 'assets/icon.ico';
 
   if (hasRootIcon && hasWinIcon && hasNsisIcons) {
-    successes.push('ALCO APP STANDARD v2.7 Section 6: Windows Icon Contract lengkap (builder root icon, win.icon, installerIcon, uninstallerIcon).');
+    successes.push('ALCO APP STANDARD v2.9 Section 8: Windows Icon Contract lengkap (builder root icon, win.icon, installerIcon, uninstallerIcon).');
   } else {
     errors.push('electron-builder.json Windows Icon Contract belum lengkap!');
   }
 
-  // Section 7 & 8: Persistence & Upgrade Integrity
+  // Section 8 & 9: Persistence & Upgrade Integrity
   if (builderConfig.nsis?.deleteAppDataOnUninstall === false) {
-    successes.push('ALCO APP STANDARD v2.7 Section 8: Persistence & Upgrade Integrity terverifikasi (deleteAppDataOnUninstall: false).');
+    successes.push('ALCO APP STANDARD v2.9 Section 9: Persistence & Upgrade Integrity terverifikasi (deleteAppDataOnUninstall: false).');
   } else {
     errors.push('electron-builder.json NSIS configuration wajib menetapkan deleteAppDataOnUninstall: false!');
   }
 } else {
   errors.push('electron-builder.json tidak ditemukan!');
+}
+
+// Section 6: Production Resource Path Contract in electron/main.cjs and electron/server.cjs
+if (fs.existsSync(electronMainPath) && fs.existsSync(electronServerPath)) {
+  const mainContent = fs.readFileSync(electronMainPath, 'utf8');
+  const serverContent = fs.readFileSync(electronServerPath, 'utf8');
+
+  const mainHasCandidateResolution = mainContent.includes('resolveAppDirectory') &&
+    mainContent.includes('resourcesPath') &&
+    mainContent.includes('app.asar.unpacked') &&
+    mainContent.includes('checkUiEntryPoint');
+
+  const serverHasCandidateResolution = serverContent.includes('resolveServerAppDir') &&
+    serverContent.includes('resourcesPath') &&
+    serverContent.includes('app.asar.unpacked');
+
+  if (mainHasCandidateResolution && serverHasCandidateResolution) {
+    successes.push('ALCO APP STANDARD v2.9 Section 6: Production Resource Path Contract terverifikasi (multi-candidate real path resolution bebas dari ketergantungan process.cwd() & UI entry point GET / 200 check).');
+  } else {
+    errors.push('ALCO APP STANDARD v2.9 Section 6: electron/main.cjs dan electron/server.cjs wajib memvalidasi production resource path independen dari process.cwd() dan memverifikasi GET / HTTP 200!');
+  }
+}
+
+const iconIcoPath = path.join(projectRoot, 'assets', 'icon.ico');
+const iconPngPath = path.join(projectRoot, 'assets', 'icon.png');
+if (fs.existsSync(iconIcoPath) && fs.existsSync(iconPngPath)) {
+  successes.push('ALCO APP STANDARD v2.9 Section 8: Source Icon terpasang lengkap (assets/icon.ico dan assets/icon.png).');
+} else {
+  errors.push('File assets/icon.ico atau assets/icon.png tidak ditemukan!');
 }
 
 // ============================================================================
@@ -346,13 +388,51 @@ if (fs.existsSync(licenseGatePath)) {
 }
 
 // ============================================================================
-// Compliance Evidence Matrix & Summary Output (ALCO APP STANDARD v2.7 Section 12)
+// 11. ALCO UI/UX STANDARD v1.0: Brand, Color, Shell & Component Normalization
+// ============================================================================
+const globalsCssPath = path.join(projectRoot, 'app', 'globals.css');
+if (fs.existsSync(globalsCssPath)) {
+  const css = fs.readFileSync(globalsCssPath, 'utf8');
+  const hasAlcoBlue = css.includes('#2563eb');
+  const hasAlcoGold = css.toLowerCase().includes('#d4a017');
+  const hasCyanAccent = css.toLowerCase().includes('#06b6d4') || css.includes('--product-accent');
+  const hasLightTokens = css.includes('#f8fafc') && css.includes('#ffffff') && css.includes('#0f172a');
+  const hasDarkTokens = css.includes('#0b0f17') && css.includes('#0f172a');
+  const hasNormalizedOverrides = css.includes('.bg-\\[\\#fffdf8\\]') && css.includes('var(--card)');
+
+  if (hasAlcoBlue && hasAlcoGold && hasCyanAccent && hasLightTokens && hasDarkTokens && hasNormalizedOverrides) {
+    successes.push('ALCO UI/UX STANDARD v1.0: Brand Identity (ALCO Blue #2563EB, Gold #D4A017), Accent (Cyan #06B6D4), dan Neutral Foundation terverifikasi.');
+  } else {
+    errors.push('ALCO UI/UX STANDARD v1.0: globals.css wajib mematuhi tokens ALCO Blue (#2563EB), Gold (#D4A017), Accent Cyan (#06B6D4), dan Neutral Foundation!');
+  }
+} else {
+  errors.push('app/globals.css tidak ditemukan!');
+}
+
+const shellPath = path.join(projectRoot, 'components', 'ContentEngineShell.tsx');
+if (fs.existsSync(shellPath)) {
+  const shell = fs.readFileSync(shellPath, 'utf8');
+  const hasSidebarDims = shell.includes('w-64') && shell.includes('w-16');
+  const hasEcosystem = shell.includes('Creative System') && shell.includes('Auto Motion');
+  const hasLicenseSection = shell.includes('Settings & License') || shell.includes('Lisensi ALCO');
+
+  if (hasSidebarDims && hasEcosystem && hasLicenseSection) {
+    successes.push('ALCO UI/UX STANDARD v1.0: App Shell & Sidebar (256px/64px, Ecosystem workflow, License entry) terverifikasi.');
+  } else {
+    errors.push('ALCO UI/UX STANDARD v1.0: ContentEngineShell.tsx wajib mematuhi dimensi sidebar, alur ekosistem, dan section lisensi!');
+  }
+} else {
+  errors.push('components/ContentEngineShell.tsx tidak ditemukan!');
+}
+
+// ============================================================================
+// Compliance Evidence Matrix & Summary Output (ALCO APP STANDARD v2.9 Section 13)
 // ============================================================================
 console.log('=== ALCO COMPLIANCE EVIDENCE MATRIX ===');
 console.log('Standards Evaluated:');
-console.log('1. ALCO APP STANDARD v2.7 (Application Core)');
+console.log('1. ALCO APP STANDARD v2.9 (Application Core)');
 console.log('2. ALCO LICENSE STANDARD v1.0 (Licensing Master)');
-console.log('3. ALCO UI/UX STANDARD v1.0 (Interface & Experience)\n');
+console.log('3. ALCO UI/UX STANDARD v1.0 (Interface & Experience Consistency)\n');
 
 for (const s of successes) {
   console.log(`[SOURCE PASS] ${s}`);
@@ -365,6 +445,6 @@ if (errors.length > 0) {
   }
   process.exit(1);
 } else {
-  console.log('\n[SOURCE PASS] Seluruh kriteria ALCO APP STANDARD v2.7 & ALCO LICENSE STANDARD v1.0 terpenuhi!\n');
+  console.log('\n[SOURCE PASS] Seluruh kriteria ALCO APP STANDARD v2.9, ALCO LICENSE STANDARD v1.0, dan ALCO UI/UX STANDARD v1.0 terpenuhi!\n');
   process.exit(0);
 }
