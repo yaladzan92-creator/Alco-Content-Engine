@@ -36,6 +36,7 @@ import {
   loadProjectCalendarItems,
   loadProjectSelectedItem,
   saveProjectSelectedItem,
+  ensureContentItemIdentity,
   getProjectCharacterDNA, 
   saveProjectCharacterDNA, 
   updateItemInProject,
@@ -3396,9 +3397,7 @@ export default function ProductionStudioPage() {
   const [characterDNA, setCharacterDNA] = useState<CharacterDNA | null>(null);
   const [savedCharacters, setSavedCharacters] = useState<CharacterDNA[]>([]);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
-  const [selectedProjectId, setSelectedProjectIdState] = useState<string | null>(null);
-  const [activeProjectIdState, setActiveProjectIdState] = useState<string | null>(null);
-  const [effectiveProjectId, setEffectiveProjectId] = useState<string>('default');
+  const [canonicalProjectId, setCanonicalProjectId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'review' | 'image' | 'carousel' | 'video'>('review');
   const [showCharacterModal, setShowCharacterModal] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -3487,8 +3486,8 @@ export default function ProductionStudioPage() {
       return;
     }
 
-    const contextValidation = validateProductionGenerationContext(effectiveProjectId, sharedContextSnapshot, sourceItem);
-    if (!contextValidation.valid || !sharedContextSnapshot) {
+    const contextValidation = validateProductionGenerationContext(canonicalProjectId, sharedContextSnapshot, sourceItem);
+    if (!contextValidation.valid || !sharedContextSnapshot || !canonicalProjectId) {
       setRenderError(contextValidation.reason || 'Konteks project tidak sinkron.');
       showToast(contextValidation.reason || 'Konteks project tidak sinkron.');
       return;
@@ -3496,7 +3495,7 @@ export default function ProductionStudioPage() {
 
     setIsRenderingVideo(true);
 
-    const requestProjectId = effectiveProjectId;
+    const requestProjectId = canonicalProjectId;
     const requestItemNo = sourceItem.no;
     const requestItemId = sourceItem.content_item_id;
 
@@ -3596,9 +3595,9 @@ export default function ProductionStudioPage() {
 
   const handleCheckRenderStatus = async (queryId?: string) => {
     const targetId = queryId || renderJobId;
-    if (!targetId || isCheckingStatus) return;
+    if (!targetId || isCheckingStatus || !canonicalProjectId) return;
 
-    const requestProjectId = effectiveProjectId;
+    const requestProjectId = canonicalProjectId;
     const requestItemNo = sourceItem?.no;
     const requestItemId = sourceItem?.content_item_id;
 
@@ -3614,6 +3613,7 @@ export default function ProductionStudioPage() {
       // ASYNC GUARD
       if (
         getActiveProjectId() !== requestProjectId ||
+        canonicalProjectId !== requestProjectId ||
         !sourceItem ||
         (requestItemId && sourceItem.content_item_id !== requestItemId) ||
         sourceItem.no !== requestItemNo
@@ -3657,8 +3657,8 @@ export default function ProductionStudioPage() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    if (!promptText || !promptText.trim() || !!imageGeneratingKey) return;
-    const requestProjectId = effectiveProjectId;
+    if (!promptText || !promptText.trim() || !!imageGeneratingKey || !canonicalProjectId) return;
+    const requestProjectId = canonicalProjectId;
     const requestItemNo = sourceItem?.no || 1;
     const requestItemId = sourceItem?.content_item_id;
     const key = `${requestItemNo}_${angleId}`;
@@ -3681,6 +3681,7 @@ export default function ProductionStudioPage() {
       // ASYNC GUARD
       if (
         getActiveProjectId() !== requestProjectId ||
+        canonicalProjectId !== requestProjectId ||
         !sourceItem ||
         (requestItemId && sourceItem.content_item_id !== requestItemId) ||
         sourceItem.no !== requestItemNo
@@ -3768,8 +3769,8 @@ export default function ProductionStudioPage() {
       return;
     }
 
-    const contextValidation = validateProductionGenerationContext(effectiveProjectId, sharedContextSnapshot, sourceItem);
-    if (!contextValidation.valid || !sharedContextSnapshot) {
+    const contextValidation = validateProductionGenerationContext(canonicalProjectId, sharedContextSnapshot, sourceItem);
+    if (!contextValidation.valid || !sharedContextSnapshot || !canonicalProjectId) {
       setRenderError(contextValidation.reason || 'Konteks project tidak sinkron.');
       showToast(contextValidation.reason || 'Konteks project tidak sinkron.');
       return;
@@ -3828,11 +3829,14 @@ export default function ProductionStudioPage() {
     setJson2VideoPayload(null);
     setSourceItem(null);
     setSharedContextSnapshot(null);
+    setRenderJobId(null);
+    setRenderJobData(null);
 
     try {
       let paramProjId: string | null = null;
       let paramContentItemId: string | null = null;
       let paramItemNo: number | null = null;
+      let tabParam: string | null = null;
 
       if (typeof window !== 'undefined') {
         const urlParams = new URLSearchParams(window.location.search);
@@ -3843,23 +3847,45 @@ export default function ProductionStudioPage() {
           const parsedNo = parseInt(noStr, 10);
           if (!isNaN(parsedNo)) paramItemNo = parsedNo;
         }
+        tabParam = urlParams.get('tab');
+      }
+
+      if (tabParam === 'image' || tabParam === 'carousel' || tabParam === 'video' || tabParam === 'review') {
+        setActiveTab(tabParam);
       }
 
       const activeProjId = getActiveProjectId();
-      const resolvedProjId = paramProjId || activeProjId || 'default';
 
-      setSelectedProjectIdState(paramProjId || activeProjId || null);
-      setActiveProjectIdState(activeProjId);
-      setEffectiveProjectId(resolvedProjId);
+      // Canonical Project ID Resolution:
+      // Prefer explicit URL parameter from calendar routing; fallback to global active project
+      // Strictly filter out 'default', 'default_project', and empty values
+      let resolvedCanonicalId: string | null = null;
+      if (paramProjId && paramProjId.trim() && paramProjId !== 'default' && paramProjId !== 'default_project') {
+        resolvedCanonicalId = paramProjId.trim();
+        // Keep active project in sync with canonical ID
+        setActiveProjectId(resolvedCanonicalId);
+      } else if (activeProjId && activeProjId.trim() && activeProjId !== 'default' && activeProjId !== 'default_project') {
+        resolvedCanonicalId = activeProjId.trim();
+      }
+
+      if (!resolvedCanonicalId) {
+        setCanonicalProjectId(null);
+        setSharedContextSnapshot(null);
+        setSourceItem(null);
+        setIsLoaded(true);
+        return;
+      }
+
+      setCanonicalProjectId(resolvedCanonicalId);
 
       // Load project-scoped shared context
-      const parsedContext = loadProjectSharedContext(resolvedProjId);
+      const parsedContext = loadProjectSharedContext(resolvedCanonicalId);
       setSharedContextSnapshot(parsedContext);
 
       // Load project calendar items
-      const calendarItems = loadProjectCalendarItems(resolvedProjId);
+      const calendarItems = loadProjectCalendarItems(resolvedCanonicalId);
 
-      // Find target item
+      // Find target item strictly belonging to canonical project
       let parsedItem: ContentItem | null = null;
 
       // 1. Try finding by contentItemId
@@ -3874,7 +3900,7 @@ export default function ProductionStudioPage() {
 
       // 3. Try finding by project's saved selected item
       if (!parsedItem) {
-        parsedItem = loadProjectSelectedItem(resolvedProjId);
+        parsedItem = loadProjectSelectedItem(resolvedCanonicalId);
       }
 
       // 4. If still not found and we have calendar items, pick the first
@@ -3886,18 +3912,18 @@ export default function ProductionStudioPage() {
       if (parsedItem) {
         parsedItem = {
           ...parsedItem,
-          projectId: resolvedProjId,
-          project_id: resolvedProjId,
+          projectId: resolvedCanonicalId,
+          project_id: resolvedCanonicalId,
         };
         setSourceItem(parsedItem);
-        saveProjectSelectedItem(resolvedProjId, parsedItem);
+        saveProjectSelectedItem(resolvedCanonicalId, parsedItem);
       } else {
         setSourceItem(null);
       }
 
-      const charList = getProjectSavedCharacters(resolvedProjId) as CharacterDNA[];
+      const charList = getProjectSavedCharacters(resolvedCanonicalId) as CharacterDNA[];
       setSavedCharacters(charList);
-      const activeCharId = getProjectActiveCharacterId(resolvedProjId);
+      const activeCharId = getProjectActiveCharacterId(resolvedCanonicalId);
       setSelectedCharacterId(activeCharId);
 
       if (activeCharId && charList.length > 0) {
@@ -3905,11 +3931,11 @@ export default function ProductionStudioPage() {
         if (found) {
           setCharacterDNA(found);
         } else {
-          const storedDNA = getProjectCharacterDNA(resolvedProjId);
+          const storedDNA = getProjectCharacterDNA(resolvedCanonicalId);
           if (storedDNA) setCharacterDNA(storedDNA);
         }
       } else {
-        const storedDNA = getProjectCharacterDNA(resolvedProjId);
+        const storedDNA = getProjectCharacterDNA(resolvedCanonicalId);
         if (storedDNA) {
           setCharacterDNA(storedDNA);
           if (storedDNA.character_id) {
@@ -3924,18 +3950,18 @@ export default function ProductionStudioPage() {
       if (parsedItem) {
         const itemKey = getItemKey(parsedItem);
         
-        const storedImage = loadProjectData(resolvedProjId, `studio_image_${itemKey}`);
-        const storedCarousel = loadProjectData(resolvedProjId, `studio_carousel_${itemKey}`);
-        const storedVideo = loadProjectData(resolvedProjId, `studio_video_${itemKey}`);
-        const storedUgc = loadProjectData(resolvedProjId, `studio_ugc_${itemKey}`);
-        const storedReview = loadProjectData(resolvedProjId, `studio_review_${itemKey}`);
-        const storedRevision = loadProjectData(resolvedProjId, `studio_revision_${itemKey}`);
+        const storedImage = loadProjectData(resolvedCanonicalId, `studio_image_${itemKey}`);
+        const storedCarousel = loadProjectData(resolvedCanonicalId, `studio_carousel_${itemKey}`);
+        const storedVideo = loadProjectData(resolvedCanonicalId, `studio_video_${itemKey}`);
+        const storedUgc = loadProjectData(resolvedCanonicalId, `studio_ugc_${itemKey}`);
+        const storedReview = loadProjectData(resolvedCanonicalId, `studio_review_${itemKey}`);
+        const storedRevision = loadProjectData(resolvedCanonicalId, `studio_revision_${itemKey}`);
 
         if (storedImage && !isErrorContent(storedImage)) {
           setImageOutput(storedImage);
         } else {
           if (storedImage && isErrorContent(storedImage)) {
-            removeProjectData(resolvedProjId, `studio_image_${itemKey}`);
+            removeProjectData(resolvedCanonicalId, `studio_image_${itemKey}`);
           }
           setImageOutput(getInitialDraft('image', parsedItem, parsedContext));
         }
@@ -3944,7 +3970,7 @@ export default function ProductionStudioPage() {
           setCarouselOutput(storedCarousel);
         } else {
           if (storedCarousel && isErrorContent(storedCarousel)) {
-            removeProjectData(resolvedProjId, `studio_carousel_${itemKey}`);
+            removeProjectData(resolvedCanonicalId, `studio_carousel_${itemKey}`);
           }
           setCarouselOutput(getInitialDraft('carousel', parsedItem, parsedContext));
         }
@@ -3953,7 +3979,7 @@ export default function ProductionStudioPage() {
           setVideoOutput(storedVideo);
         } else {
           if (storedVideo && isErrorContent(storedVideo)) {
-            removeProjectData(resolvedProjId, `studio_video_${itemKey}`);
+            removeProjectData(resolvedCanonicalId, `studio_video_${itemKey}`);
           }
           setVideoOutput(getInitialDraft('video', parsedItem, parsedContext));
         }
@@ -3962,7 +3988,7 @@ export default function ProductionStudioPage() {
           setUgcOutput(storedUgc);
         } else {
           if (storedUgc && isErrorContent(storedUgc)) {
-            removeProjectData(resolvedProjId, `studio_ugc_${itemKey}`);
+            removeProjectData(resolvedCanonicalId, `studio_ugc_${itemKey}`);
           }
           setUgcOutput(getInitialDraft('ugc', parsedItem, parsedContext));
         }
@@ -3971,7 +3997,7 @@ export default function ProductionStudioPage() {
           setReviewOutput(storedReview);
         } else {
           if (storedReview && isErrorContent(storedReview)) {
-            removeProjectData(resolvedProjId, `studio_review_${itemKey}`);
+            removeProjectData(resolvedCanonicalId, `studio_review_${itemKey}`);
           }
           setReviewOutput(getInitialDraft('review', parsedItem, parsedContext));
         }
@@ -3989,47 +4015,47 @@ export default function ProductionStudioPage() {
     }
   }, []);
 
-  // Save setters with local storage persistence using effectiveProjectId
+  // Save setters with local storage persistence using canonicalProjectId
   const saveImageOutput = (val: string) => {
     setImageOutput(val);
-    if (sourceItem) {
+    if (sourceItem && canonicalProjectId) {
       const itemKey = getItemKey(sourceItem);
-      saveProjectData(effectiveProjectId, `studio_image_${itemKey}`, val);
+      saveProjectData(canonicalProjectId, `studio_image_${itemKey}`, val);
     }
   };
   const saveCarouselOutput = (val: string) => {
     setCarouselOutput(val);
-    if (sourceItem) {
+    if (sourceItem && canonicalProjectId) {
       const itemKey = getItemKey(sourceItem);
-      saveProjectData(effectiveProjectId, `studio_carousel_${itemKey}`, val);
+      saveProjectData(canonicalProjectId, `studio_carousel_${itemKey}`, val);
     }
   };
   const saveVideoOutput = (val: string) => {
     setVideoOutput(val);
-    if (sourceItem) {
+    if (sourceItem && canonicalProjectId) {
       const itemKey = getItemKey(sourceItem);
-      saveProjectData(effectiveProjectId, `studio_video_${itemKey}`, val);
+      saveProjectData(canonicalProjectId, `studio_video_${itemKey}`, val);
     }
   };
   const saveUgcOutput = (val: string) => {
     setUgcOutput(val);
-    if (sourceItem) {
+    if (sourceItem && canonicalProjectId) {
       const itemKey = getItemKey(sourceItem);
-      saveProjectData(effectiveProjectId, `studio_ugc_${itemKey}`, val);
+      saveProjectData(canonicalProjectId, `studio_ugc_${itemKey}`, val);
     }
   };
   const saveReviewOutput = (val: string) => {
     setReviewOutput(val);
-    if (sourceItem) {
+    if (sourceItem && canonicalProjectId) {
       const itemKey = getItemKey(sourceItem);
-      saveProjectData(effectiveProjectId, `studio_review_${itemKey}`, val);
+      saveProjectData(canonicalProjectId, `studio_review_${itemKey}`, val);
     }
   };
   const saveRevisionNotes = (val: string) => {
     setRevisionNotes(val);
-    if (sourceItem) {
+    if (sourceItem && canonicalProjectId) {
       const itemKey = getItemKey(sourceItem);
-      saveProjectData(effectiveProjectId, `studio_revision_${itemKey}`, val);
+      saveProjectData(canonicalProjectId, `studio_revision_${itemKey}`, val);
     }
   };
 
@@ -4039,7 +4065,9 @@ export default function ProductionStudioPage() {
 
   const handleSelectCharacter = (charId: string | null) => {
     setSelectedCharacterId(charId);
-    saveProjectActiveCharacterId(effectiveProjectId, charId);
+    if (canonicalProjectId) {
+      saveProjectActiveCharacterId(canonicalProjectId, charId);
+    }
     if (!charId) {
       setCharacterDNA(null);
       showToast('Karakter dimatikan (No Character)');
@@ -4058,7 +4086,7 @@ export default function ProductionStudioPage() {
 
   const handleUpdateProgress = (newProgress: Partial<ProductionProgress>) => {
     const current = sourceItem;
-    if (!current) return;
+    if (!current || !canonicalProjectId) return;
     const updated: ContentItem = {
       ...current,
       productionProgress: {
@@ -4074,11 +4102,8 @@ export default function ProductionStudioPage() {
       },
     };
     setSourceItem(updated);
-    const pid = effectiveProjectId || activeProjectIdState || getActiveProjectId() || '';
-    if (pid) {
-      saveProjectSelectedItem(pid, updated);
-      updateItemInProject(pid, updated);
-    }
+    saveProjectSelectedItem(canonicalProjectId, updated);
+    updateItemInProject(canonicalProjectId, updated);
   };
 
   const handleCopyText = (
@@ -4130,14 +4155,14 @@ export default function ProductionStudioPage() {
         return;
       }
 
-      const contextValidation = validateProductionGenerationContext(effectiveProjectId, sharedContextSnapshot, sourceItem);
-      if (!contextValidation.valid || !sharedContextSnapshot) {
+      const contextValidation = validateProductionGenerationContext(canonicalProjectId, sharedContextSnapshot, sourceItem);
+      if (!contextValidation.valid || !sharedContextSnapshot || !canonicalProjectId) {
         setGenerationError(contextValidation.reason || 'Konteks project tidak sinkron.');
         showToast(contextValidation.reason || 'Konteks project tidak sinkron.');
         return;
       }
 
-      const requestProjectId = effectiveProjectId;
+      const requestProjectId = canonicalProjectId;
       const requestItemNo = sourceItem.no;
       const requestItemId = sourceItem.content_item_id;
 
@@ -4709,6 +4734,7 @@ ${formatDirection}${revisionDirective}`;
         // ASYNC GUARD: check if user switched project or item during generation
         if (
           getActiveProjectId() !== requestProjectId ||
+          canonicalProjectId !== requestProjectId ||
           !sourceItem ||
           (requestItemId && sourceItem.content_item_id !== requestItemId) ||
           sourceItem.no !== requestItemNo
@@ -4802,15 +4828,15 @@ ${formatDirection}${revisionDirective}`;
       referensi: '',
       visual: '',
       keterangan: '',
-      projectId: effectiveProjectId,
-      project_id: effectiveProjectId,
-      content_item_id: `${effectiveProjectId}_temp_1`,
+      projectId: canonicalProjectId || '',
+      project_id: canonicalProjectId || '',
+      content_item_id: canonicalProjectId ? `${canonicalProjectId}_temp_1` : 'temp_1',
     };
-  }, [sourceItem, effectiveProjectId]);
+  }, [sourceItem, canonicalProjectId]);
 
   const activeContext: SharedContentContext = useMemo(() => {
     return sharedContextSnapshot || {
-      project_id: effectiveProjectId,
+      project_id: canonicalProjectId || '',
       project_name: '',
       source: { origin: 'manual_context' },
       system_flags: { is_complete_for_planning: false, missing_required_fields: ['brand_context', 'strategy_context'] },
@@ -4836,7 +4862,7 @@ ${formatDirection}${revisionDirective}`;
         content_pillars: [],
       },
     };
-  }, [sharedContextSnapshot, effectiveProjectId]);
+  }, [sharedContextSnapshot, canonicalProjectId]);
 
   const currentOutputText = useMemo(() => {
     if (!activeItem) return '';
@@ -5065,7 +5091,7 @@ ${formatDirection}${revisionDirective}`;
             <div className="space-y-2">
               <h3 className="text-sm font-bold text-[#1f2933]">Data Konten Project Tidak Ditemukan</h3>
               <p className="text-xs text-stone-600 leading-relaxed">
-                Item konten untuk project <span className="font-semibold text-stone-800 font-mono">[{effectiveProjectId}]</span> tidak ditemukan atau belum dipilih.
+                Item konten untuk project <span className="font-semibold text-stone-800 font-mono">[{canonicalProjectId || 'Belum Dipilih'}]</span> tidak ditemukan atau belum dipilih.
                 Silakan kembali ke Kalender Utama dan klik <span className="text-primary font-semibold">Buka Production Studio</span> pada item kalender aktif.
               </p>
             </div>
@@ -5124,27 +5150,16 @@ ${formatDirection}${revisionDirective}`;
         )}
       </AnimatePresence>
 
-      {/* Multi-Project Warning Banner */}
-      {selectedProjectId && activeProjectIdState && selectedProjectId !== activeProjectIdState && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 md:px-8 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-amber-800 font-medium">
-            <AlertTriangle size={15} className="shrink-0 text-amber-600" />
-            <span>Item ini berasal dari project berbeda.</span>
-            <span className="text-xs text-stone-500">
-              (Project Item: <strong className="text-stone-800">{selectedProjectId}</strong> vs Active Project: <strong className="text-stone-800">{activeProjectIdState}</strong>)
-            </span>
+      {/* Project Status Info Strip */}
+      {canonicalProjectId && (
+        <div className="bg-stone-50 border-b border-stone-200 px-4 md:px-8 py-2 flex items-center justify-between gap-3 text-xs text-stone-600">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Project ID:</span>
+            <span className="font-mono text-stone-800 font-semibold bg-stone-200/70 px-2 py-0.5 rounded">{canonicalProjectId}</span>
+            {sharedContextSnapshot?.brand_context?.brand_name && (
+              <span className="text-stone-500">({sharedContextSnapshot.brand_context.brand_name})</span>
+            )}
           </div>
-          <button
-            onClick={() => {
-              setActiveProjectId(selectedProjectId);
-              setActiveProjectIdState(selectedProjectId);
-              setEffectiveProjectId(selectedProjectId);
-              showToast(`Project aktif dialihkan ke: ${selectedProjectId}`);
-            }}
-            className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs rounded-lg transition shadow-sm flex items-center gap-1.5"
-          >
-            Gunakan Project Ini
-          </button>
         </div>
       )}
 
@@ -5679,16 +5694,18 @@ ${formatDirection}${revisionDirective}`;
               {/* Modal Body: Complete CharacterDNASection with full functionality */}
               <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
                 <CharacterDNASection 
-                  projectId={effectiveProjectId}
+                  projectId={canonicalProjectId || ''}
                   activeCharacterId={selectedCharacterId}
                   onSelectCharacter={handleSelectCharacter}
                   onDNAUpdate={(dna) => {
                     setCharacterDNA(dna);
-                    const refreshed = getProjectSavedCharacters(effectiveProjectId);
-                    setSavedCharacters(refreshed);
-                    if (dna?.character_id) {
-                      setSelectedCharacterId(dna.character_id);
-                      saveProjectActiveCharacterId(effectiveProjectId, dna.character_id);
+                    if (canonicalProjectId) {
+                      const refreshed = getProjectSavedCharacters(canonicalProjectId);
+                      setSavedCharacters(refreshed);
+                      if (dna?.character_id) {
+                        setSelectedCharacterId(dna.character_id);
+                        saveProjectActiveCharacterId(canonicalProjectId, dna.character_id);
+                      }
                     }
                     showToast('DNA Karakter berhasil disimpan & diperbarui!');
                   }} 

@@ -1,3 +1,5 @@
+import { SharedContentContext, buildSharedContentContext } from './content-contract';
+
 export interface ProjectMeta {
   project_id: string;
   project_name: string;
@@ -356,23 +358,66 @@ export const saveProjectCalendarSettings = (projectId: string, settings: Calenda
   saveProjectData(projectId, 'calendarSettings', settings);
 };
 
-export const loadProjectSharedContext = (projectId: string): any => {
-  return loadProjectData(projectId, 'sharedContext', null);
+export const loadProjectSharedContext = (projectId: string): SharedContentContext | null => {
+  if (!projectId || projectId === 'default' || projectId === 'default_project') return null;
+  // 1. Primary storage key used across the application
+  let context = loadProjectData(projectId, 'context', null);
+  // 2. Secondary/fallback storage key
+  if (!context) {
+    context = loadProjectData(projectId, 'sharedContext', null);
+  }
+  // 3. Fallback from project's own blueprint storage if context was not saved
+  if (!context) {
+    const blueprint = loadProjectData(projectId, 'blueprint', null);
+    if (blueprint && (blueprint.brand_identity?.brand_name || blueprint.project_name)) {
+      context = buildSharedContentContext(blueprint);
+    }
+  }
+
+  if (context && typeof context === 'object') {
+    // Normalization & legacy repair: if context was loaded from this project's storage
+    // but contains a stale/missing project_id, normalize it to canonical projectId
+    if (context.project_id !== projectId) {
+      context = {
+        ...context,
+        project_id: projectId,
+      };
+      // Persist the repaired context back to this same project's storage namespace
+      saveProjectData(projectId, 'context', context);
+      saveProjectData(projectId, 'sharedContext', context);
+    }
+    return context;
+  }
+  return null;
 };
 
 export const saveProjectSharedContext = (projectId: string, context: any): void => {
-  saveProjectData(projectId, 'sharedContext', context);
+  if (!projectId || !context || projectId === 'default' || projectId === 'default_project') return;
+  const normalized = {
+    ...context,
+    project_id: projectId,
+  };
+  saveProjectData(projectId, 'context', normalized);
+  saveProjectData(projectId, 'sharedContext', normalized);
 };
 
 export const loadProjectCalendarItems = (projectId: string): any[] => {
-  return loadProjectData(projectId, 'items', []);
+  if (!projectId || projectId === 'default' || projectId === 'default_project') return [];
+  const items = loadProjectData(projectId, 'items', []);
+  if (Array.isArray(items)) {
+    return items.map((item, idx) => ensureContentItemIdentity(item, projectId, idx));
+  }
+  return [];
 };
 
 export const saveProjectCalendarItems = (projectId: string, items: any[]): void => {
-  saveProjectData(projectId, 'items', items);
+  if (!projectId || projectId === 'default' || projectId === 'default_project') return;
+  const normalized = Array.isArray(items) ? items.map((item, idx) => ensureContentItemIdentity(item, projectId, idx)) : [];
+  saveProjectData(projectId, 'items', normalized);
 };
 
 export const loadProjectSelectedItem = (projectId: string): any => {
+  if (!projectId || projectId === 'default' || projectId === 'default_project') return null;
   return getProjectSelectedItem(projectId);
 };
 

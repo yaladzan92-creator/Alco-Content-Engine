@@ -660,8 +660,8 @@ export function validateProductionGenerationContext(
   sharedContentContext: SharedContentContext | null,
   selectedContentItem: ContentItem | null
 ): { valid: boolean; reason?: string } {
-  if (!activeProjectId) {
-    return { valid: false, reason: 'Pilih project aktif terlebih dahulu.' };
+  if (!activeProjectId || !activeProjectId.trim() || activeProjectId === 'default' || activeProjectId === 'default_project') {
+    return { valid: false, reason: 'Pilih project aktif terlebih dahulu sebelum memproduksi konten.' };
   }
   if (!sharedContentContext || !sharedContentContext.brand_context?.brand_name?.trim()) {
     return { valid: false, reason: 'Data project tidak sinkron. Muat ulang project sebelum melanjutkan.' };
