@@ -179,6 +179,8 @@ export default function CalendarView({
     assetType: 'brief' | 'caption' | 'image' | 'carousel' | 'video'
   ) => {
     if (!editingItem || isGeneratingAsset) return;
+    const requestProjectId = getActiveProjectId();
+    const requestItemNo = editingItem.no;
     setIsGeneratingAsset(true);
     setCopiedAsset(false);
     try {
@@ -221,12 +223,23 @@ Keterangan: ${editingItem.keterangan}`;
       }
 
       const resData = await response.json();
+
+      // ASYNC GUARD: Check project and item
+      if (getActiveProjectId() !== requestProjectId || !editingItem || editingItem.no !== requestItemNo) {
+        console.warn('[Async Guard] Discarding stale calendar production asset response');
+        return;
+      }
+
       setProductionAsset({
         type: assetType,
         title: promptTitle,
         content: resData.text || 'Gagal menghasilkan asset.',
       });
     } catch (err: any) {
+      // If project or item changed, do not set error into current item UI
+      if (getActiveProjectId() !== requestProjectId || !editingItem || editingItem.no !== requestItemNo) {
+        return;
+      }
       console.error('Production Asset Generation Error:', err);
       const errMsg = err.message || '';
       const isRateLimited =
@@ -249,6 +262,7 @@ Keterangan: ${editingItem.keterangan}`;
 
   const getAIRecommendation = async (step: number) => {
     if (isRecommending) return;
+    const requestProjectId = getActiveProjectId();
     setIsRecommending(true);
     try {
       let prompt = '';
@@ -284,6 +298,13 @@ Keterangan: ${editingItem.keterangan}`;
       }
 
       const resData = await response.json();
+
+      // ASYNC GUARD: check if active project changed during async recommendation
+      if (getActiveProjectId() !== requestProjectId) {
+        console.warn('[Async Guard] Discarding stale AI recommendation response');
+        return;
+      }
+
       try {
         const json = extractJSON(resData.text || '{}');
         setRecommendations((prev) => ({ ...prev, [step]: json }));
@@ -292,6 +313,9 @@ Keterangan: ${editingItem.keterangan}`;
         setRecommendations((prev) => ({ ...prev, [step]: resData.text || '' }));
       }
     } catch (err: any) {
+      if (getActiveProjectId() !== requestProjectId) {
+        return;
+      }
       console.error('AI Recommendation Error:', err);
       const errMsg = err.message || '';
       const isRateLimited =

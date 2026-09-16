@@ -655,6 +655,30 @@ export function parseAndMapStrategyJson(rawJson: any): IntakeParseResult {
   };
 }
 
+export function validateProductionGenerationContext(
+  activeProjectId: string | null,
+  sharedContentContext: SharedContentContext | null,
+  selectedContentItem: ContentItem | null
+): { valid: boolean; reason?: string } {
+  if (!activeProjectId) {
+    return { valid: false, reason: 'Pilih project aktif terlebih dahulu.' };
+  }
+  if (!sharedContentContext || !sharedContentContext.brand_context?.brand_name?.trim()) {
+    return { valid: false, reason: 'Data project tidak sinkron. Muat ulang project sebelum melanjutkan.' };
+  }
+  if (sharedContentContext.project_id !== activeProjectId) {
+    return { valid: false, reason: 'Data project tidak sinkron. Muat ulang project sebelum melanjutkan.' };
+  }
+  if (!selectedContentItem) {
+    return { valid: false, reason: 'Pilih item konten kalender sebelum melakukan generate.' };
+  }
+  const itemProjId = selectedContentItem.project_id || selectedContentItem.projectId;
+  if (itemProjId && itemProjId !== activeProjectId) {
+    return { valid: false, reason: 'Data project tidak sinkron. Muat ulang project sebelum melanjutkan.' };
+  }
+  return { valid: true };
+}
+
 /**
  * Converts a raw StrategyBlueprint into a normalized SharedContentContext.
  */
@@ -669,17 +693,17 @@ export function buildSharedContentContext(
 
   return {
     project_id: blueprint.project_id || `proj_${Date.now()}`,
-    project_name: blueprint.project_name || blueprint.brand_identity?.brand_name || 'ALCO Campaign',
+    project_name: blueprint.project_name || blueprint.brand_identity?.brand_name || '',
     source: {
       origin: isAlco ? 'alco_ecosystem_blueprint' : origin,
       source_version: '1.0.0',
       import_note: note,
     },
     brand_context: {
-      brand_name: blueprint.brand_identity?.brand_name || 'Brand Strategy',
-      category: blueprint.brand_identity?.category || 'General Industry',
+      brand_name: blueprint.brand_identity?.brand_name || '',
+      category: blueprint.brand_identity?.category || '',
       brand_summary: blueprint.brand_identity?.brand_summary || '',
-      brand_voice: blueprint.messaging?.brand_voice || 'Professional, Authoritative & Helpful',
+      brand_voice: blueprint.messaging?.brand_voice || '',
     },
     brand_visual_context: blueprint.brand_visual_identity ? {
       visual_style: blueprint.brand_visual_identity.visual_style,
@@ -689,7 +713,7 @@ export function buildSharedContentContext(
       design_mood: blueprint.brand_visual_identity.design_mood,
     } : undefined,
     audience_context: {
-      primary_audience: blueprint.target_audience?.primary_audience || 'Target Buyers',
+      primary_audience: blueprint.target_audience?.primary_audience || '',
       pain_points: blueprint.target_audience?.audience_problem || [],
       desires: blueprint.target_audience?.audience_desire || [],
       objections: blueprint.target_audience?.objections || [],

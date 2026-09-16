@@ -14,7 +14,7 @@ import {
   ChevronDown, ChevronRight, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ContentItem, SharedContentContext, CharacterDNA, ProductionProgress } from '@/lib/content-contract';
+import { ContentItem, SharedContentContext, CharacterDNA, ProductionProgress, validateProductionGenerationContext } from '@/lib/content-contract';
 import { 
   buildFunnelPromptBlock, 
   getFunnelRules, 
@@ -2549,35 +2549,9 @@ const getInitialDraft = (
   currentItem?: ContentItem | null,
   currentContext?: SharedContentContext | null
 ) => {
-  if (!currentItem) return '';
+  if (!currentItem || !currentContext || !currentContext.brand_context?.brand_name?.trim()) return '';
   const activeItem = currentItem;
-  const activeContext: SharedContentContext = currentContext || {
-    project_id: activeItem.project_id || activeItem.projectId || 'project',
-    project_name: 'Project Context',
-    source: { origin: 'manual_context' },
-    system_flags: { is_complete_for_planning: true, missing_required_fields: [] },
-    brand_context: {
-      brand_name: activeItem.referensi || 'Brand',
-      category: 'Bisnis',
-      brand_summary: activeItem.headline || '',
-      brand_voice: 'Profesional & Edukatif',
-    },
-    audience_context: {
-      primary_audience: 'Target Audiens',
-      pain_points: [],
-      desires: [],
-      objections: [],
-    },
-    strategy_context: {
-      positioning: activeItem.headline || '',
-      usp: [],
-      main_offer: activeItem.cta || '',
-      offer_benefits: [],
-      core_message: activeItem.headline || '',
-      copy_direction: [],
-      content_pillars: [],
-    },
-  };
+  const activeContext: SharedContentContext = currentContext;
 
   const funnelStage = normalizeFunnelStage(activeItem.jenis);
   const funnelRules = getFunnelRules(activeItem.jenis);
@@ -3513,36 +3487,21 @@ export default function ProductionStudioPage() {
       return;
     }
 
+    const contextValidation = validateProductionGenerationContext(effectiveProjectId, sharedContextSnapshot, sourceItem);
+    if (!contextValidation.valid || !sharedContextSnapshot) {
+      setRenderError(contextValidation.reason || 'Konteks project tidak sinkron.');
+      showToast(contextValidation.reason || 'Konteks project tidak sinkron.');
+      return;
+    }
+
     setIsRenderingVideo(true);
 
+    const requestProjectId = effectiveProjectId;
+    const requestItemNo = sourceItem.no;
+    const requestItemId = sourceItem.content_item_id;
+
     const item = sourceItem;
-    const context: SharedContentContext = sharedContextSnapshot || {
-      project_id: item.project_id || item.projectId || effectiveProjectId,
-      project_name: 'Project Context',
-      source: { origin: 'manual_context' },
-      system_flags: { is_complete_for_planning: true, missing_required_fields: [] },
-      brand_context: {
-        brand_name: item.referensi || 'Brand',
-        category: 'Bisnis',
-        brand_summary: item.headline || '',
-        brand_voice: 'Profesional & Edukatif',
-      },
-      audience_context: {
-        primary_audience: 'Target Audiens',
-        pain_points: [],
-        desires: [],
-        objections: [],
-      },
-      strategy_context: {
-        positioning: item.headline || '',
-        usp: [],
-        main_offer: item.cta || '',
-        offer_benefits: [],
-        core_message: item.headline || '',
-        copy_direction: [],
-        content_pillars: [],
-      },
-    };
+    const context: SharedContentContext = sharedContextSnapshot;
     const payload = buildJson2VideoPayload(
       activeVideo,
       item,
@@ -3586,6 +3545,17 @@ export default function ProductionStudioPage() {
 
       const data = await res.json().catch(() => ({}));
 
+      // ASYNC GUARD: check if active project or item changed during render call
+      if (
+        getActiveProjectId() !== requestProjectId ||
+        !sourceItem ||
+        (requestItemId && sourceItem.content_item_id !== requestItemId) ||
+        sourceItem.no !== requestItemNo
+      ) {
+        console.warn('[Async Guard] Discarding stale video render response');
+        return;
+      }
+
       if (!res.ok) {
         const errMsg =
           data?.error ||
@@ -3608,6 +3578,14 @@ export default function ProductionStudioPage() {
       }
       setRenderJobData(data);
     } catch (err: any) {
+      if (
+        getActiveProjectId() !== requestProjectId ||
+        !sourceItem ||
+        (requestItemId && sourceItem.content_item_id !== requestItemId) ||
+        sourceItem.no !== requestItemNo
+      ) {
+        return;
+      }
       setRenderError(
         'Render langsung belum berhasil. Payload sudah dibuat, gunakan Copy Payload untuk render manual di dashboard JSON2Video.'
       );
@@ -3620,6 +3598,10 @@ export default function ProductionStudioPage() {
     const targetId = queryId || renderJobId;
     if (!targetId || isCheckingStatus) return;
 
+    const requestProjectId = effectiveProjectId;
+    const requestItemNo = sourceItem?.no;
+    const requestItemId = sourceItem?.content_item_id;
+
     setIsCheckingStatus(true);
     setRenderError(null);
 
@@ -3628,6 +3610,16 @@ export default function ProductionStudioPage() {
         headers: buildJson2VideoRequestHeaders(),
       });
       const data = await res.json().catch(() => ({}));
+
+      // ASYNC GUARD
+      if (
+        getActiveProjectId() !== requestProjectId ||
+        !sourceItem ||
+        (requestItemId && sourceItem.content_item_id !== requestItemId) ||
+        sourceItem.no !== requestItemNo
+      ) {
+        return;
+      }
 
       if (!res.ok) {
         const errMsg =
@@ -3639,6 +3631,14 @@ export default function ProductionStudioPage() {
         setRenderJobData(data);
       }
     } catch (err: any) {
+      if (
+        getActiveProjectId() !== requestProjectId ||
+        !sourceItem ||
+        (requestItemId && sourceItem.content_item_id !== requestItemId) ||
+        sourceItem.no !== requestItemNo
+      ) {
+        return;
+      }
       setRenderError('Terjadi masalah koneksi saat memeriksa status render video.');
     } finally {
       setIsCheckingStatus(false);
@@ -3658,8 +3658,10 @@ export default function ProductionStudioPage() {
       return;
     }
     if (!promptText || !promptText.trim() || !!imageGeneratingKey) return;
-    const itemNo = sourceItem?.no || 1;
-    const key = `${itemNo}_${angleId}`;
+    const requestProjectId = effectiveProjectId;
+    const requestItemNo = sourceItem?.no || 1;
+    const requestItemId = sourceItem?.content_item_id;
+    const key = `${requestItemNo}_${angleId}`;
 
     setImageGeneratingKey(key);
     setImageGenerateError(null);
@@ -3676,6 +3678,17 @@ export default function ProductionStudioPage() {
 
       const data = await res.json();
 
+      // ASYNC GUARD
+      if (
+        getActiveProjectId() !== requestProjectId ||
+        !sourceItem ||
+        (requestItemId && sourceItem.content_item_id !== requestItemId) ||
+        sourceItem.no !== requestItemNo
+      ) {
+        console.warn('[Async Guard] Discarding stale generated image response');
+        return;
+      }
+
       if (!res.ok || !data.imageDataUrl) {
         const errMsg = data.error || data.message || "Gagal generate image. Coba lagi nanti.";
         setImageGenerateError(errMsg);
@@ -3690,6 +3703,14 @@ export default function ProductionStudioPage() {
         }));
       }
     } catch (err: any) {
+      if (
+        getActiveProjectId() !== requestProjectId ||
+        !sourceItem ||
+        (requestItemId && sourceItem.content_item_id !== requestItemId) ||
+        sourceItem.no !== requestItemNo
+      ) {
+        return;
+      }
       console.error('Client Image Generation Error:', err);
       setImageGenerateError("Gagal generate image. Coba lagi nanti.");
     } finally {
@@ -3747,34 +3768,15 @@ export default function ProductionStudioPage() {
       return;
     }
 
+    const contextValidation = validateProductionGenerationContext(effectiveProjectId, sharedContextSnapshot, sourceItem);
+    if (!contextValidation.valid || !sharedContextSnapshot) {
+      setRenderError(contextValidation.reason || 'Konteks project tidak sinkron.');
+      showToast(contextValidation.reason || 'Konteks project tidak sinkron.');
+      return;
+    }
+
     const item = sourceItem;
-    const context: SharedContentContext = sharedContextSnapshot || {
-      project_id: item.project_id || item.projectId || effectiveProjectId,
-      project_name: 'Project Context',
-      source: { origin: 'manual_context' },
-      system_flags: { is_complete_for_planning: true, missing_required_fields: [] },
-      brand_context: {
-        brand_name: item.referensi || 'Brand',
-        category: 'Bisnis',
-        brand_summary: item.headline || '',
-        brand_voice: 'Profesional & Edukatif',
-      },
-      audience_context: {
-        primary_audience: 'Target Audiens',
-        pain_points: [],
-        desires: [],
-        objections: [],
-      },
-      strategy_context: {
-        positioning: item.headline || '',
-        usp: [],
-        main_offer: item.cta || '',
-        offer_benefits: [],
-        core_message: item.headline || '',
-        copy_direction: [],
-        content_pillars: [],
-      },
-    };
+    const context: SharedContentContext = sharedContextSnapshot;
     const payload = buildJson2VideoPayload(
       activeVideo,
       item,
@@ -4128,34 +4130,19 @@ export default function ProductionStudioPage() {
         return;
       }
 
+      const contextValidation = validateProductionGenerationContext(effectiveProjectId, sharedContextSnapshot, sourceItem);
+      if (!contextValidation.valid || !sharedContextSnapshot) {
+        setGenerationError(contextValidation.reason || 'Konteks project tidak sinkron.');
+        showToast(contextValidation.reason || 'Konteks project tidak sinkron.');
+        return;
+      }
+
+      const requestProjectId = effectiveProjectId;
+      const requestItemNo = sourceItem.no;
+      const requestItemId = sourceItem.content_item_id;
+
       const activeItem = sourceItem;
-      const activeContext: SharedContentContext = sharedContextSnapshot || {
-        project_id: activeItem.project_id || activeItem.projectId || effectiveProjectId,
-        project_name: 'Project Context',
-        source: { origin: 'manual_context' },
-        system_flags: { is_complete_for_planning: true, missing_required_fields: [] },
-        brand_context: {
-          brand_name: activeItem.referensi || 'Brand',
-          category: 'Bisnis',
-          brand_summary: activeItem.headline || '',
-          brand_voice: 'Profesional & Edukatif',
-        },
-        audience_context: {
-          primary_audience: 'Target Audiens',
-          pain_points: [],
-          desires: [],
-          objections: [],
-        },
-        strategy_context: {
-          positioning: activeItem.headline || '',
-          usp: [],
-          main_offer: activeItem.cta || '',
-          offer_benefits: [],
-          core_message: activeItem.headline || '',
-          copy_direction: [],
-          content_pillars: [],
-        },
-      };
+      const activeContext: SharedContentContext = sharedContextSnapshot;
       const funnelStage = normalizeFunnelStage(activeItem.jenis);
       const funnelRules = getFunnelRules(activeItem.jenis);
       const funnelPromptBlock = buildFunnelPromptBlock(activeItem.jenis);
@@ -4227,7 +4214,7 @@ STRUKTUR JSON CANONICAL WAJIB:
         "funnelStage": "${funnelStage}",
         "tujuanKonten": "${funnelRules.goal}",
         "ideUtama": "${activeItem.headline || 'Topik Konten'} (TETAP UTUH TANPA TERPOTONG)",
-        "audienceContext": "${funnelRules.audienceState} - ${activeContext.audience_context?.primary_audience || 'Target Audiens'}",
+        "audienceContext": "${funnelRules.audienceState} - ${activeContext.audience_context?.primary_audience || ''}",
         "angle": "[Nama angle visual]",
         "emosiUtama": "[Emosi spesifik sesuai corong ${funnelStage}]",
         "pesanVisual": "[Pesan yang tersampaikan lewat adegan visual]"
@@ -4243,7 +4230,7 @@ STRUKTUR JSON CANONICAL WAJIB:
       "captionForPost": "[Tulis caption Instagram yang menjawab hook image sesuai funnel]",
       "captionInstruction": "Paste teks ini di caption/keterangan postingan setelah gambar dibuat.",
       "messageAlignmentCheck": { "isAligned": true, "issue": "", "fixedTextOverlay": "[Tulis hook pendek utuh 6-10 kata, tanpa ellipsis]", "reason": "[Penjelasan keselarasan corong ${funnelStage}]" },
-      "strategyBrief": { "funnelStage": "${funnelStage}", "tujuanKonten": "${funnelRules.goal}", "ideUtama": "${activeItem.headline || 'Topik Konten'}", "audienceContext": "${funnelRules.audienceState} - ${activeContext.audience_context?.primary_audience || 'Target Audiens'}", "angle": "[Nama angle visual B]", "emosiUtama": "[Emosi spesifik]", "pesanVisual": "[Pesan visual]" },
+      "strategyBrief": { "funnelStage": "${funnelStage}", "tujuanKonten": "${funnelRules.goal}", "ideUtama": "${activeItem.headline || 'Topik Konten'}", "audienceContext": "${funnelRules.audienceState} - ${activeContext.audience_context?.primary_audience || ''}", "angle": "[Nama angle visual B]", "emosiUtama": "[Emosi spesifik]", "pesanVisual": "[Pesan visual]" },
       "finalPrompt": "Buatkan saya image untuk konten Instagram (format 4:5 vertical editorial):\\n\\nFunnel Stage: ${funnelStage}\\nVisual Objective: [Tujuan visual konkret]\\nSubject: [Deskripsi subjek]\\nAction: [Aktivitas fisik konkret]\\nExpression: [Ekspresi wajah mikro]\\nEnvironment: [Ruangan/latar]\\nComposition: [Subjek di kanan tengah, ruang negatif lapang di kiri atas]\\nLighting: [Cahaya alami lembut]\\nCamera: [50mm lens photography]\\nVisual Style: [Clean editorial Instagram photography]\\nTypography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.\\nText Overlay: \\\"[hook pendek utuh tanpa ellipsis]\\\"\\nNegative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliche, overdesigned graphic."
     },
     {
@@ -4255,7 +4242,7 @@ STRUKTUR JSON CANONICAL WAJIB:
       "captionForPost": "[Tulis caption Instagram yang menjawab hook image sesuai funnel]",
       "captionInstruction": "Paste teks ini di caption/keterangan postingan setelah gambar dibuat.",
       "messageAlignmentCheck": { "isAligned": true, "issue": "", "fixedTextOverlay": "[Tulis hook pendek utuh 6-10 kata, tanpa ellipsis]", "reason": "[Penjelasan keselarasan corong ${funnelStage}]" },
-      "strategyBrief": { "funnelStage": "${funnelStage}", "tujuanKonten": "${funnelRules.goal}", "ideUtama": "${activeItem.headline || 'Topik Konten'}", "audienceContext": "${funnelRules.audienceState} - ${activeContext.audience_context?.primary_audience || 'Target Audiens'}", "angle": "[Nama angle visual C]", "emosiUtama": "[Emosi spesifik]", "pesanVisual": "[Pesan visual]" },
+      "strategyBrief": { "funnelStage": "${funnelStage}", "tujuanKonten": "${funnelRules.goal}", "ideUtama": "${activeItem.headline || 'Topik Konten'}", "audienceContext": "${funnelRules.audienceState} - ${activeContext.audience_context?.primary_audience || ''}", "angle": "[Nama angle visual C]", "emosiUtama": "[Emosi spesifik]", "pesanVisual": "[Pesan visual]" },
       "finalPrompt": "Buatkan saya image untuk konten Instagram (format 4:5 vertical editorial):\\n\\nFunnel Stage: ${funnelStage}\\nVisual Objective: [Tujuan visual konkret]\\nSubject: [Deskripsi subjek]\\nAction: [Aktivitas fisik konkret]\\nExpression: [Ekspresi wajah mikro]\\nEnvironment: [Ruangan/latar]\\nComposition: [Subjek di kanan tengah, ruang negatif lapang di kiri atas]\\nLighting: [Cahaya alami lembut]\\nCamera: [50mm lens photography]\\nVisual Style: [Clean editorial Instagram photography]\\nTypography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.\\nText Overlay: \\\"[hook pendek utuh tanpa ellipsis]\\\"\\nNegative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliche, overdesigned graphic."
     }
   ]
@@ -4718,6 +4705,18 @@ ${formatDirection}${revisionDirective}`;
         }
 
         const data = await response.json();
+
+        // ASYNC GUARD: check if user switched project or item during generation
+        if (
+          getActiveProjectId() !== requestProjectId ||
+          !sourceItem ||
+          (requestItemId && sourceItem.content_item_id !== requestItemId) ||
+          sourceItem.no !== requestItemNo
+        ) {
+          console.warn('[Async Guard] Discarding stale production AI generation response');
+          return;
+        }
+
         const generatedText = data.text || '';
         
         if (generatedText) {
@@ -4811,33 +4810,33 @@ ${formatDirection}${revisionDirective}`;
 
   const activeContext: SharedContentContext = useMemo(() => {
     return sharedContextSnapshot || {
-      project_id: activeItem.project_id || activeItem.projectId || effectiveProjectId,
-      project_name: 'Project Context',
+      project_id: effectiveProjectId,
+      project_name: '',
       source: { origin: 'manual_context' },
-      system_flags: { is_complete_for_planning: true, missing_required_fields: [] },
+      system_flags: { is_complete_for_planning: false, missing_required_fields: ['brand_context', 'strategy_context'] },
       brand_context: {
-        brand_name: activeItem.referensi || 'Brand',
-        category: 'Bisnis',
-        brand_summary: activeItem.headline || '',
-        brand_voice: 'Profesional & Edukatif',
+        brand_name: '',
+        category: '',
+        brand_summary: '',
+        brand_voice: '',
       },
       audience_context: {
-        primary_audience: 'Target Audiens',
+        primary_audience: '',
         pain_points: [],
         desires: [],
         objections: [],
       },
       strategy_context: {
-        positioning: activeItem.headline || '',
+        positioning: '',
         usp: [],
-        main_offer: activeItem.cta || '',
+        main_offer: '',
         offer_benefits: [],
-        core_message: activeItem.headline || '',
+        core_message: '',
         copy_direction: [],
         content_pillars: [],
       },
     };
-  }, [sharedContextSnapshot, activeItem, effectiveProjectId]);
+  }, [sharedContextSnapshot, effectiveProjectId]);
 
   const currentOutputText = useMemo(() => {
     if (!activeItem) return '';
