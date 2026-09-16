@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, FileText, Layers, FolderOpen, AlertTriangle } from 'lucide-react';
+import { Sparkles, FileText, Layers, FolderOpen, AlertTriangle, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   StrategyBlueprint,
@@ -19,7 +19,11 @@ import {
   DEFAULT_CALENDAR_SETTINGS,
   getDefaultCalendarSettings,
   getProjectCalendarSettings,
-  saveProjectCalendarSettings
+  saveProjectCalendarSettings,
+  validateProjectContext,
+  ensureContentItemIdentity,
+  clearGlobalTransientState,
+  saveProjectSelectedItem
 } from '@/lib/storage';
 import { ActiveStrategyBadge } from '@/components/ActiveStrategyBadge';
 import { GeminiApiKeyControl } from '@/components/GeminiApiKeyControl';
@@ -99,6 +103,9 @@ export default function HomePageClient() {
   const [selectedCTAs, setSelectedCTAs] = useState<string[]>(DEFAULT_CALENDAR_SETTINGS.selectedCTAs);
   const [isFastMode, setIsFastMode] = useState(DEFAULT_CALENDAR_SETTINGS.isFastMode);
 
+  // Ref to cancel/discard stale async AI generations on project switch
+  const activeGenerationRef = useRef<{ requestId: string; projectId: string } | null>(null);
+
   const applyCalendarSettings = (
     settings: Partial<CalendarSettings> | null,
     blueprint?: StrategyBlueprint | SharedContentContext | null,
@@ -158,6 +165,9 @@ export default function HomePageClient() {
   };
 
   const loadProject = (pid: string | null) => {
+    // 0. Invalidate any in-flight AI generation from previous project immediately
+    activeGenerationRef.current = null;
+
     // 1. Save current active project snapshot before switching away
     const oldPid = activeProjectIdRef.current;
     if (oldPid && oldPid !== pid && !isProjectIncomplete) {
@@ -167,7 +177,7 @@ export default function HomePageClient() {
     // 2. Set switching flag to block auto-save effects during transition
     isSwitchingRef.current = true;
 
-    // 3. Immediately clear all states of old project
+    // 3. Immediately clear all states of old project and clear global transient bridge
     setItems([]);
     setGrowthItems([]);
     setHistory([]);
@@ -176,6 +186,7 @@ export default function HomePageClient() {
     setSharedContext(null);
     setIsConfiguring(false);
     setActiveConfigCell(null);
+    clearGlobalTransientState();
 
     // 4. Update active project ID
     setActiveProjectIdState(pid);
@@ -192,34 +203,22 @@ export default function HomePageClient() {
       return;
     }
 
-    // 6. Validate that both blueprint and context are present and valid
+    // 6. Validate that both blueprint and context are present, non-corrupted, and scoped to this project
     const savedBlueprint = loadProjectData(pid, 'blueprint');
     const savedContext = loadProjectData(pid, 'context');
+    const validation = validateProjectContext(pid, savedBlueprint, savedContext);
 
-    const isBlueprintValid = Boolean(
-      savedBlueprint &&
-      typeof savedBlueprint === 'object' &&
-      Object.keys(savedBlueprint).length > 0 &&
-      (savedBlueprint.brand_identity || savedBlueprint.project_id || savedBlueprint.project_name || savedBlueprint.core_strategy)
-    );
-
-    const isContextValid = Boolean(
-      savedContext &&
-      typeof savedContext === 'object' &&
-      Object.keys(savedContext).length > 0 &&
-      (savedContext.brand_context || savedContext.project_id)
-    );
-
-    if (!isBlueprintValid || !isContextValid) {
-      // Incomplete / corrupted project data:
+    if (!validation.valid) {
+      // Incomplete / corrupted / mismatched project data:
       // Do NOT show calendar, context, or items of previous project.
       setIsProjectIncomplete(true);
-      setStrategyBlueprint(null);
-      setSharedContext(null);
+      setStrategyBlueprint(savedBlueprint || null);
+      setSharedContext(savedContext || null);
       setItems([]);
       setGrowthItems([]);
       setHistory([]);
       setRevisions({});
+      saveProjectSelectedItem(pid, null);
       applyCalendarSettings(getDefaultCalendarSettings(null), null);
       setTimeout(() => {
         isSwitchingRef.current = false;
@@ -232,14 +231,30 @@ export default function HomePageClient() {
     setStrategyBlueprint(savedBlueprint);
     setSharedContext(savedContext);
 
-    const savedItems = loadProjectData(pid, 'items', []);
-    const savedGrowthItems = loadProjectData(pid, 'growthItems', []);
+    const rawItems = loadProjectData(pid, 'items', []) as any[];
+    const normalizedItems = (Array.isArray(rawItems) ? rawItems : []).map((item, idx) =>
+      ensureContentItemIdentity(item, pid, idx)
+    );
+    const rawGrowth = loadProjectData(pid, 'growthItems', []) as any[];
+    const normalizedGrowth = (Array.isArray(rawGrowth) ? rawGrowth : []).map((item, idx) =>
+      ensureContentItemIdentity(item, pid, idx)
+    );
+
     const savedHistory = loadProjectData(pid, 'history', []);
     const savedRevisions = loadProjectData(pid, 'revisions', {});
-    setItems(savedItems);
-    setGrowthItems(savedGrowthItems);
+    setItems(normalizedItems);
+    setGrowthItems(normalizedGrowth);
     setHistory(savedHistory);
     setRevisions(savedRevisions);
+
+    // Sync selected item for this project
+    if (normalizedItems.length > 0) {
+      const existingSelected = loadProjectData(pid, 'selectedContentItem');
+      const validSelected = existingSelected && normalizedItems.some(i => i.no === existingSelected.no);
+      saveProjectSelectedItem(pid, validSelected ? existingSelected : normalizedItems[0]);
+    } else {
+      saveProjectSelectedItem(pid, null);
+    }
 
     // Load or default calendar settings specifically for this project
     const savedSettings = getProjectCalendarSettings(pid);
@@ -487,13 +502,25 @@ export default function HomePageClient() {
       return;
     }
 
-    if (isProjectIncomplete || !strategyBlueprint || !sharedContext) {
-      showToast('Project ini tidak lengkap. Silakan upload blueprint ulang.');
+    if (!activeProjectId || isProjectIncomplete || !strategyBlueprint || !sharedContext) {
+      showToast('Project ini belum lengkap. Silakan impor Strategy Blueprint terlebih dahulu.');
+      setIsIntakeModalOpen(true);
+      return;
+    }
+
+    const validation = validateProjectContext(activeProjectId, strategyBlueprint, sharedContext);
+    if (!validation.valid) {
+      showToast(validation.reason || 'Project context tidak valid.');
       setIsIntakeModalOpen(true);
       return;
     }
 
     if (isLoading) return;
+
+    const requestProjectId = activeProjectId;
+    const requestId = `${requestProjectId}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    activeGenerationRef.current = { requestId, projectId: requestProjectId };
+
     setIsLoading(true);
     showToast('Generasi strategi konten sedang berjalan via Gemini AI...');
     try {
@@ -501,6 +528,7 @@ export default function HomePageClient() {
         method: 'POST',
         headers: buildGeminiRequestHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
+          projectId: requestProjectId,
           coreTopic: coreTopic || sharedContext?.brand_context?.brand_name || 'Peluncuran Produk Strategy',
           startDate,
           skipDays,
@@ -533,25 +561,58 @@ export default function HomePageClient() {
       }
 
       const data = await response.json();
+
+      // Async race condition check: if user switched away to another project during generation, discard
+      if (
+        !activeGenerationRef.current ||
+        activeGenerationRef.current.requestId !== requestId ||
+        activeProjectIdRef.current !== requestProjectId
+      ) {
+        console.warn('Discarding stale calendar generation response for inactive project:', requestProjectId);
+        return;
+      }
+
       if (data.items && data.items.length > 0) {
-        setItems(data.items);
-        if (data.growthItems) setGrowthItems(data.growthItems);
+        const stampedItems = data.items.map((item: any, idx: number) =>
+          ensureContentItemIdentity(item, requestProjectId, idx)
+        );
+        const stampedGrowth = (data.growthItems || []).map((item: any, idx: number) =>
+          ensureContentItemIdentity(item, requestProjectId, idx)
+        );
+
+        setItems(stampedItems);
+        setGrowthItems(stampedGrowth);
 
         const newHistoryEntry = {
           id: Date.now(),
           timestamp: new Date().toISOString(),
           topic: coreTopic || sharedContext?.brand_context?.brand_name || 'Peluncuran Produk',
-          itemCount: data.items.length,
-          items: data.items,
-          growthItems: data.growthItems || []
+          itemCount: stampedItems.length,
+          items: stampedItems,
+          growthItems: stampedGrowth,
         };
-        setHistory(prev => [newHistoryEntry, ...prev.slice(0, 9)]);
+        const updatedHistory = [newHistoryEntry, ...history.slice(0, 9)];
+        setHistory(updatedHistory);
+
+        // Explicitly persist under requestProjectId
+        saveProjectData(requestProjectId, 'items', stampedItems);
+        saveProjectData(requestProjectId, 'growthItems', stampedGrowth);
+        saveProjectData(requestProjectId, 'history', updatedHistory);
+        saveProjectSelectedItem(requestProjectId, stampedItems[0]);
+
         setIsConfiguring(false);
-        showToast(`Berhasil membuat ${data.items.length} strategi konten berbasis funnel!`);
+        showToast(`Berhasil membuat ${stampedItems.length} strategi konten berbasis funnel!`);
       } else {
         showToast('Respon tidak valid, silakan coba lagi.');
       }
     } catch (err: any) {
+      if (
+        !activeGenerationRef.current ||
+        activeGenerationRef.current.requestId !== requestId ||
+        activeProjectIdRef.current !== requestProjectId
+      ) {
+        return;
+      }
       console.error(err);
       const errMsg = err.message || '';
       if (/dibatasi/i.test(errMsg) || /rate.*limit/i.test(errMsg) || /quota/i.test(errMsg) || /429/i.test(errMsg)) {
@@ -560,18 +621,43 @@ export default function HomePageClient() {
         showToast('Gagal memuat strategi: ' + errMsg);
       }
     } finally {
-      setIsLoading(false);
+      if (
+        activeGenerationRef.current?.requestId === requestId &&
+        activeProjectIdRef.current === requestProjectId
+      ) {
+        setIsLoading(false);
+        activeGenerationRef.current = null;
+      }
     }
   };
 
   const handleReschedule = (itemId: number, newDate: string) => {
-    setItems(prev => prev.map(item => item.no === itemId ? { ...item, tanggal: newDate } : item));
+    if (!activeProjectId) return;
+    setItems(prev => {
+      const next = prev.map(item => item.no === itemId ? { ...item, tanggal: newDate } : item);
+      saveProjectData(activeProjectId, 'items', next);
+      return next;
+    });
     showToast(`Post #${itemId} dijadwalkan ulang ke ${newDate}`);
   };
 
   const handleUpdateItem = (updatedItem: ContentItem) => {
-    setItems(prev => prev.map(item => item.no === updatedItem.no ? { ...updatedItem, isManualEdited: true } : item));
-    showToast(`Post #${updatedItem.no} diperbarui (manual edit disimpan)`);
+    if (!activeProjectId) return;
+    const stamped = ensureContentItemIdentity(updatedItem, activeProjectId);
+    setItems(prev => {
+      const next = prev.map(item => {
+        if (item.content_item_id && stamped.content_item_id && item.content_item_id === stamped.content_item_id) {
+          return { ...stamped, isManualEdited: true };
+        }
+        if (item.no === stamped.no) {
+          return { ...stamped, isManualEdited: true };
+        }
+        return item;
+      });
+      saveProjectData(activeProjectId, 'items', next);
+      return next;
+    });
+    showToast(`Post #${stamped.no} diperbarui (manual edit disimpan)`);
   };
 
   const handleRegenerateItem = async (itemNo: number, instruction: string) => {
@@ -581,8 +667,18 @@ export default function HomePageClient() {
       return;
     }
 
+    if (!activeProjectId || isProjectIncomplete) {
+      showToast('Project belum siap untuk revisi item.');
+      return;
+    }
+
     const target = items.find(i => i.no === itemNo);
     if (!target || isRegeneratingItem) return;
+
+    const requestProjectId = activeProjectId;
+    const requestId = `regen_${requestProjectId}_${itemNo}_${Date.now()}`;
+    activeGenerationRef.current = { requestId, projectId: requestProjectId };
+
     setIsRegeneratingItem(true);
     showToast(`Merevisi Post #${itemNo}...`);
 
@@ -610,11 +706,30 @@ export default function HomePageClient() {
       }
 
       const data = await res.json();
+
+      // Async race condition check
+      if (
+        !activeGenerationRef.current ||
+        activeGenerationRef.current.requestId !== requestId ||
+        activeProjectIdRef.current !== requestProjectId
+      ) {
+        console.warn('Discarding stale regenerate-item response for inactive project:', requestProjectId);
+        return;
+      }
+
       if (data.item) {
-        handleUpdateItem(data.item);
+        const stamped = ensureContentItemIdentity(data.item, requestProjectId);
+        handleUpdateItem(stamped);
         showToast(`Post #${itemNo} berhasil direvisi!`);
       }
     } catch (e: any) {
+      if (
+        !activeGenerationRef.current ||
+        activeGenerationRef.current.requestId !== requestId ||
+        activeProjectIdRef.current !== requestProjectId
+      ) {
+        return;
+      }
       console.error(e);
       const errMsg = e.message || '';
       if (/dibatasi/i.test(errMsg) || /rate.*limit/i.test(errMsg) || /quota/i.test(errMsg) || /429/i.test(errMsg)) {
@@ -623,7 +738,13 @@ export default function HomePageClient() {
         showToast('Gagal merevisi item: ' + errMsg);
       }
     } finally {
-      setIsRegeneratingItem(false);
+      if (
+        activeGenerationRef.current?.requestId === requestId &&
+        activeProjectIdRef.current === requestProjectId
+      ) {
+        setIsRegeneratingItem(false);
+        activeGenerationRef.current = null;
+      }
     }
   };
 
@@ -676,6 +797,15 @@ export default function HomePageClient() {
     showToast('Sistem di-reset ke awal.');
   };
 
+  const handleCreateNewProject = () => {
+    const newPid = `proj_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    updateProjectMeta(newPid, 'Project Baru');
+    setProjectList(getProjectList());
+    loadProject(newPid);
+    setIsIntakeModalOpen(true);
+    showToast('Project baru dibuat. Silakan upload / paste Strategy Blueprint.');
+  };
+
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
 
   const tofuCount = items.filter(i => (i.jenis || '').toUpperCase().includes('TOFU')).length;
@@ -688,7 +818,7 @@ export default function HomePageClient() {
     { type: 'MOFU', label: 'MOFU Consideration', count: mofuCount, color: 'text-amber-700' },
     { type: 'BOFU', label: 'BOFU Conversion', count: bofuCount, color: 'text-emerald-700' }
   ];
-  const projectSelector = projectList.length > 0 ? (
+  const projectSelector = (
     <div className="relative">
       <button
         onClick={() => setIsProjectDropdownOpen(prev => !prev)}
@@ -698,37 +828,53 @@ export default function HomePageClient() {
         <span className="max-w-[160px] truncate">{currentProjectName}</span>
       </button>
       {isProjectDropdownOpen && (
-        <div className="absolute right-0 top-full z-50 mt-1.5 w-60 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
-          <div className="border-b border-border bg-muted p-2.5 text-xs font-semibold text-muted-foreground">
-            Pilih Project
+        <div className="absolute right-0 top-full z-50 mt-1.5 w-64 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+          <div className="border-b border-border bg-muted p-2.5 flex items-center justify-between text-xs font-semibold text-muted-foreground">
+            <span>Daftar Project</span>
+            <button
+              onClick={() => {
+                setIsProjectDropdownOpen(false);
+                handleCreateNewProject();
+              }}
+              className="flex items-center gap-1 text-primary hover:underline font-bold cursor-pointer"
+            >
+              <Plus size={13} />
+              <span>Project Baru</span>
+            </button>
           </div>
           <div className="max-h-60 overflow-y-auto custom-scrollbar">
-            {projectList.map(p => (
-              <button
-                key={p.project_id}
-                onClick={() => {
-                  setIsProjectDropdownOpen(false);
-                  loadProject(p.project_id);
-                }}
-                className={`w-full px-3.5 py-2.5 text-left text-xs transition-colors ${activeProjectId === p.project_id ? 'bg-primary/10 font-bold text-primary' : 'text-foreground hover:bg-muted'}`}
-              >
-                {p.project_name}
-              </button>
-            ))}
+            {projectList.length === 0 ? (
+              <div className="p-3 text-center text-xs text-muted-foreground">
+                Belum ada project tersimpan
+              </div>
+            ) : (
+              projectList.map(p => (
+                <button
+                  key={p.project_id}
+                  onClick={() => {
+                    setIsProjectDropdownOpen(false);
+                    loadProject(p.project_id);
+                  }}
+                  className={`w-full px-3.5 py-2.5 text-left text-xs transition-colors ${activeProjectId === p.project_id ? 'bg-primary/10 font-bold text-primary' : 'text-foreground hover:bg-muted'}`}
+                >
+                  {p.project_name}
+                </button>
+              ))
+            )}
           </div>
           <button
             onClick={() => {
               setIsProjectDropdownOpen(false);
               loadProject(null);
             }}
-            className="w-full border-t border-border px-3.5 py-2 text-left text-xs text-rose-600 transition-colors hover:bg-rose-50"
+            className="w-full border-t border-border px-3.5 py-2 text-left text-xs text-rose-600 transition-colors hover:bg-rose-50 cursor-pointer"
           >
             Kosongkan Project Aktif
           </button>
         </div>
       )}
     </div>
-  ) : null;
+  );
   const primaryActions = (
     <>
       {projectSelector}

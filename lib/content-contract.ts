@@ -89,6 +89,7 @@ export interface SharedContentContext {
 }
 
 export interface GenerateCalendarRequest {
+  projectId?: string;
   coreTopic?: string;
   startDate?: string;
   skipDays?: string[];
@@ -166,6 +167,9 @@ export function getProductionStatusBadge(status: ProductionSummaryStatus): {
 
 export interface ContentItem {
   no: number;
+  content_item_id?: string;
+  project_id?: string;
+  projectId?: string;
   tanggal: string;
   jenis: string; // e.g. "TOFU (Awareness)", "MOFU (Consideration)", "BOFU (Conversion)"
   tujuan: string; // Daily strategic objective
@@ -184,7 +188,6 @@ export interface ContentItem {
   cta?: string;
   isManualEdited?: boolean;
   carousel_plan?: CarouselPlan;
-  projectId?: string;
   productionProgress?: ProductionProgress;
 }
 

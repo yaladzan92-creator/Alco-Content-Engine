@@ -32,6 +32,10 @@ import {
   loadProjectData, 
   saveProjectData, 
   removeProjectData, 
+  loadProjectSharedContext,
+  loadProjectCalendarItems,
+  loadProjectSelectedItem,
+  saveProjectSelectedItem,
   getProjectCharacterDNA, 
   saveProjectCharacterDNA, 
   updateItemInProject,
@@ -68,83 +72,6 @@ const safeCopyToClipboard = async (text: string) => {
   } catch (error) {
     console.error('Clipboard write failed:', error);
     return false;
-  }
-};
-
-// Fallbacks for graceful empty-state handling
-const itemFallback: ContentItem = {
-  no: 1,
-  tanggal: 'Rencana Hari Ini',
-  jenis: 'TOFU (Awareness)',
-  tujuan: 'Mengedukasi audiens tentang pentingnya optimasi digital funnel',
-  hookType: 'Problem-Agitation-Solution (PAS)',
-  headline: '3 Tanda Utama Konten Bisnis Anda Gagal Menghasilkan Penjualan!',
-  body: 'Banyak pemilik bisnis merasa frustrasi karena konten mereka ditonton ribuan orang tapi nihil pembelian. Masalahnya bukan pada kualitas video, melainkan absennya penataan corong penjualan (funnel) yang selaras.',
-  caption: 'Kenapa konten rame tapi sepi pembeli? 🤔 Jawabannya sederhana: Anda belum menata funnel TOFU-MOFU-BOFU! Yuk baca blueprint selengkapnya di bio. 🚀 #ALCOEngine #ContentFunnel',
-  format: 'Single Image / Carousel',
-  referensi: 'Blueprint ALCO v2',
-  visual: 'Visual ilustrasi grafik corong 3D yang bocor di bagian tengah dengan neon aksen merah.',
-  keterangan: 'Tampilkan teks headline berukuran besar (font minimal 64pt) dengan kontras yang kuat.',
-  cta: 'Link Bio'
-};
-
-const contextFallback: SharedContentContext = {
-  project_id: 'default_project',
-  project_name: 'ALCO Engine Default',
-  source: {
-    origin: 'manual_context',
-  },
-  system_flags: {
-    is_complete_for_planning: true,
-    missing_required_fields: [],
-  },
-  brand_context: {
-    brand_name: 'ALCO Engine',
-    category: 'Software & Productivity Tool',
-    brand_summary: 'Sistem terintegrasi untuk mendesain dan memetakan alur strategi konten berbasis corong pemasaran otomatis.',
-    brand_voice: 'Profesional, Berwibawa, Edukatif, Solutif namun tetap bersahabat'
-  },
-  audience_context: {
-    primary_audience: 'Creators, Course Sellers & Solopreneurs yang ingin melakukan skala bisnis secara digital.',
-    pain_points: [
-      'Membuat konten secara acak setiap hari tanpa strategi konversi terukur',
-      'Kehabisan waktu merencanakan konten bulanan',
-      'Kecemasan karena traffic melimpah namun tingkat konversi penjualan rendah'
-    ],
-    desires: [
-      'Membuat sistem kalender konten otomatis berbasis corong strategis',
-      'Memangkas waktu penyusunan brief konten hingga 80%',
-      'Membangun alur penjualan otomatis dari konten media sosial'
-    ],
-    objections: [
-      'Khawatir hasil copywriting terkesan kaku dan generik layaknya robot',
-      'Takut sistem terlalu kompleks untuk pemula',
-      'Meragukan fleksibilitas penyesuaian industri spesifik'
-    ]
-  },
-  strategy_context: {
-    positioning: 'Pusat otomatisasi pemetaan strategi konten komprehensif pertama yang mengutamakan funnel strategis.',
-    usp: [
-      'Strategy Blueprint intake yang intuitif',
-      'Automated content calendar terintegrasi TOFU-MOFU-BOFU',
-      'Production Studio instan untuk berbagai variasi aset'
-    ],
-    main_offer: 'Free Strategy Intake & Automated Content Blueprint',
-    offer_benefits: [
-      'Blueprint strategi bisnis & konten senilai Rp 1.500.000 secara gratis',
-      'Visualisasi kalender visual konten digital langsung siap eksekusi'
-    ],
-    core_message: 'Hentikan memproduksi konten acak. Saatnya bangun mesin konten otomatis yang mendatangkan penjualan berkelanjutan.',
-    copy_direction: [
-      'Gunakan data statistik rujukan kuat',
-      'Sederhanakan terminologi pemasaran teknis agar ramah pemula',
-      'Tekankan penghematan waktu rill'
-    ],
-    content_pillars: [
-      'Edukasi Funneling & Pemetaan Pembeli',
-      'Sistemasi & Manajemen Alur Kerja Kreator',
-      'Formula Copywriting Konversi Tinggi'
-    ]
   }
 };
 
@@ -1061,6 +988,9 @@ const tryParseJSON = (text: string) => {
 
 const getItemKey = (item?: ContentItem | null) => {
   if (!item) return '';
+  if (item.content_item_id) {
+    return item.content_item_id.replace(/[^a-zA-Z0-9_]/g, '_');
+  }
   const no = item.no !== undefined && item.no !== null ? String(item.no) : '0';
   const tanggal = item.tanggal || '';
   const headline = item.headline || '';
@@ -2619,8 +2549,35 @@ const getInitialDraft = (
   currentItem?: ContentItem | null,
   currentContext?: SharedContentContext | null
 ) => {
-  const activeItem = currentItem || itemFallback;
-  const activeContext = currentContext || contextFallback;
+  if (!currentItem) return '';
+  const activeItem = currentItem;
+  const activeContext: SharedContentContext = currentContext || {
+    project_id: activeItem.project_id || activeItem.projectId || 'project',
+    project_name: 'Project Context',
+    source: { origin: 'manual_context' },
+    system_flags: { is_complete_for_planning: true, missing_required_fields: [] },
+    brand_context: {
+      brand_name: activeItem.referensi || 'Brand',
+      category: 'Bisnis',
+      brand_summary: activeItem.headline || '',
+      brand_voice: 'Profesional & Edukatif',
+    },
+    audience_context: {
+      primary_audience: 'Target Audiens',
+      pain_points: [],
+      desires: [],
+      objections: [],
+    },
+    strategy_context: {
+      positioning: activeItem.headline || '',
+      usp: [],
+      main_offer: activeItem.cta || '',
+      offer_benefits: [],
+      core_message: activeItem.headline || '',
+      copy_direction: [],
+      content_pillars: [],
+    },
+  };
 
   const funnelStage = normalizeFunnelStage(activeItem.jenis);
   const funnelRules = getFunnelRules(activeItem.jenis);
@@ -3550,10 +3507,42 @@ export default function ProductionStudioPage() {
       return;
     }
 
+    if (!sourceItem) {
+      setRenderError('Item konten tidak ditemukan.');
+      showToast('Item konten tidak ditemukan.');
+      return;
+    }
+
     setIsRenderingVideo(true);
 
-    const item = sourceItem || itemFallback;
-    const context = sharedContextSnapshot || contextFallback;
+    const item = sourceItem;
+    const context: SharedContentContext = sharedContextSnapshot || {
+      project_id: item.project_id || item.projectId || effectiveProjectId,
+      project_name: 'Project Context',
+      source: { origin: 'manual_context' },
+      system_flags: { is_complete_for_planning: true, missing_required_fields: [] },
+      brand_context: {
+        brand_name: item.referensi || 'Brand',
+        category: 'Bisnis',
+        brand_summary: item.headline || '',
+        brand_voice: 'Profesional & Edukatif',
+      },
+      audience_context: {
+        primary_audience: 'Target Audiens',
+        pain_points: [],
+        desires: [],
+        objections: [],
+      },
+      strategy_context: {
+        positioning: item.headline || '',
+        usp: [],
+        main_offer: item.cta || '',
+        offer_benefits: [],
+        core_message: item.headline || '',
+        copy_direction: [],
+        content_pillars: [],
+      },
+    };
     const payload = buildJson2VideoPayload(
       activeVideo,
       item,
@@ -3752,8 +3741,40 @@ export default function ProductionStudioPage() {
       return;
     }
 
-    const item = sourceItem || itemFallback;
-    const context = sharedContextSnapshot || contextFallback;
+    if (!sourceItem) {
+      setRenderError('Item konten tidak ditemukan.');
+      showToast('Item konten tidak ditemukan.');
+      return;
+    }
+
+    const item = sourceItem;
+    const context: SharedContentContext = sharedContextSnapshot || {
+      project_id: item.project_id || item.projectId || effectiveProjectId,
+      project_name: 'Project Context',
+      source: { origin: 'manual_context' },
+      system_flags: { is_complete_for_planning: true, missing_required_fields: [] },
+      brand_context: {
+        brand_name: item.referensi || 'Brand',
+        category: 'Bisnis',
+        brand_summary: item.headline || '',
+        brand_voice: 'Profesional & Edukatif',
+      },
+      audience_context: {
+        primary_audience: 'Target Audiens',
+        pain_points: [],
+        desires: [],
+        objections: [],
+      },
+      strategy_context: {
+        positioning: item.headline || '',
+        usp: [],
+        main_offer: item.cta || '',
+        offer_benefits: [],
+        core_message: item.headline || '',
+        copy_direction: [],
+        content_pillars: [],
+      },
+    };
     const payload = buildJson2VideoPayload(
       activeVideo,
       item,
@@ -3807,38 +3828,74 @@ export default function ProductionStudioPage() {
     setSharedContextSnapshot(null);
 
     try {
-      const storedItem = localStorage.getItem('alco_selected_item');
-      const storedContext = localStorage.getItem('alco_shared_context');
-      const storedSelectedProjId = localStorage.getItem('alco_selected_project_id');
-      const currentActiveProjId = getActiveProjectId();
+      let paramProjId: string | null = null;
+      let paramContentItemId: string | null = null;
+      let paramItemNo: number | null = null;
 
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        paramProjId = urlParams.get('projectId');
+        paramContentItemId = urlParams.get('contentItemId');
+        const noStr = urlParams.get('itemNo');
+        if (noStr) {
+          const parsedNo = parseInt(noStr, 10);
+          if (!isNaN(parsedNo)) paramItemNo = parsedNo;
+        }
+      }
+
+      const activeProjId = getActiveProjectId();
+      const resolvedProjId = paramProjId || activeProjId || 'default';
+
+      setSelectedProjectIdState(paramProjId || activeProjId || null);
+      setActiveProjectIdState(activeProjId);
+      setEffectiveProjectId(resolvedProjId);
+
+      // Load project-scoped shared context
+      const parsedContext = loadProjectSharedContext(resolvedProjId);
+      setSharedContextSnapshot(parsedContext);
+
+      // Load project calendar items
+      const calendarItems = loadProjectCalendarItems(resolvedProjId);
+
+      // Find target item
       let parsedItem: ContentItem | null = null;
-      let parsedContext: SharedContentContext | null = null;
 
-      if (storedItem) {
-        parsedItem = JSON.parse(storedItem);
+      // 1. Try finding by contentItemId
+      if (paramContentItemId && calendarItems.length > 0) {
+        parsedItem = calendarItems.find((it: any) => it.content_item_id === paramContentItemId) || null;
+      }
+
+      // 2. Try finding by itemNo
+      if (!parsedItem && paramItemNo !== null && calendarItems.length > 0) {
+        parsedItem = calendarItems.find((it: any) => it.no === paramItemNo) || null;
+      }
+
+      // 3. Try finding by project's saved selected item
+      if (!parsedItem) {
+        parsedItem = loadProjectSelectedItem(resolvedProjId);
+      }
+
+      // 4. If still not found and we have calendar items, pick the first
+      if (!parsedItem && calendarItems.length > 0) {
+        parsedItem = calendarItems[0];
+      }
+
+      // Ensure item has project identity attached
+      if (parsedItem) {
+        parsedItem = {
+          ...parsedItem,
+          projectId: resolvedProjId,
+          project_id: resolvedProjId,
+        };
         setSourceItem(parsedItem);
+        saveProjectSelectedItem(resolvedProjId, parsedItem);
+      } else {
+        setSourceItem(null);
       }
-      if (storedContext) {
-        parsedContext = JSON.parse(storedContext);
-        setSharedContextSnapshot(parsedContext);
-      }
 
-      const itemProjectId = parsedItem?.projectId || (parsedItem as any)?.project_id;
-      const contextProjectId = parsedContext?.project_id;
-
-      const resolvedSelectedProjId = storedSelectedProjId || itemProjectId || contextProjectId || null;
-      setSelectedProjectIdState(resolvedSelectedProjId);
-      setActiveProjectIdState(currentActiveProjId);
-
-      // Primary project ID for loading and saving studio output
-      // Do not fallback to default if selected item / context has a projectId
-      const projId = resolvedSelectedProjId || currentActiveProjId || 'default';
-      setEffectiveProjectId(projId);
-
-      const charList = getProjectSavedCharacters(projId) as CharacterDNA[];
+      const charList = getProjectSavedCharacters(resolvedProjId) as CharacterDNA[];
       setSavedCharacters(charList);
-      const activeCharId = getProjectActiveCharacterId(projId);
+      const activeCharId = getProjectActiveCharacterId(resolvedProjId);
       setSelectedCharacterId(activeCharId);
 
       if (activeCharId && charList.length > 0) {
@@ -3846,11 +3903,11 @@ export default function ProductionStudioPage() {
         if (found) {
           setCharacterDNA(found);
         } else {
-          const storedDNA = getProjectCharacterDNA(projId);
+          const storedDNA = getProjectCharacterDNA(resolvedProjId);
           if (storedDNA) setCharacterDNA(storedDNA);
         }
       } else {
-        const storedDNA = getProjectCharacterDNA(projId);
+        const storedDNA = getProjectCharacterDNA(resolvedProjId);
         if (storedDNA) {
           setCharacterDNA(storedDNA);
           if (storedDNA.character_id) {
@@ -3865,18 +3922,18 @@ export default function ProductionStudioPage() {
       if (parsedItem) {
         const itemKey = getItemKey(parsedItem);
         
-        const storedImage = loadProjectData(projId, `studio_image_${itemKey}`);
-        const storedCarousel = loadProjectData(projId, `studio_carousel_${itemKey}`);
-        const storedVideo = loadProjectData(projId, `studio_video_${itemKey}`);
-        const storedUgc = loadProjectData(projId, `studio_ugc_${itemKey}`);
-        const storedReview = loadProjectData(projId, `studio_review_${itemKey}`);
-        const storedRevision = loadProjectData(projId, `studio_revision_${itemKey}`);
+        const storedImage = loadProjectData(resolvedProjId, `studio_image_${itemKey}`);
+        const storedCarousel = loadProjectData(resolvedProjId, `studio_carousel_${itemKey}`);
+        const storedVideo = loadProjectData(resolvedProjId, `studio_video_${itemKey}`);
+        const storedUgc = loadProjectData(resolvedProjId, `studio_ugc_${itemKey}`);
+        const storedReview = loadProjectData(resolvedProjId, `studio_review_${itemKey}`);
+        const storedRevision = loadProjectData(resolvedProjId, `studio_revision_${itemKey}`);
 
         if (storedImage && !isErrorContent(storedImage)) {
           setImageOutput(storedImage);
         } else {
           if (storedImage && isErrorContent(storedImage)) {
-            removeProjectData(projId, `studio_image_${itemKey}`);
+            removeProjectData(resolvedProjId, `studio_image_${itemKey}`);
           }
           setImageOutput(getInitialDraft('image', parsedItem, parsedContext));
         }
@@ -3885,7 +3942,7 @@ export default function ProductionStudioPage() {
           setCarouselOutput(storedCarousel);
         } else {
           if (storedCarousel && isErrorContent(storedCarousel)) {
-            removeProjectData(projId, `studio_carousel_${itemKey}`);
+            removeProjectData(resolvedProjId, `studio_carousel_${itemKey}`);
           }
           setCarouselOutput(getInitialDraft('carousel', parsedItem, parsedContext));
         }
@@ -3894,7 +3951,7 @@ export default function ProductionStudioPage() {
           setVideoOutput(storedVideo);
         } else {
           if (storedVideo && isErrorContent(storedVideo)) {
-            removeProjectData(projId, `studio_video_${itemKey}`);
+            removeProjectData(resolvedProjId, `studio_video_${itemKey}`);
           }
           setVideoOutput(getInitialDraft('video', parsedItem, parsedContext));
         }
@@ -3903,7 +3960,7 @@ export default function ProductionStudioPage() {
           setUgcOutput(storedUgc);
         } else {
           if (storedUgc && isErrorContent(storedUgc)) {
-            removeProjectData(projId, `studio_ugc_${itemKey}`);
+            removeProjectData(resolvedProjId, `studio_ugc_${itemKey}`);
           }
           setUgcOutput(getInitialDraft('ugc', parsedItem, parsedContext));
         }
@@ -3912,7 +3969,7 @@ export default function ProductionStudioPage() {
           setReviewOutput(storedReview);
         } else {
           if (storedReview && isErrorContent(storedReview)) {
-            removeProjectData(projId, `studio_review_${itemKey}`);
+            removeProjectData(resolvedProjId, `studio_review_${itemKey}`);
           }
           setReviewOutput(getInitialDraft('review', parsedItem, parsedContext));
         }
@@ -3998,7 +4055,7 @@ export default function ProductionStudioPage() {
   };
 
   const handleUpdateProgress = (newProgress: Partial<ProductionProgress>) => {
-    const current = sourceItem || itemFallback;
+    const current = sourceItem;
     if (!current) return;
     const updated: ContentItem = {
       ...current,
@@ -4015,15 +4072,9 @@ export default function ProductionStudioPage() {
       },
     };
     setSourceItem(updated);
-    try {
-      localStorage.setItem('alco_selected_item', JSON.stringify(updated));
-      localStorage.setItem('alco_selected_content_item', JSON.stringify(updated));
-    } catch (e) {
-      console.error('Failed to sync item to localStorage', e);
-    }
     const pid = effectiveProjectId || activeProjectIdState || getActiveProjectId() || '';
     if (pid) {
-      saveProjectData(pid, 'selectedContentItem', updated);
+      saveProjectSelectedItem(pid, updated);
       updateItemInProject(pid, updated);
     }
   };
@@ -4072,8 +4123,39 @@ export default function ProductionStudioPage() {
       let promptTitle = '';
       let formatDirection = '';
 
-      const activeItem = sourceItem || itemFallback;
-      const activeContext = sharedContextSnapshot || contextFallback;
+      if (!sourceItem) {
+        showToast('Pilih item konten terlebih dahulu.');
+        return;
+      }
+
+      const activeItem = sourceItem;
+      const activeContext: SharedContentContext = sharedContextSnapshot || {
+        project_id: activeItem.project_id || activeItem.projectId || effectiveProjectId,
+        project_name: 'Project Context',
+        source: { origin: 'manual_context' },
+        system_flags: { is_complete_for_planning: true, missing_required_fields: [] },
+        brand_context: {
+          brand_name: activeItem.referensi || 'Brand',
+          category: 'Bisnis',
+          brand_summary: activeItem.headline || '',
+          brand_voice: 'Profesional & Edukatif',
+        },
+        audience_context: {
+          primary_audience: 'Target Audiens',
+          pain_points: [],
+          desires: [],
+          objections: [],
+        },
+        strategy_context: {
+          positioning: activeItem.headline || '',
+          usp: [],
+          main_offer: activeItem.cta || '',
+          offer_benefits: [],
+          core_message: activeItem.headline || '',
+          copy_direction: [],
+          content_pillars: [],
+        },
+      };
       const funnelStage = normalizeFunnelStage(activeItem.jenis);
       const funnelRules = getFunnelRules(activeItem.jenis);
       const funnelPromptBlock = buildFunnelPromptBlock(activeItem.jenis);
@@ -4706,11 +4788,59 @@ ${formatDirection}${revisionDirective}`;
     }
   };
 
-  // Get current active content based on state or defaults
-  const activeItem = sourceItem || itemFallback;
-  const activeContext = sharedContextSnapshot || contextFallback;
+  // Strictly typed active content item and shared context for studio hooks and panels
+  const activeItem: ContentItem = useMemo(() => {
+    return sourceItem || {
+      no: 1,
+      tanggal: new Date().toISOString().split('T')[0],
+      jenis: 'TOFU',
+      tujuan: 'Awareness',
+      hookType: 'Question',
+      headline: 'Konten Edukasi',
+      body: '',
+      caption: '',
+      format: 'Single',
+      referensi: '',
+      visual: '',
+      keterangan: '',
+      projectId: effectiveProjectId,
+      project_id: effectiveProjectId,
+      content_item_id: `${effectiveProjectId}_temp_1`,
+    };
+  }, [sourceItem, effectiveProjectId]);
+
+  const activeContext: SharedContentContext = useMemo(() => {
+    return sharedContextSnapshot || {
+      project_id: activeItem.project_id || activeItem.projectId || effectiveProjectId,
+      project_name: 'Project Context',
+      source: { origin: 'manual_context' },
+      system_flags: { is_complete_for_planning: true, missing_required_fields: [] },
+      brand_context: {
+        brand_name: activeItem.referensi || 'Brand',
+        category: 'Bisnis',
+        brand_summary: activeItem.headline || '',
+        brand_voice: 'Profesional & Edukatif',
+      },
+      audience_context: {
+        primary_audience: 'Target Audiens',
+        pain_points: [],
+        desires: [],
+        objections: [],
+      },
+      strategy_context: {
+        positioning: activeItem.headline || '',
+        usp: [],
+        main_offer: activeItem.cta || '',
+        offer_benefits: [],
+        core_message: activeItem.headline || '',
+        copy_direction: [],
+        content_pillars: [],
+      },
+    };
+  }, [sharedContextSnapshot, activeItem, effectiveProjectId]);
 
   const currentOutputText = useMemo(() => {
+    if (!activeItem) return '';
     if (activeTab === 'image') return imageOutput;
     if (activeTab === 'carousel') return carouselOutput;
     if (activeTab === 'video') return videoOutput;
@@ -4727,6 +4857,7 @@ ${formatDirection}${revisionDirective}`;
 
   // Memoized parsed image angles package
   const imageAnglesPackage = useMemo<ImageAnglesPackage | null>(() => {
+    if (!activeItem) return null;
     const textToParse = imageOutput || getInitialDraft('image', activeItem, activeContext);
     const normalizedJson = validateAndNormalizeImageAngles(textToParse, activeItem, activeContext);
     if (!normalizedJson) {
@@ -4849,10 +4980,10 @@ ${formatDirection}${revisionDirective}`;
     const checks = [
       { id: 'source', label: 'Source Item Tersedia', status: !!sourceItem },
       { id: 'context', label: 'Strategy Context Tersedia', status: !!sharedContextSnapshot },
-      { id: 'headline', label: 'Headline Tersedia', status: !!activeItem.headline },
-      { id: 'objective', label: 'Objective / Tujuan Tersedia', status: !!activeItem.tujuan },
-      { id: 'cta', label: 'Call to Action (CTA) Tersedia', status: !!activeItem.cta },
-      { id: 'visual', label: 'Visual Direction Tersedia', status: !!activeItem.visual }
+      { id: 'headline', label: 'Headline Tersedia', status: !!activeItem?.headline },
+      { id: 'objective', label: 'Objective / Tujuan Tersedia', status: !!activeItem?.tujuan },
+      { id: 'cta', label: 'Call to Action (CTA) Tersedia', status: !!activeItem?.cta },
+      { id: 'visual', label: 'Visual Direction Tersedia', status: !!activeItem?.visual }
     ];
     const passedCount = checks.filter(c => c.status).length;
     const percentage = Math.round((passedCount / checks.length) * 100);
@@ -4933,9 +5064,10 @@ ${formatDirection}${revisionDirective}`;
               <AlertCircle size={32} />
             </div>
             <div className="space-y-2">
-              <h3 className="text-sm font-bold text-[#1f2933]">Belum Ada Item Kalender yang Dipilih</h3>
+              <h3 className="text-sm font-bold text-[#1f2933]">Data Konten Project Tidak Ditemukan</h3>
               <p className="text-xs text-stone-600 leading-relaxed">
-                Silakan kembali ke Kalender Utama dan pilih salah satu item konten dengan mengklik tombol <span className="text-primary font-semibold">Buka Production Studio</span> pada panel detail item.
+                Item konten untuk project <span className="font-semibold text-stone-800 font-mono">[{effectiveProjectId}]</span> tidak ditemukan atau belum dipilih.
+                Silakan kembali ke Kalender Utama dan klik <span className="text-primary font-semibold">Buka Production Studio</span> pada item kalender aktif.
               </p>
             </div>
             <button
@@ -4955,7 +5087,7 @@ ${formatDirection}${revisionDirective}`;
     <ContentEngineShell
       title="ALCO Production Studio"
       subtitle="Workspace produksi aset dari kalender Content Engine"
-      eyebrow={activeContext.brand_context?.brand_name || 'Studio'}
+      eyebrow={activeContext?.brand_context?.brand_name || 'Studio'}
       actions={(
         <>
           <GeminiApiKeyControl onToast={showToast} variant="compact" />

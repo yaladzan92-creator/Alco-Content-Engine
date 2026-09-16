@@ -30,9 +30,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing content item to revise" }, { status: 400 });
     }
 
-    const brandName = sharedContentContext?.brand_context?.brand_name || "ALCO Client";
-    const mainOffer = sharedContentContext?.strategy_context?.main_offer || "Product/Service";
-    const coreMessage = sharedContentContext?.strategy_context?.core_message || coreTopic || "General Campaign";
+    const brandName = sharedContentContext?.brand_context?.brand_name || "Brand";
+    const mainOffer = sharedContentContext?.strategy_context?.main_offer || "Produk/Layanan";
+    const coreMessage = sharedContentContext?.strategy_context?.core_message || coreTopic || "Kampanye Konten";
     const itemStage = item.jenis || "TOFU";
 
     const prompt = `Rewrite and selectively improve the following content calendar item based on the user's specific revision instruction.
@@ -108,6 +108,9 @@ ${buildFunnelPromptBlock(itemStage)}
       item: {
         ...item,
         ...parsed,
+        project_id: item.project_id || item.projectId,
+        projectId: item.project_id || item.projectId,
+        content_item_id: item.content_item_id,
         cta: sanitizedCta,
         isManualEdited: false // updated via AI revision
       }

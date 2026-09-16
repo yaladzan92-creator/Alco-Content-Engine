@@ -35,30 +35,77 @@ export const saveProjectList = (list: ProjectMeta[]) => {
 
 export const getActiveProjectId = (): string | null => {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(STORAGE_KEYS.ACTIVE_PROJECT_ID);
+  return localStorage.getItem(STORAGE_KEYS.ACTIVE_PROJECT_ID) || localStorage.getItem(STORAGE_KEYS.SELECTED_PROJECT_ID) || null;
 };
 
 export const setActiveProjectId = (projectId: string | null) => {
   if (typeof window === 'undefined') return;
   if (projectId) {
     localStorage.setItem(STORAGE_KEYS.ACTIVE_PROJECT_ID, projectId);
+    // Keep in sync to guarantee single source of truth and prevent divergent IDs
+    localStorage.setItem(STORAGE_KEYS.SELECTED_PROJECT_ID, projectId);
   } else {
     localStorage.removeItem(STORAGE_KEYS.ACTIVE_PROJECT_ID);
+    localStorage.removeItem(STORAGE_KEYS.SELECTED_PROJECT_ID);
   }
 };
 
 export const getSelectedProjectId = (): string | null => {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(STORAGE_KEYS.SELECTED_PROJECT_ID);
+  return getActiveProjectId();
 };
 
 export const setSelectedProjectId = (projectId: string | null) => {
+  setActiveProjectId(projectId);
+};
+
+export const clearGlobalTransientState = () => {
   if (typeof window === 'undefined') return;
-  if (projectId) {
-    localStorage.setItem(STORAGE_KEYS.SELECTED_PROJECT_ID, projectId);
-  } else {
-    localStorage.removeItem(STORAGE_KEYS.SELECTED_PROJECT_ID);
+  try {
+    localStorage.removeItem('alco_selected_item');
+    localStorage.removeItem('alco_selected_content_item');
+    localStorage.removeItem('alco_shared_context');
+  } catch (_) {}
+};
+
+export const ensureContentItemIdentity = (item: any, projectId: string, fallbackIndex?: number): any => {
+  if (!item || typeof item !== 'object') return item;
+  const no = item.no !== undefined && item.no !== null ? item.no : (fallbackIndex !== undefined ? fallbackIndex + 1 : 1);
+  const contentItemId = item.content_item_id || `${projectId}_item_${no}_${Math.random().toString(36).slice(2, 8)}`;
+  return {
+    ...item,
+    project_id: projectId,
+    projectId: projectId,
+    content_item_id: contentItemId,
+  };
+};
+
+export const validateProjectContext = (
+  projectId: string | null,
+  blueprint: any,
+  context: any
+): { valid: boolean; reason?: string } => {
+  if (!projectId || typeof projectId !== 'string' || !projectId.trim()) {
+    return { valid: false, reason: 'Tidak ada project aktif terpilih.' };
   }
+  if (!blueprint || typeof blueprint !== 'object') {
+    return { valid: false, reason: 'Strategy Blueprint tidak tersedia untuk project aktif ini.' };
+  }
+  if (!context || typeof context !== 'object') {
+    return { valid: false, reason: 'Shared Content Context tidak tersedia untuk project aktif ini.' };
+  }
+  if (blueprint.project_id && blueprint.project_id !== projectId) {
+    return {
+      valid: false,
+      reason: `Mismatch: Blueprint terikat ke project ${blueprint.project_id}, bukan ${projectId}.`
+    };
+  }
+  if (context.project_id && context.project_id !== projectId) {
+    return {
+      valid: false,
+      reason: `Mismatch: Shared Context terikat ke project ${context.project_id}, bukan ${projectId}.`
+    };
+  }
+  return { valid: true };
 };
 
 export const updateProjectMeta = (projectId: string, projectName: string) => {
@@ -114,17 +161,37 @@ export const updateItemInProject = (projectId: string, updatedItem: any) => {
   try {
     const currentItems = loadProjectData(projectId, 'items', []) as any[];
     if (Array.isArray(currentItems) && currentItems.length > 0) {
-      const idx = currentItems.findIndex(
-        (i) => i.no === updatedItem.no || (i.tanggal === updatedItem.tanggal && i.headline === updatedItem.headline)
-      );
+      const idx = currentItems.findIndex((i) => {
+        if (i.content_item_id && updatedItem.content_item_id) {
+          return i.content_item_id === updatedItem.content_item_id;
+        }
+        if (i.no !== undefined && updatedItem.no !== undefined) {
+          return i.no === updatedItem.no;
+        }
+        return i.tanggal === updatedItem.tanggal && i.headline === updatedItem.headline;
+      });
       if (idx >= 0) {
-        currentItems[idx] = { ...currentItems[idx], ...updatedItem };
+        currentItems[idx] = { ...currentItems[idx], ...updatedItem, project_id: projectId, projectId };
         saveProjectData(projectId, 'items', currentItems);
       }
     }
   } catch (err) {
     console.error('Failed to update item in project data:', err);
   }
+};
+
+export const getProjectSelectedItem = (projectId: string): any => {
+  return loadProjectData(projectId, 'selectedContentItem', null);
+};
+
+export const saveProjectSelectedItem = (projectId: string, item: any): void => {
+  if (!projectId) return;
+  if (!item) {
+    removeProjectData(projectId, 'selectedContentItem');
+    return;
+  }
+  const normalized = ensureContentItemIdentity(item, projectId);
+  saveProjectData(projectId, 'selectedContentItem', normalized);
 };
 
 export const getProjectCharacterDNA = (projectId: string, sourceItemKey?: string) => {
@@ -287,5 +354,25 @@ export const getProjectCalendarSettings = (projectId: string): CalendarSettings 
 
 export const saveProjectCalendarSettings = (projectId: string, settings: CalendarSettings) => {
   saveProjectData(projectId, 'calendarSettings', settings);
+};
+
+export const loadProjectSharedContext = (projectId: string): any => {
+  return loadProjectData(projectId, 'sharedContext', null);
+};
+
+export const saveProjectSharedContext = (projectId: string, context: any): void => {
+  saveProjectData(projectId, 'sharedContext', context);
+};
+
+export const loadProjectCalendarItems = (projectId: string): any[] => {
+  return loadProjectData(projectId, 'items', []);
+};
+
+export const saveProjectCalendarItems = (projectId: string, items: any[]): void => {
+  saveProjectData(projectId, 'items', items);
+};
+
+export const loadProjectSelectedItem = (projectId: string): any => {
+  return getProjectSelectedItem(projectId);
 };
 

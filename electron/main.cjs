@@ -295,6 +295,20 @@ async function startProductionServer() {
 
   log(`Starting internal production server process... (Port: ${port}, AppDir: ${appDir}, Script: ${serverScript})`);
 
+  const nodePaths = [
+    path.join(appDir, 'node_modules'),
+    path.join(path.dirname(appDir), 'app.asar.unpacked', 'node_modules'),
+  ];
+  if (process.resourcesPath) {
+    nodePaths.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules'));
+    nodePaths.push(path.join(process.resourcesPath, 'app', 'node_modules'));
+  }
+  const existingNodePath = process.env.NODE_PATH || '';
+  const combinedNodePath = [
+    ...nodePaths,
+    ...(existingNodePath ? existingNodePath.split(path.delimiter) : []),
+  ].filter(Boolean).join(path.delimiter);
+
   const env = {
     ...process.env,
     ELECTRON_RUN_AS_NODE: '1',
@@ -302,6 +316,7 @@ async function startProductionServer() {
     PORT: String(port),
     HOSTNAME: '127.0.0.1',
     APP_DIR: appDir,
+    NODE_PATH: combinedNodePath,
   };
 
   serverProcess = spawn(process.execPath, [serverScript, `--port=${port}`, `--dir=${appDir}`], {

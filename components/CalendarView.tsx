@@ -43,7 +43,7 @@ import {
 
 import { buildGeminiRequestHeaders } from '@/lib/client-gemini-key';
 import { extractJSON } from '@/lib/geminiUtils';
-import { saveProjectData, getActiveProjectId } from '@/lib/storage';
+import { saveProjectData, getActiveProjectId, saveProjectSelectedItem } from '@/lib/storage';
 import { getProductionStatus, getProductionStatusBadge } from '@/lib/content-contract';
 import { ContentItem, ConfigDataProps } from './calendar/types';
 import { CalendarDay } from './calendar/CalendarDay';
@@ -927,7 +927,8 @@ Keterangan: ${editingItem.keterangan}`;
                               <button
                                 onClick={() => {
                                   const resolvedProjectId =
-                                    (item as any)?.projectId ||
+                                    item.project_id ||
+                                    item.projectId ||
                                     configData?.sharedContentContext?.project_id ||
                                     configData?.strategyBlueprint?.project_id ||
                                     configData?.selectedProject ||
@@ -935,29 +936,23 @@ Keterangan: ${editingItem.keterangan}`;
                                     '';
 
                                   if (resolvedProjectId) {
-                                    localStorage.setItem('alco_selected_project_id', resolvedProjectId);
-                                    saveProjectData(resolvedProjectId, 'selectedContentItem', item);
-                                    if (configData?.sharedContentContext) {
-                                      saveProjectData(resolvedProjectId, 'context', configData.sharedContentContext);
-                                    }
+                                    saveProjectSelectedItem(resolvedProjectId, item);
                                   }
 
-                                  const itemWithProject = resolvedProjectId
-                                    ? { ...item, projectId: resolvedProjectId }
-                                    : item;
-
-                                  localStorage.setItem('alco_selected_item', JSON.stringify(itemWithProject));
-                                  localStorage.setItem(
-                                    'alco_shared_context',
-                                    JSON.stringify(configData?.sharedContentContext || null)
-                                  );
                                   const tab =
                                     item.primaryAssetType === 'carousel'
                                       ? 'carousel'
                                       : item.primaryAssetType === 'video'
                                       ? 'video'
                                       : 'image';
-                                  router.push(`/production-studio?tab=${tab}`);
+                                  const contentItemId = item.content_item_id || String(item.no);
+                                  const query = new URLSearchParams({
+                                    tab,
+                                    ...(resolvedProjectId ? { projectId: resolvedProjectId } : {}),
+                                    contentItemId,
+                                    itemNo: String(item.no),
+                                  });
+                                  router.push(`/production-studio?${query.toString()}`);
                                 }}
                                 className="min-h-[40px] px-3.5 bg-primary/10 hover:bg-primary text-primary hover:text-white border border-primary/30 font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition"
                                 title="Buka di Production Studio"

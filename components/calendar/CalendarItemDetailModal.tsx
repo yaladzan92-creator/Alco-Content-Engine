@@ -20,7 +20,7 @@ import {
   Pin,
 } from 'lucide-react';
 import { ContentItem } from './types';
-import { saveProjectData, getActiveProjectId } from '@/lib/storage';
+import { getActiveProjectId, saveProjectSelectedItem } from '@/lib/storage';
 import { PromptNextStepLinks } from '@/components/production-studio/PromptNextStepLinks';
 import ProductionProgressWidget from './ProductionProgressWidget';
 import { ProductionProgress } from '@/lib/content-contract';
@@ -100,25 +100,13 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
   const handleSendToProductionStudio = () => {
     setIsOpeningStudio(true);
     const resolvedProjectId =
+      editingItem?.project_id ||
       editingItem?.projectId ||
       getActiveProjectId() ||
-      (typeof window !== 'undefined' ? localStorage.getItem('alco_selected_project_id') : '') ||
       '';
 
     if (resolvedProjectId) {
-      localStorage.setItem('alco_selected_project_id', resolvedProjectId);
-      saveProjectData(resolvedProjectId, 'selectedContentItem', editingItem);
-    }
-
-    const itemWithProject = resolvedProjectId
-      ? { ...editingItem, projectId: resolvedProjectId }
-      : editingItem;
-
-    try {
-      localStorage.setItem('alco_selected_content_item', JSON.stringify(itemWithProject));
-      localStorage.setItem('alco_selected_item', JSON.stringify(itemWithProject));
-    } catch (e) {
-      console.error('Failed to save selected item fallback', e);
+      saveProjectSelectedItem(resolvedProjectId, editingItem);
     }
 
     const tab =
@@ -127,7 +115,16 @@ export const CalendarItemDetailModal: React.FC<CalendarItemDetailModalProps> = (
         : editingItem.primaryAssetType === 'video'
         ? 'video'
         : 'image';
-    router.push(`/production-studio?tab=${tab}`);
+
+    const contentItemId = editingItem.content_item_id || String(editingItem.no);
+    const query = new URLSearchParams({
+      tab,
+      ...(resolvedProjectId ? { projectId: resolvedProjectId } : {}),
+      contentItemId,
+      itemNo: String(editingItem.no),
+    });
+
+    router.push(`/production-studio?${query.toString()}`);
   };
 
   const handleCopyDetail = async () => {

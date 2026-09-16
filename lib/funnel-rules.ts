@@ -178,7 +178,7 @@ export function normalizeGoogleFlowDialogue(
   const brandName =
     context?.brand_context?.brand_name ||
     context?.brandName ||
-    'ALCO Engine';
+    'brand Anda';
 
   let cleaned = cleanDialogueText(rawDialogue || '');
   cleaned = removeBrandDuplication(cleaned, brandName);

@@ -17,6 +17,9 @@ export interface ContentItem {
   carousel_plan?: any;
   isGrowth?: boolean;
   projectId?: string;
+  project_id?: string;
+  content_item_id?: string;
+  cta?: string;
   productionProgress?: import('@/lib/content-contract').ProductionProgress;
 }
 
