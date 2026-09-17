@@ -30,17 +30,28 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
-    if (body.production_context || body.project_id) {
-      const validation = validateProductionGenerationRequest(body);
-      if (!validation.isValid) {
-        return NextResponse.json(
-          { error: validation.error },
-          { status: 400 }
-        );
-      }
+
+    // Fundamental 3: Generator Authority Mandate
+    // Every generation request MUST provide an authoritative ProductionContext.
+    // Generic, ungrounded prompts without valid ProductionContext and matching identities are strictly rejected.
+    const validation = validateProductionGenerationRequest(body);
+    if (!validation.isValid) {
+      return NextResponse.json(
+        {
+          error: validation.error || 'ProductionContext tidak valid atau belum disetel. Generator memerlukan konteks produksi terotorisasi.',
+          isBlocked: true,
+        },
+        { status: 400 }
+      );
     }
 
-    const prompt = body.prompt || "Berikan rekomendasi strategi konten digital.";
+    const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
+    if (!prompt) {
+      return NextResponse.json(
+        { error: 'Prompt wajib diisi untuk menghasilkan konten.' },
+        { status: 400 }
+      );
+    }
     const hash = getPromptHash(prompt);
 
     // 1. Check successful response cache (10 mins TTL)

@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveGeminiApiKey, missingGeminiApiKeyMessage } from "@/lib/gemini-api-key";
+import { validateProductionGenerationRequest } from "@/lib/production-context";
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +33,16 @@ export async function POST(req: NextRequest) {
     }
 
     const { prompt, aspectRatio = "1:1" } = body || {};
+
+    if (body.production_context || body.project_id || body.content_item_id) {
+      const validation = validateProductionGenerationRequest(body);
+      if (!validation.isValid) {
+        return NextResponse.json(
+          { error: validation.error || 'ProductionContext tidak valid.', isBlocked: true },
+          { status: 400 }
+        );
+      }
+    }
 
     if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
       return NextResponse.json(

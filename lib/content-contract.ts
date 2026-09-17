@@ -204,6 +204,21 @@ export interface ContentItem {
   productionProgress?: ProductionProgress;
 }
 
+export function ensureContentItemIdentity(
+  item: ContentItem,
+  projectId: string,
+  itemNo?: number
+): ContentItem {
+  const no = item.no || itemNo || 1;
+  const contentItemId = item.content_item_id || (item as any).contentItemId || `item_${projectId}_${no}`;
+  return {
+    ...item,
+    project_id: item.project_id || item.projectId || projectId,
+    content_item_id: contentItemId,
+    no,
+  };
+}
+
 export interface CarouselSlidePlan {
   slide: number;
   role:

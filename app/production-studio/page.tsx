@@ -1023,9 +1023,9 @@ const extractPromptField = (field: string, text: string): string => {
 // Helper to build a short, punchy image overlay without ellipsis (max 6-10 words)
 const buildShortImageOverlay = (headline: string, funnelStage: string = 'TOFU'): string => {
   if (!headline || !headline.trim()) {
-    if (funnelStage === 'BOFU') return 'Ratusan Pemilik Bisnis Sudah Membuktikan Alurnya.';
-    if (funnelStage === 'MOFU') return 'Bukan kurang rajin, cuma belum punya sistem alur yang jelas.';
-    return 'Kok caption-nya terasa kaku?';
+    if (funnelStage === 'BOFU') return 'Transformasi Nyata Melalui Keputusan Tepat';
+    if (funnelStage === 'MOFU') return 'Fokus Pada Akar Masalah, Bukan Sekadar Rutinitas';
+    return 'Menghadapi Kendala Yang Sama?';
   }
 
   // 1. Remove all ellipses
@@ -1069,7 +1069,7 @@ const buildShortImageOverlay = (headline: string, funnelStage: string = 'TOFU'):
 
   // Ensure no ellipsis exists
   text = text.replace(/\.{2,}/g, '').replace(/…/g, '').trim();
-  return text || 'Kok caption-nya terasa kaku?';
+  return text || 'Tinjauan Strategis & Pemecahan Masalah';
 };
 
 const buildDefaultCaptionForImage = (headline: string, funnelStage: string, angleId: string, shortOverlay: string): string => {
@@ -1585,47 +1585,31 @@ const sanitizeAndGenerateSlideImagePrompt = (
 
   // Slide 1: Hook must open with decision-reason or relatable curiosity, NEVER direct hard selling even in BOFU
   if (normRole === 'hook' || slideNumber === 1) {
-    if (funnelStage === 'TOFU') {
-      if (hardSellingTriggers.some(t => overlayLower.includes(t)) || /beli|solusi|framework/i.test(overlayLower)) {
-        textOverlay = "Kok caption-nya terasa kaku pas dibaca ulang?";
-      }
-    } else if (funnelStage === 'MOFU') {
-      if (hardSellingTriggers.some(t => overlayLower.includes(t))) {
-        textOverlay = "Masalahnya bukan rajin posting, tapi alur narasinya.";
-      }
-    } else {
-      // BOFU: Reason for decision, forbid "Kenapa Harus Beli", "Peluang Emas", "Buruan Beli"
-      if (hardSellingTriggers.some(t => overlayLower.includes(t)) || /kenapa harus beli|peluang emas|buruan beli|ratusan pemilik/i.test(overlayLower)) {
-        textOverlay = "Masih Bikin Konten Harian Tanpa Sistem?";
+    if (hardSellingTriggers.some(t => overlayLower.includes(t)) || /beli|promo|diskon/i.test(overlayLower)) {
+      textOverlay = textOverlay ? textOverlay.replace(new RegExp(hardSellingTriggers.join('|'), 'gi'), '').trim() : '';
+      if (!textOverlay || textOverlay.length < 5) {
+        textOverlay = headline && !hardSellingTriggers.some(t => headline.toLowerCase().includes(t)) ? headline : 'Refleksi Strategis & Alur Pesan';
       }
     }
   } else if (normRole === 'problem' || slideNumber === 2) {
     // Slide 2: Problem must focus on single specific obstacle
-    if (/beli|promo|alurnya sudah/i.test(overlayLower) || overlayLower.length < 5) {
-      textOverlay = funnelStage === 'TOFU'
-        ? "Udah nulis lama, tapi pesan pentingnya malah tenggelam?"
-        : funnelStage === 'MOFU'
-        ? "Bikin konten tiap hari, tapi audiens lewat begitu saja."
-        : "Menunda sistematisasi konten membuang waktu & energi produksi.";
+    if (/beli|promo|diskon/i.test(overlayLower) || overlayLower.length < 5) {
+      textOverlay = headline || "Tantangan Utama dalam Eksekusi";
     }
   } else if (normRole === 'reframe' || normRole.includes('fails') || slideNumber === 3) {
     // Slide 3: Reframe / Why current method fails - FORBID generic "Solusi: Optimasi Alur BOFU"
     if (/solusi:\s*optimasi|optimasi\s*strategi|optimasi\s*alur/i.test(overlayLower) || overlayLower.length < 5) {
-      textOverlay = "Satu Sistem untuk Ide, Struktur, dan Eksekusi Konten.";
+      textOverlay = headline || "Sudut Pandang Baru & Kerangka Alur";
     }
   } else if (normRole === 'learn' || normRole === 'solution' || normRole === 'proof' || slideNumber === 4) {
     // Slide 4: How It Works / Solution & Proof/Value - must be grounded in feature/workflow value
     if (/hasil.*melampaui|testimoni terverifikasi|ratusan pengguna terbukti sukses/i.test(overlayLower) || overlayLower.length < 5) {
-      textOverlay = "Workflow Terstruktur, Waktu Produksi Singkat & Output Konsisten.";
+      textOverlay = headline || "Metode Terstruktur & Implementasi Nilai";
     }
   } else if (normRole === 'cta' || slideNumber >= 5) {
     // Final Slide: Value-based CTA, forbid weak "Link Bio!"
     if (/^link\s*(di\s*)?bio!?$/i.test(overlayLower) || /^klik\s*link!?$/i.test(overlayLower) || overlayLower.length < 5) {
-      textOverlay = funnelStage === 'BOFU'
-        ? "Mulai Bangun Sistem Kontenmu Hari Ini."
-        : funnelStage === 'MOFU'
-        ? "Rapikan Alur Kontenmu Mulai Sekarang."
-        : "Simpan & Terapkan Pola Ini Saat Menulis.";
+      textOverlay = headline || (funnelStage === 'BOFU' ? "Pelajari Langkah Selanjutnya" : "Simpan & Terapkan Langkah Ini");
     }
   }
 
@@ -1955,7 +1939,7 @@ const sanitizeAndGenerateSlideImagePrompt = (
       if (!visualObjective) visualObjective = "Menegaskan nilai transformasi sistem konten dan memberikan dorongan keputusan aksi berbasis value yang percaya diri.";
       if (!subjectObject) {
         subjectObject = format === 'infographic'
-          ? "Kartu penutup penawaran terpadu dengan ringkasan sistem, garansi nilai, dan tombol aksi 'Mulai Bangun Sistem Kontenmu Hari Ini'."
+          ? "Kartu penutup ringkasan dengan penegasan nilai utama dan tombol aksi penutup yang jelas."
           : "Seorang pebisnis / kreator mapan usia 28-32 tahun, gaya modern profesional.";
       }
       if (!actionScene) {
@@ -2020,6 +2004,8 @@ const validateAndNormalizeCarouselPlan = (
     targetObj = parsed[0];
   }
 
+  const brandName = activeContext?.brand_context?.brand_name || activeContext?.brand?.name || '';
+
   const rawStage = String(targetObj.funnel_stage || targetObj.funnelStage || activeItem?.jenis || 'TOFU').toUpperCase();
   const funnelStage: FunnelStage = rawStage.includes('MOFU') ? 'MOFU' : rawStage.includes('BOFU') ? 'BOFU' : 'TOFU';
   const funnelRules = getFunnelRules(funnelStage);
@@ -2031,15 +2017,15 @@ const validateAndNormalizeCarouselPlan = (
   
   // Consistent CTA field naming: primary_cta_type & primary_cta_text
   let primaryCtaType = String(targetObj.primary_cta_type || targetObj.primaryCtaType || targetObj.cta_type || targetObj.ctaType || (funnelStage === 'BOFU' ? 'direct_offer' : 'engagement_save')).trim();
-  let primaryCtaText = String(targetObj.primary_cta_text || targetObj.primaryCtaText || targetObj.cta_text || targetObj.ctaText || activeItem?.cta || (funnelStage === 'BOFU' ? 'Mulai Bangun Sistem Kontenmu Hari Ini' : funnelStage === 'MOFU' ? 'Rapikan Alur Kontenmu Mulai Sekarang' : 'Simpan postingan ini')).trim();
+  let primaryCtaText = String(targetObj.primary_cta_text || targetObj.primaryCtaText || targetObj.cta_text || targetObj.ctaText || activeItem?.action || activeItem?.cta || (funnelStage === 'BOFU' ? 'Pelajari Selengkapnya' : funnelStage === 'MOFU' ? 'Terapkan Panduan Ini' : 'Simpan postingan ini')).trim();
 
   // Normalize CTA if weak
   if (/^link\s*(di\s*)?bio!?$/i.test(primaryCtaText) || /^klik\s*link!?$/i.test(primaryCtaText)) {
-    primaryCtaText = funnelStage === 'BOFU'
-      ? 'Mulai Bangun Sistem Kontenmu Hari Ini'
+    primaryCtaText = activeItem?.action || (funnelStage === 'BOFU'
+      ? 'Pelajari Selengkapnya'
       : funnelStage === 'MOFU'
-      ? 'Rapikan Alur Kontenmu Mulai Sekarang'
-      : 'Simpan postingan ini';
+      ? 'Terapkan Panduan Ini'
+      : 'Simpan postingan ini');
   }
 
   // Tracking issues and fixes across the 5 alignment checks
@@ -2094,17 +2080,18 @@ const validateAndNormalizeCarouselPlan = (
       const hasHardSelling = hardSellingTriggers.some(t => hLower.includes(t)) || /kenapa harus beli|peluang emas|buruan beli|ratusan pemilik/i.test(hLower);
       if (hasHardSelling) {
         detectedIssues.push('Slide 1 terlalu jualan / mengandung urgensi langsung yang mendahului alur narasi.');
+        const baseTopic = activeItem?.headline ? activeItem.headline.replace(/[?!.]+$/, '') : (brandName || 'Topik Ini');
         if (funnelStage === 'BOFU') {
-          headline = 'Masih Bikin Konten Harian Tanpa Sistem?';
-          body = body || 'Banyak kreator & pebisnis menghabiskan berjam-jam memikirkan ide dadakan tanpa alur yang jelas.';
+          headline = `Masih Menghadapi Kendala Pada ${baseTopic}?`;
+          body = body || (activeItem?.body ? activeItem.body.slice(0, 110) : 'Memilih pendekatan yang tepat adalah langkah penting sebelum mengambil keputusan.');
           appliedFixes.push('Slide 1 diperbaiki menjadi hook berbasis alasan keputusan strategis (bukan hard selling langsung).');
         } else if (funnelStage === 'MOFU') {
-          headline = 'Masalahnya Bukan Rajin Posting, Tapi Alur Narasinya';
-          body = body || 'Posting setiap hari tanpa struktur pesan hanya membuat audiens lewat tanpa memahami value yang ditawarkan.';
+          headline = `Tantangan Sebenarnya Dalam ${baseTopic}`;
+          body = body || (activeItem?.body ? activeItem.body.slice(0, 110) : 'Banyak yang telah mencoba berbagai cara, namun akar masalahnya belum tertangani secara mendasar.');
           appliedFixes.push('Slide 1 diselaraskan menjadi hook insight edukatif.');
         } else {
-          headline = 'Kok Caption-nya Terasa Kaku Pas Dibaca Ulang?';
-          body = body || 'Pernah merasa tulisan yang kamu buat sudah rapi tapi terasa hambar saat dibaca kembali?';
+          headline = `Pernah Mengalami Hal Ini Terkait ${baseTopic}?`;
+          body = body || (activeItem?.body ? activeItem.body.slice(0, 110) : 'Banyak orang menghadapi situasi serupa tanpa menyadari penyebab utamanya.');
           appliedFixes.push('Slide 1 diselaraskan menjadi hook masalah relatable TOFU.');
         }
       }
@@ -2113,16 +2100,17 @@ const validateAndNormalizeCarouselPlan = (
     // Check 2: Slide 2 - Problem focus and synchronization check
     if (slideNumber === 2) {
       const hLower = headline.toLowerCase();
+      const baseProblem = activeItem?.tujuan || activeItem?.headline || 'Tantangan Utama';
       if (hLower.includes('manual vs otomatis') && hLower.includes('funnel') && !s.visual_intent) {
-        detectedIssues.push('Slide 2 mencampuradukkan masalah manual/otomatis dan struktur funnel tanpa visual pembanding yang fokus.');
-        headline = 'Menulis Tanpa Alur Membuat Pesan Terasa Hambar & Sulit Diterima';
+        detectedIssues.push('Slide 2 mencampuradukkan masalah umum tanpa visual pembanding yang fokus.');
+        headline = `Fokus Hambatan Utama Dalam ${baseProblem}`;
         appliedFixes.push('Slide 2 difokuskan pada satu masalah utama yang spesifik.');
       } else if (hLower.length < 10 || /kesalahan umum:\s*$/i.test(hLower)) {
         headline = funnelStage === 'TOFU'
-          ? 'Nulis Panjang Lebar, Tapi Pesan Intinya Malah Tenggelam'
+          ? `Kendala Yang Kerap Dihadapi Saat Memahami ${baseProblem}`
           : funnelStage === 'MOFU'
-          ? 'Bikin Konten Rutin, Tapi Audiens Bingung Value yang Ditawarkan'
-          : 'Menunda Sistematisasi Konten Membuang Waktu & Energi Produksi';
+          ? `Mengapa Solusi Umum Belum Menyelesaikan ${baseProblem}`
+          : `Risiko Membiarkan Masalah ${baseProblem} Berlarut-larut`;
       }
     }
 
@@ -2131,9 +2119,9 @@ const validateAndNormalizeCarouselPlan = (
       const hLower = headline.toLowerCase();
       if (/solusi:\s*optimasi\s*(alur|strategi|konten|bofu|tofu|mofu)/i.test(hLower) || /optimasi\s*strategi\s*konten/i.test(hLower) || /^solusi\s*konten$/i.test(hLower)) {
         detectedIssues.push(`Slide 3 menggunakan headline generik ("${headline}").`);
-        headline = 'Satu Sistem untuk Ide, Struktur, dan Eksekusi Konten';
-        body = body || 'Bukan cuma posting lebih banyak, tapi memiliki alur keputusan yang jelas dari ide sampai siap publish.';
-        appliedFixes.push('Slide 3 diganti dengan hasil spesifik yang dipahami audiens ("Satu Sistem untuk Ide, Struktur, dan Eksekusi Konten").');
+        headline = activeItem?.headline ? `Pendekatan Baru: ${activeItem.headline}` : `Sudut Pandang Terstruktur Bagi ${brandName || 'Audiens'}`;
+        body = body || (activeItem?.body ? activeItem.body.slice(0, 120) : 'Bukan sekadar perubahan sesaat, tetapi membangun pola terarah yang berkelanjutan.');
+        appliedFixes.push('Slide 3 diganti dengan hasil spesifik yang dipahami audiens.');
       }
     }
 
@@ -2144,8 +2132,8 @@ const validateAndNormalizeCarouselPlan = (
       const hasUnverifiedClaims = /hasil.*melampaui\s*target|testimoni\s*terverifikasi|ratusan\s*pengguna.*sukses|omzet\s*miliaran|terbukti\s*100%/i.test(hLower) || /hasil.*melampaui\s*target|testimoni\s*terverifikasi|ratusan\s*pengguna.*sukses|omzet\s*miliaran/i.test(bLower);
       if (hasUnverifiedClaims && !activeItem?.proof_data) {
         detectedIssues.push('Slide proof menggunakan klaim angka / testimoni yang tidak tercantum dalam input proyek.');
-        headline = 'Workflow Terstruktur, Waktu Produksi Singkat & Output Konsisten';
-        body = 'Integrasi kalender ide, formula prompt terstruktur, dan studio produksi dalam satu alur kerja yang rapi.';
+        headline = 'Penerapan Nyata & Efisiensi Alur Kerja';
+        body = activeItem?.tujuan ? `Fokus pada pencapaian terukur: ${activeItem.tujuan}.` : 'Implementasi langkah nyata yang dapat diuji dan diterapkan langsung.';
         appliedFixes.push('Slide proof disesuaikan menjadi pembuktian berbasis fitur & efisiensi alur kerja nyata yang dapat dipertanggungjawabkan.');
       }
     }
@@ -2155,13 +2143,14 @@ const validateAndNormalizeCarouselPlan = (
       const hLower = headline.toLowerCase();
       if (/^link\s*(di\s*)?bio!?$/i.test(hLower) || /^klik\s*link!?$/i.test(hLower) || hLower.length < 5) {
         detectedIssues.push('Headline CTA slide akhir terlalu lemah ("Link Bio!").');
+        const actionTarget = activeItem?.cta || primaryCtaText || 'Tautan di Profil';
         headline = funnelStage === 'BOFU'
-          ? 'Mulai Bangun Sistem Kontenmu Hari Ini.'
+          ? (activeItem?.cta || 'Ambil Tindakan Strategis Sekarang')
           : funnelStage === 'MOFU'
-          ? 'Rapikan Alur Kontenmu Mulai Sekarang.'
-          : 'Simpan & Terapkan Pola Ini Saat Menulis.';
+          ? 'Pelajari Panduan Lengkapnya'
+          : 'Simpan Wawasan Ini & Bagikan';
         if (!body || /^link\s*bio/i.test(body)) {
-          body = 'Akses seluruh panduan alur dan sistem produksi terpadu melalui tautan di profil.';
+          body = `Akses informasi dan langkah selanjutnya melalui ${actionTarget}.`;
         }
         appliedFixes.push('Headline CTA diubah menjadi ajakan berbasis value, dengan link bio sebagai naskah pendukung.');
       }
@@ -2204,33 +2193,28 @@ const validateAndNormalizeCarouselPlan = (
     if (rawFormat === 'photography' || rawFormat === 'infographic' || rawFormat === 'hybrid') {
       visualFormat = rawFormat;
     } else {
-      // MOFU default rules:
-      // Slide 1 Hook: photography or hybrid
-      // Slide 2 Problem: infographic
-      // Slide 3 Reframe: infographic
-      // Slide 4 How It Works / Mechanism: infographic
-      // Slide 5 CTA: infographic
       if (funnelStage === 'MOFU') {
         visualFormat = slideNumber === 1 ? 'photography' : 'infographic';
       } else if (funnelStage === 'TOFU') {
         visualFormat = slideNumber === 1 ? 'photography' : slideNumber === totalSlides ? 'hybrid' : 'infographic';
       } else {
-        // BOFU
         visualFormat = slideNumber === 1 ? 'photography' : 'infographic';
       }
     }
     
+    const targetAudience = activeContext?.audience_context?.primary_audience || 'audiens sasaran';
+
     let visualIntent = String(s.visual_intent || s.visualIntent || '').trim();
     if (!visualIntent || visualIntent === 'diagram strategi' || visualIntent.length < 15) {
       visualIntent = slideNumber === 1
-        ? (visualFormat === 'infographic' ? 'Infografis kartu pembuka refleksi keputusan sistem konten dengan kontras tinggi.' : 'Visual editorial portrait kreator sedang menatap layar laptop dengan ekspresi analitis reflektif, pencahayaan alami hangat.')
+        ? (visualFormat === 'infographic' ? `Infografis kartu pembuka refleksi topik: ${headline.slice(0, 50)}.` : `Visual editorial merefleksikan situasi ${targetAudience} terkait ${headline.slice(0, 50)}.`)
         : slideNumber === 2
-        ? 'Infografis kartu pembanding satu masalah utama: draf tulisan acak vs alur hierarki pesan terstruktur.'
+        ? 'Infografis kartu pembanding masalah utama: kendala umum vs pemahaman terarah.'
         : slideNumber === 3
-        ? 'Infografis kartu pencerahan 3 pilar sistem terpadu (ide, struktur, eksekusi) dengan tipografi kontras tinggi.'
+        ? `Infografis kartu pencerahan sudut pandang baru mengenai ${headline.slice(0, 50)}.`
         : slideNumber === 4
-        ? 'Tampilan antarmuka alur kerja efisien yang menghubungkan kalender dan formula prompt terstruktur.'
-        : 'Tampilan closing card minimalis dengan tombol CTA kontras tinggi dan instruksi aksi berbasis value.';
+        ? 'Tampilan visual alur penerapan terstruktur dan pembuktian nilai nyata.'
+        : 'Tampilan closing card minimalis dengan instruksi aksi berbasis value yang jelas.';
     }
 
     const visualType = String(s.visual_type || s.visualType || (visualFormat === 'photography' ? 'editorial-photo' : slideNumber === totalSlides ? 'cta-card' : 'minimal-diagram')).trim();
@@ -2250,12 +2234,12 @@ const validateAndNormalizeCarouselPlan = (
 
     // 3. Visual Production layer
     const defaultSubject = visualFormat === 'infographic'
-      ? (slideNumber === 1 ? 'Skema visual kartu reflektif dengan tipografi kontras tinggi.' : slideNumber === 2 ? 'Kartu perbandingan 2 kolom masalah vs hierarki pesan.' : slideNumber === 3 ? 'Diagram infografis 3 pilar alur konten terpadu.' : slideNumber === 4 ? 'Checklist framework 3 langkah efisiensi kerja.' : 'Kartu CTA penutup terstruktur dengan button pill kontras.')
-      : (slideNumber === 1 ? 'Kreator muda usia 27-30 tahun di meja kerja hangat dengan laptop terbuka.' : slideNumber === 2 ? 'Kreator menelaah draf catatan acak di layar perangkat.' : slideNumber === 3 ? 'Kreator tersenyum lega menemukan kejelasan alur sistem terpadu.' : slideNumber === 4 ? 'Profesional meninjau alur kerja rapi di monitor tablet.' : 'Tangan kreator mengonfirmasi aksi di smartphone di atas meja kayu hangat.');
+      ? (slideNumber === 1 ? `Visual kartu pengantar terstruktur berfokus pada topik ${headline.slice(0, 40)}.` : slideNumber === 2 ? `Diagram perbandingan masalah vs solusi untuk ${headline.slice(0, 40)}.` : slideNumber === 3 ? `Diagram konsep 3 poin terarah mengenai ${headline.slice(0, 40)}.` : slideNumber === 4 ? `Visual ringkasan tahapan penerapan terstruktur.` : `Kartu CTA aksi penutup dengan tombol yang jelas.`)
+      : (slideNumber === 1 ? `Representasi visual ${targetAudience} yang sedang menghadapi situasi terkait ${headline.slice(0, 40)}.` : slideNumber === 2 ? `Representasi ${targetAudience} sedang mencermati kendala yang dihadapi.` : slideNumber === 3 ? `Representasi ${targetAudience} menemukan kejelasan pemahaman baru.` : slideNumber === 4 ? `Representasi ${targetAudience} menerapkan solusi secara profesional.` : `Representasi interaksi penutup yang mengajak ${targetAudience} mengambil langkah berikutnya.`);
 
     const defaultAction = visualFormat === 'infographic'
       ? 'Penataan tata letak visual bertingkat dengan penunjuk alur dan kartu berbayang halus.'
-      : (slideNumber === 1 ? 'Menatap layar laptop dengan tatapan berpikir reflektif.' : slideNumber === 2 ? 'Membandingkan draf acak dengan gestur menimbang-nimbang.' : slideNumber === 3 ? 'Menandai diagram alur baru yang terstruktur di buku catatan.' : slideNumber === 4 ? 'Menandai checklist alur kerja yang telah selesai.' : 'Menyentuh tombol aksi nilai di layar antarmuka.');
+      : (slideNumber === 1 ? 'Mengamati situasi dengan tatapan berpikir reflektif.' : slideNumber === 2 ? 'Menganalisis perbandingan situasi dengan cermat.' : slideNumber === 3 ? 'Memahami diagram konsep baru secara jelas.' : slideNumber === 4 ? 'Menerapkan tahapan alur kerja yang terorganisir.' : 'Mengonfirmasi tindakan lanjut pada antarmuka.');
 
     const defaultComposition = visualFormat === 'infographic'
       ? 'Center card layout / structured split grid dengan ruang negatif 40% lapang di area atas untuk headline.'
@@ -2396,11 +2380,13 @@ function buildFunnelAlignedCarouselCaption(
   funnelStage: string,
   item?: ContentItem | null,
   slides?: CarouselSlide[],
-  ctaText?: string
+  ctaText?: string,
+  context?: any
 ): string {
   const existingCaption = (item?.caption || '').trim();
-  const headline = item?.headline?.trim() || (slides && slides[0]?.headline) || 'Strategi Alur Konten';
-  const cta = ctaText || item?.cta?.trim() || (funnelStage === 'BOFU' ? 'Cek link di bio untuk mulai' : funnelStage === 'MOFU' ? 'Simpan postingan ini untuk panduan alurmu' : 'Save postingan ini biar gak lupa');
+  const headline = item?.headline?.trim() || (slides && slides[0]?.headline) || 'Insight Penting';
+  const bodyText = item?.body?.trim() || (slides && slides[1]?.body) || '';
+  const cta = ctaText || item?.cta?.trim() || (funnelStage === 'BOFU' ? 'Pelajari selengkapnya melalui tautan di profil.' : funnelStage === 'MOFU' ? 'Simpan postingan ini untuk panduan alurmu.' : 'Simpan postingan ini agar mudah dibaca kembali.');
 
   if (existingCaption && existingCaption.length >= 40 && !existingCaption.includes('...') && !existingCaption.toLowerCase().includes('lorem')) {
     return existingCaption;
@@ -2409,44 +2395,41 @@ function buildFunnelAlignedCarouselCaption(
   if (funnelStage === 'TOFU') {
     return `${headline}
 
-Pernah ngerasa draf tulisan udah disusun rapi, tapi pas dibaca ulang kok rasanya masih kaku atau kurang ngena?
+${bodyText ? `${bodyText}\n\n` : ''}Pernahkah Anda menyadari bahwa pendekatan yang biasa digunakan sering kali belum menyentuh akar masalah yang sebenarnya?
 
-Ternyata masalahnya sering bukan di seberapa panjang tulisan kita, melainkan di cara kita menyusun hierarki pesan dari awal. Saat pembaca langsung dihadapkan sama kalimat yang terlalu padat tanpa jembatan empati, mereka cenderung scroll lewat begitu aja.
-
-Geser slide di atas untuk lihat evaluasi sederhana yang bisa langsung kamu terapkan saat nulis konten berikutnya.
+Geser slide di atas untuk menyimak evaluasi terstruktur yang dapat langsung diterapkan.
 
 ${cta}`;
   } else if (funnelStage === 'MOFU') {
     return `${headline}
 
-Bukan kurang rajin posting, tapi kuncinya ada di kejelasan alur narasi yang menghubungkan masalah ke pemahaman solusi.
+${bodyText ? `${bodyText}\n\n` : ''}Menemukan solusi yang efektif membutuhkan kejelasan alur yang menghubungkan titik masalah dengan pemahaman metode kerja terarah.
 
-Di carousel ini, kita bedah framework langkah demi langkah:
-1. Identifikasi titik hambatan utama audiens
-2. Reframe metode lama yang kurang efisien
-3. Terapkan alur kerja terstruktur dari ide sampai eksekusi
+Di carousel ini, kami mengulas tahapan utama:
+1. Memahami titik hambatan utama audiens
+2. Mengapa pendekatan lama belum optimal
+3. Menerapkan alur terstruktur untuk hasil yang konsisten
 
-Geser seluruh slide untuk pelajari visual framework lengkapnya.
+Geser seluruh slide untuk menyimak alur lengkapnya.
 
 ${cta}`;
   } else {
     // BOFU
     return `${headline}
 
-Konsistensi dan efisiensi produksi konten bukan lagi soal tebak-tebakan saat kamu punya sistem yang terintegrasi.
+${bodyText ? `${bodyText}\n\n` : ''}Hasil optimal dan konsisten terwujud saat Anda memiliki pendekatan terpadu yang dapat diandalkan.
 
-Dengan alur kerja terstruktur:
-- Waktu riset dan penyusunan draf terpangkas drastis
-- Pesan setiap postingan selalu selaras dengan tujuan bisnismu
-- Eksekusi harian jadi lebih ringan dan terarah
-
-Sudah siap merapikan alur produksi kontenmu ke level berikutnya?
+Manfaat utama:
+- Alur kerja yang lebih efisien dan terukur
+- Keputusan yang tepat selaras dengan tujuan jangka panjang
+- Hasil yang terstandarisasi tanpa spekulasi
 
 ${cta}`;
   }
 }
 
 // Helper function to build Stage 1 Content Plan prompt for 2-stage Carousel generation
+// Stage 1 ONLY outputs narrative structure (NO visual prompts, NO image generation instructions)
 function buildCarouselStage1Prompt(
   funnelStage: string,
   funnelPromptBlock: string,
@@ -2466,38 +2449,29 @@ ${formattedContext}
 
 ### OUTPUT FORMAT DIRECTION (STAGE 1: CONTENT PLAN):
 Hasilkan 1 (SATU) Content Plan Carousel yang utuh dan terstruktur untuk tahap corong ${funnelStage} dalam format JSON object canonical murni (BUKAN array, tanpa markdown pembungkus).
+PENTING: Tahap 1 HANYA menghasilkan rencana naskah/narasi konten (Content Plan). JANGAN sertakan instruksi visual, prompt gambar, atau sintaks Midjourney/Flux di tahap ini.
 
 STRUKTUR NARASI CAROUSEL WAJIB:
-Hook → Problem → Why Current Method Fails → Solution → Proof/Value → CTA
+Hook → Problem → Why Current Method Fails / Reframe → Solution / Mechanism → CTA
 
 ATURAN STRUKTUR UNTUK 5 SLIDE (DEFAULT):
-- Slide 1: Hook (Peran: "hook") - Hook berbasis alasan keputusan / relatable problem, BUKAN langsung "beli" atau jualan.
-- Slide 2: Problem (Peran: "problem") - Fokus pada SATU masalah utama yang spesifik (jangan campur masalah).
-- Slide 3: Why Current Method Fails / Reframe (Peran: "reframe") - Menjelaskan mengapa metode lama gagal dan menyajikan sudut pandang sistemik yang konkret.
-- Slide 4: Solution + Proof/Value (Peran: "learn") - Solusi terstruktur dengan proof/value yang aman dan bisa dipertanggungjawabkan (berbasis fitur/workflow).
-- Slide 5: CTA (Peran: "cta") - CTA berbasis value (bukan cuma "Link di bio").
+- Slide 1: Hook (Peran: "hook") - Hook spesifik sesuai pain point audiens project, BUKAN langsung hard selling atau ajakan beli.
+- Slide 2: Problem (Peran: "problem") - Fokus pada SATU masalah konkret yang dihadapi target audiens.
+- Slide 3: Why Current Method Fails / Reframe (Peran: "reframe") - Menjelaskan mengapa metode lama gagal dan menyajikan sudut pandang sistemik yang relevan.
+- Slide 4: Solution + Value/Proof (Peran: "learn") - Solusi terstruktur dan pembuktian nilai nyata berbasis fitur/alur kerja yang relevan dengan positioning brand.
+- Slide 5: CTA (Peran: "cta") - Ajakan bertindak berbasis value yang relevan dengan offer (bukan sekadar "Link di bio").
 
-ATURAN KHUSUS BOFU:
-- Slide 1 BOFU wajib membuka dengan alasan keputusan atau refleksi masalah strategis, DILARANG HARD SELLING DI SLIDE 1.
-
-visual_format HANYA BOLEH salah satu dari: "photography" | "infographic" | "hybrid"
-- Slide 1 Hook: "photography" atau "hybrid"
-- Slide 2 Problem: "infographic"
-- Slide 3 Reframe: "infographic"
-- Slide 4 Solution: "infographic"
-- Slide 5 CTA: "infographic"
-
-WAJIB KEMBALIKAN HANYA JSON OBJECT STAGE 1 (TANPA MARKDOWN):
+WAJIB KEMBALIKAN HANYA JSON OBJECT STAGE 1 (TANPA MARKDOWN, TANPA PETUNJUK VISUAL):
 {
   "content_goal": "${funnelRules.goal}",
   "funnel_stage": "${funnelStage}",
   "current_belief": "[Keyakinan lama audiens yang keliru atau membatasi]",
   "desired_belief": "[Keyakinan baru yang ingin ditanamkan setelah membaca carousel]",
-  "core_promise": "[Janji nilai utama yang ditawarkan carousel ini]",
+  "core_promise": "[Janji nilai utama yang ditawarkan carousel ini sesuai context project]",
   "primary_cta_type": "${funnelStage === 'BOFU' ? 'direct_offer' : 'engagement_save'}",
   "primary_cta_text": "[Teks CTA utama berbasis value yang sesuai corong ${funnelStage}]",
   "slide_count": 5,
-  "slide_count_reason": "5 Slide merupakan panjang optimal untuk alur narasi Hook → Problem → Reframe → How It Works / Value → CTA.",
+  "slide_count_reason": "5 Slide optimal untuk alur narasi Hook → Problem → Reframe → Solution → CTA.",
   "belief_journey_summary": "[Ringkasan transformasi pola pikir audiens dari slide awal hingga akhir]",
   "messageAlignmentCheck": {
     "isAligned": true,
@@ -2508,97 +2482,57 @@ WAJIB KEMBALIKAN HANYA JSON OBJECT STAGE 1 (TANPA MARKDOWN):
     {
       "slide": 1,
       "role": "hook",
-      "communication_job": "Menghentikan scroll dengan alasan keputusan strategis / relatable problem",
-      "headline": "${funnelStage === 'BOFU' ? 'Masih Bikin Konten Harian Tanpa Sistem?' : funnelStage === 'MOFU' ? 'Masalahnya Bukan Rajin Posting, Tapi Alur Narasinya' : 'Kok Caption-nya Terasa Kaku Pas Dibaca Ulang?'}",
-      "body": "[1-2 kalimat pengantar yang relate dengan masalah sehari-hari]",
-      "swipe_bridge": "Kenapa hal ini terjadi? ➔",
+      "communication_job": "Menghentikan scroll dengan relatable problem sesuai konteks project",
+      "headline": "[Hook spesifik sesuai pain point audiens project]",
+      "body": "[1-2 kalimat pengantar yang relevan dengan topik project]",
+      "swipe_bridge": "[Kalimat jembatan untuk swipe] ➔",
       "emotional_state": "Empati & Refleksi Kritis",
-      "creative_strategy": {
-        "funnel_stage": "${funnelStage}",
-        "slide_role": "hook",
-        "visual_objective": "Menghentikan scroll dengan visual reflektif proses menulis konten.",
-        "core_message": "${funnelStage === 'BOFU' ? 'Masih Bikin Konten Harian Tanpa Sistem?' : funnelStage === 'MOFU' ? 'Masalahnya Bukan Rajin Posting, Tapi Alur Narasinya' : 'Kok Caption-nya Terasa Kaku Pas Dibaca Ulang?'}",
-        "audience_emotion": "Empati & Refleksi Kritis",
-        "visual_concept": "Editorial photographic framing dengan pencahayaan alami natural",
-        "text_overlay": "${funnelStage === 'BOFU' ? 'Masih Bikin Konten Harian Tanpa Sistem?' : funnelStage === 'MOFU' ? 'Masalahnya Bukan Rajin Posting, Tapi Alur Narasinya' : 'Kok Caption-nya Terasa Kaku Pas Dibaca Ulang?'}"
-      },
-      "visual_format": "photography"
+      "core_message": "[Pesan inti hook slide 1]",
+      "audience_emotion": "Empati & Refleksi Kritis"
     },
     {
       "slide": 2,
       "role": "problem",
-      "communication_job": "Fokus pada satu masalah utama yang dihadapi audiens secara spesifik",
-      "headline": "${funnelStage === 'TOFU' ? 'Nulis Panjang Lebar, Tapi Pesan Intinya Malah Tenggelam' : funnelStage === 'MOFU' ? 'Bikin Konten Rutin, Tapi Audiens Bingung Value yang Ditawarkan' : 'Menunda Sistematisasi Konten Membuang Waktu & Energi Produksi'}",
-      "body": "[Penjelasan satu masalah konkret]",
-      "swipe_bridge": "Mengapa cara lama tidak lagi cukup? ➔",
+      "communication_job": "Fokus pada satu masalah konkret yang dihadapi target audiens",
+      "headline": "[Masalah konkret yang dihadapi target audiens]",
+      "body": "[Penjelasan satu masalah konkret tanpa mencampur aduk isu lain]",
+      "swipe_bridge": "[Kalimat jembatan mengapa cara lama tidak cukup] ➔",
       "emotional_state": "Kesadaran Masalah Tunggal",
-      "creative_strategy": {
-        "funnel_stage": "${funnelStage}",
-        "slide_role": "problem",
-        "visual_objective": "Infografis kartu pembanding satu masalah utama.",
-        "core_message": "${funnelStage === 'TOFU' ? 'Nulis Panjang Lebar, Tapi Pesan Intinya Malah Tenggelam' : funnelStage === 'MOFU' ? 'Bikin Konten Rutin, Tapi Audiens Bingung Value yang Ditawarkan' : 'Menunda Sistematisasi Konten Membuang Waktu & Energi Produksi'}",
-        "audience_emotion": "Kesadaran Masalah Tunggal",
-        "visual_concept": "Kartu UI diagram alur dan hierarki tipografi modern bersih",
-        "text_overlay": "${funnelStage === 'TOFU' ? 'Nulis Panjang Lebar, Tapi Pesan Intinya Malah Tenggelam' : funnelStage === 'MOFU' ? 'Bikin Konten Rutin, Tapi Audiens Bingung Value yang Ditawarkan' : 'Menunda Sistematisasi Konten Membuang Waktu & Energi Produksi'}"
-      },
-      "visual_format": "infographic"
+      "core_message": "[Pesan inti masalah slide 2]",
+      "audience_emotion": "Kesadaran Masalah Tunggal"
     },
     {
       "slide": 3,
       "role": "reframe",
-      "communication_job": "Menjelaskan mengapa metode lama gagal dan memberikan sudut pandang sistemik yang tidak generik",
-      "headline": "Satu Sistem untuk Ide, Struktur, dan Eksekusi Konten",
-      "body": "Bukan sekadar gonta-ganti ide dadakan, tapi menyelaraskan setiap postingan dengan tahap pemahaman audiens dalam satu alur terpadu.",
-      "swipe_bridge": "Bagaimana sistem ini bekerja? ➔",
+      "communication_job": "Menjelaskan mengapa metode lama gagal dan memberikan sudut pandang baru",
+      "headline": "[Reframing / mengapa cara lama gagal sesuai konteks project]",
+      "body": "[Penjelasan sudut pandang baru yang sistemik dan tidak generik]",
+      "swipe_bridge": "[Kalimat jembatan menuju solusi] ➔",
       "emotional_state": "Pencerahan (Aha-Moment)",
-      "creative_strategy": {
-        "funnel_stage": "${funnelStage}",
-        "slide_role": "reframe",
-        "visual_objective": "Infografis kartu pencerahan 3 pilar sistem terpadu.",
-        "core_message": "Satu Sistem untuk Ide, Struktur, dan Eksekusi Konten",
-        "audience_emotion": "Pencerahan (Aha-Moment)",
-        "visual_concept": "Kartu UI diagram alur dan hierarki tipografi modern bersih",
-        "text_overlay": "Satu Sistem untuk Ide, Struktur, dan Eksekusi Konten"
-      },
-      "visual_format": "infographic"
+      "core_message": "[Pesan inti reframe slide 3]",
+      "audience_emotion": "Pencerahan (Aha-Moment)"
     },
     {
       "slide": 4,
       "role": "learn",
-      "communication_job": "Menyajikan solusi terpadu dan pembuktian nilai efisiensi kerja nyata berbasis fitur/workflow",
-      "headline": "Workflow Terstruktur, Waktu Produksi Singkat & Output Konsisten",
-      "body": "Dengan sistem yang terintegrasi, draf konten tervalidasi sebelum dibuat, memangkas waktu produksi tanpa mengorbankan kualitas pesan.",
-      "swipe_bridge": "Mulai terapkan langkahnya ➔",
+      "communication_job": "Menyajikan solusi terstruktur dan nilai nyata berbasis fitur/workflow",
+      "headline": "[Solusi / framework / alur kerja yang relevan dengan positioning brand]",
+      "body": "[Penjelasan solusi terstruktur dan nilai nyata berbasis fitur/workflow]",
+      "swipe_bridge": "[Kalimat jembatan menuju aksi penutup] ➔",
       "emotional_state": "Optimis & Paham Nilai Nyata",
-      "creative_strategy": {
-        "funnel_stage": "${funnelStage}",
-        "slide_role": "learn",
-        "visual_objective": "Tampilan antarmuka alur kerja efisien.",
-        "core_message": "Workflow Terstruktur, Waktu Produksi Singkat & Output Konsisten",
-        "audience_emotion": "Optimis & Paham Nilai Nyata",
-        "visual_concept": "Kartu UI diagram alur dan hierarki tipografi modern bersih",
-        "text_overlay": "Workflow Terstruktur, Waktu Produksi Singkat & Output Konsisten"
-      },
-      "visual_format": "infographic"
+      "core_message": "[Pesan inti solusi slide 4]",
+      "audience_emotion": "Optimis & Paham Nilai Nyata"
     },
     {
       "slide": 5,
       "role": "cta",
-      "communication_job": "Mendorong aksi penutup berbasis value yang sesuai dengan tahap corong ${funnelStage}",
-      "headline": "${funnelStage === 'BOFU' ? 'Mulai Bangun Sistem Kontenmu Hari Ini.' : funnelStage === 'MOFU' ? 'Rapikan Alur Kontenmu Mulai Sekarang.' : 'Simpan & Terapkan Pola Ini Saat Menulis.'}",
-      "body": "Akses seluruh panduan alur dan sistem produksi terpadu melalui tautan di profil.",
-      "swipe_bridge": "${funnelStage === 'BOFU' ? 'Mulai Sekarang' : 'Simpan Postingan'}",
+      "communication_job": "Mendorong aksi penutup berbasis value yang sesuai corong ${funnelStage}",
+      "headline": "[Ajakan bertindak berbasis value yang relevan dengan offer]",
+      "body": "[Penjelasan manfaat tindakan penutup selaras dengan penawaran project]",
+      "swipe_bridge": "[Teks CTA penutup]",
       "emotional_state": "Terdorong Bertindak Berbasis Value",
-      "creative_strategy": {
-        "funnel_stage": "${funnelStage}",
-        "slide_role": "cta",
-        "visual_objective": "Visual closing card bersih dengan tombol CTA kontras tinggi.",
-        "core_message": "${funnelStage === 'BOFU' ? 'Mulai Bangun Sistem Kontenmu Hari Ini.' : funnelStage === 'MOFU' ? 'Rapikan Alur Kontenmu Mulai Sekarang.' : 'Simpan & Terapkan Pola Ini Saat Menulis.'}",
-        "audience_emotion": "Dorongan Aksi Berbasis Value",
-        "visual_concept": "Kartu UI penutup dan tombol aksi kontras tinggi",
-        "text_overlay": "${funnelStage === 'BOFU' ? 'Mulai Bangun Sistem Kontenmu Hari Ini.' : funnelStage === 'MOFU' ? 'Rapikan Alur Kontenmu Mulai Sekarang.' : 'Simpan & Terapkan Pola Ini Saat Menulis.'}"
-      },
-      "visual_format": "infographic"
+      "core_message": "[Pesan inti CTA slide 5]",
+      "audience_emotion": "Dorongan Aksi Berbasis Value"
     }
   ]
 }${revisionDirective}`;
@@ -2608,8 +2542,15 @@ WAJIB KEMBALIKAN HANYA JSON OBJECT STAGE 1 (TANPA MARKDOWN):
 function buildCarouselStage2Prompt(
   funnelStage: string,
   stage1JsonString: string,
-  formattedContext: string
+  formattedContext: string,
+  batchSlideNumbers?: number[]
 ): string {
+  const batchDirective = batchSlideNumbers && batchSlideNumbers.length > 0
+    ? `\n### BATCH DIRECTIVE:
+Hasilkan pengayaan visual HANYA untuk slide nomor: [${batchSlideNumbers.join(', ')}].
+Jangan menghasilkan visual untuk slide di luar daftar nomor ini dalam pemanggilan ini.`
+    : '';
+
   return `Buatkan CAROUSEL STAGE 2: VISUAL ENRICHMENT - FUNNEL ${funnelStage} (Bahasa Indonesia, profesional).
 
 ${ANTI_DRIFT_RULES}
@@ -2618,16 +2559,19 @@ ${formattedContext}
 
 ### STAGE 1 CONTENT PLAN INPUT:
 ${stage1JsonString}
+${batchDirective}
 
 ### OUTPUT FORMAT DIRECTION (STAGE 2: VISUAL ENRICHMENT):
-Hasilkan pengayaan visual lengkap untuk setiap slide dari Stage 1 Content Plan di atas dalam format JSON object canonical murni (BUKAN array, tanpa markdown pembungkus).
+Hasilkan pengayaan visual lengkap untuk slide Stage 1 Content Plan di atas dalam format JSON object canonical murni (BUKAN array, tanpa markdown pembungkus).
+PENTING: DILARANG MENGUBAH NARASI/TEXT DARI STAGE 1 (headline, body, swipe_bridge, communication_job tetap utuh dari Stage 1). Tahap 2 HANYA memperkaya lapisan visual.
 
-UNTUK SETIAP SLIDE DI "slides", BERIKAN PETUNJUK VISUAL & SLIDE IMAGE PROMPT 14 BARIS:
-1. visual_intent: Instruksi visual konkret
-2. visual_type: "editorial-photo" | "comparison-split" | "minimal-diagram" | "step-framework" | "cta-card"
-3. text_zone: "Upper Third / Left Aligned" | "Center / Left Aligned" | "Center Aligned"
-4. negative_space_plan: Perencanaan ruang negatif (min 35-50%)
-5. visual_production: {
+UNTUK SETIAP SLIDE TARGET DI "slides", BERIKAN PETUNJUK VISUAL & SLIDE IMAGE PROMPT:
+1. visual_format: "photography" | "infographic" | "hybrid"
+2. visual_intent: Instruksi visual konkret selaras pesan slide dan brand aesthetic
+3. visual_type: "editorial-photo" | "comparison-split" | "minimal-diagram" | "step-framework" | "cta-card"
+4. text_zone: "Upper Third / Left Aligned" | "Center / Left Aligned" | "Center Aligned"
+5. negative_space_plan: Perencanaan ruang kosong (min 35-50% untuk penempatan headline)
+6. visual_production: {
      subject: string;
      action: string;
      composition: string;
@@ -2639,57 +2583,59 @@ UNTUK SETIAP SLIDE DI "slides", BERIKAN PETUNJUK VISUAL & SLIDE IMAGE PROMPT 14 
      negative_space: string;
      negative_prompt: string;
    }
-6. production_prompt: Prompt ringkasan tata letak
-7. slide_image_prompt: Prompt 14 baris lengkap siap pakai untuk Midjourney/Flux:
+7. production_prompt: Prompt ringkasan tata letak
+8. slide_image_prompt: Prompt 14 baris lengkap siap pakai untuk Midjourney/Flux:
    Buatkan saya image untuk slide carousel Instagram 4:5.
 
    Funnel Stage: ${funnelStage}
-   Slide Role: [Hook | Problem | Why Current Method Fails | Solution | Proof/Value | CTA]
+   Slide Role: [Hook | Problem | Reframe | Solution | CTA]
    Visual Objective: [Tujuan visual konkret]
-   Subject/Object: [Subjek / figur / kartu UI]
-   Action/Scene: [Aksi konkret]
+   Subject/Object: [Subjek / figur / kartu UI diagram sesuai topik slide]
+   Action/Scene: [Aktivitas fisik / penataan elemen visual]
    Expression/Emotion: [Ekspresi mikro wajah ATAU impresi visual]
-   Environment: [Setting latar / workspace]
-   Composition: [Subjek di kanan tengah, ruang negatif lapang di kiri atas]
-   Lighting: [Pencahayaan alami lembut / studio]
-   Camera/Graphic Style: [50mm editorial photography UNTUK photography OR Clean minimalist UI infographic UNTUK infographic]
+   Environment: [Setting latar yang relevan dengan topik project]
+   Composition: [Komposisi visual 4:5 dengan ruang negatif 40% untuk headline]
+   Lighting: [Pencahayaan alami lembut / studio terarah]
+   Camera/Graphic Style: [50mm editorial photography feel ATAU Clean minimalist UI infographic]
    Visual Style: Clean editorial Instagram content, natural, tidak seperti iklan.
-   Typography: Headline besar 3-5 baris di kiri atas, high contrast, tidak ada teks kecil lain.
+   Typography: Headline besar 3-5 baris, high contrast, tidak ada teks kecil lain.
    Text Overlay: '[Headline slide dari Stage 1]'
    Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable typography, distorted face, extra fingers.
 
 WAJIB KEMBALIKAN HANYA JSON OBJECT STAGE 2 (TANPA MARKDOWN):
 {
-  "visual_system_notes": "Sistem visual 4:5 vertical editorial selaras corong ${funnelStage}.",
+  "visual_system_notes": "Sistem visual 4:5 vertical editorial selaras corong ${funnelStage} dan identitas visual project.",
   "captionForPost": "[Caption Instagram yang merangkum pesan carousel sesuai funnel ${funnelStage}]",
   "captionInstruction": "Paste teks ini di caption/keterangan postingan setelah aset dibuat.",
   "slides": [
     {
-      "slide": 1,
-      "visual_intent": "Visual editorial portrait kreator sedang menatap layar laptop dengan ekspresi analitis reflektif.",
+      "slide": ${batchSlideNumbers && batchSlideNumbers.length > 0 ? batchSlideNumbers[0] : 1},
+      "visual_format": "photography",
+      "visual_intent": "[Instruksi visual konkret selaras dengan pesan slide dan brand aesthetic]",
       "visual_type": "editorial-photo",
       "text_zone": "Upper Third / Left Aligned",
-      "negative_space_plan": "Ruang lega di area atas untuk headline",
+      "negative_space_plan": "Ruang lega 40% di area kiri atas untuk headline",
       "visual_production": {
-        "subject": "Seorang kreator muda berpakaian kasual rapi duduk di meja kerja hangat dengan laptop terbuka.",
-        "action": "Menatap laptop dengan tatapan berpikir reflektif, jemari di atas touchpad.",
-        "composition": "Subjek di kanan tengah, ruang kosong luas di kiri atas untuk headline.",
+        "subject": "[Deskripsi subjek / figur / kartu UI diagram sesuai topik]",
+        "action": "[Aksi konkret atau penataan visual]",
+        "composition": "Subjek di kanan tengah, ruang kosong lapang di kiri atas untuk headline.",
         "layout": "Format 4:5 vertical, headline dominan di kiri atas.",
-        "visual_metaphor": "Refleksi proses produksi konten yang belum memiliki alur sistemik.",
+        "visual_metaphor": "[Metafora visual yang memperjelas pesan]",
         "typography": "Headline tebal 32pt kontras tinggi, body 16pt sans-serif.",
-        "background": "Ruang kerja minimalis hangat dengan pencahayaan jendela alami lembut (#F9F8F6).",
-        "color_mood": "Profesional hangat.",
+        "background": "[Latar belakang bersih selaras dengan brand aesthetic].",
+        "color_mood": "Profesional & terarah.",
         "negative_space": "Ruang lega 40% di area kiri atas untuk headline.",
         "negative_prompt": "hard selling ads, cluttered poster, too much text, generic stock photo, unreadable typography, distorted face, extra fingers."
       },
-      "production_prompt": "Layout: Format 4:5 vertical, headline dominan di atas.\\nSubject/Object Utama: Kreator muda di meja kerja.\\nVisual Metaphor: Refleksi alur konten.\\nTypography Hierarchy: Headline tebal 32pt, body 16pt.\\nBackground: Warm neutral (#F9F8F6).\\nColor Mood: Profesional hangat.\\nNegative Space: 40% ruang bersih.\\nImage/Illustration Direction: Clean editorial modern photography feel.",
-      "slide_image_prompt": "Buatkan saya image untuk slide carousel Instagram 4:5.\\n\\nFunnel Stage: ${funnelStage}\\nSlide Role: Hook\\nVisual Objective: Menghentikan scroll dengan visual reflektif proses menulis konten.\\nSubject/Object: Seorang kreator muda berpakaian kasual rapi duduk di meja kerja hangat dengan laptop terbuka.\\nAction/Scene: Menatap laptop dengan tatapan berpikir reflektif, jemari di atas touchpad.\\nExpression/Emotion: Reflektif, tatapan analitis, senyum tipis penasaran.\\nEnvironment: Meja kerja kayu minimalis hangat, secangkir kopi dan notebook catatan.\\nComposition: Subjek di kanan tengah, ruang kosong luas di kiri atas untuk headline.\\nLighting: Cahaya alami lembut dari jendela samping.\\nCamera/Graphic Style: 50mm editorial photography, shallow depth of field.\\nVisual Style: Clean editorial Instagram content, natural, tidak seperti iklan.\\nTypography: Headline besar 3-5 baris di kiri atas, high contrast, tidak ada teks kecil lain.\\nText Overlay: '[Headline slide 1 Stage 1]'\\nNegative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable typography, distorted face, extra fingers."
+      "production_prompt": "Layout: Format 4:5 vertical, headline dominan di atas.\\nSubject/Object Utama: [Deskripsi subjek/objek]\\nVisual Metaphor: [Metafora visual]\\nTypography Hierarchy: Headline tebal 32pt, body 16pt.\\nBackground: Neutral clean canvas.\\nColor Mood: Profesional.\\nNegative Space: 40% ruang bersih.\\nImage/Illustration Direction: Clean editorial modern aesthetic.",
+      "slide_image_prompt": "Buatkan saya image untuk slide carousel Instagram 4:5.\\n\\nFunnel Stage: ${funnelStage}\\nSlide Role: [Role]\\nVisual Objective: [Tujuan visual]\\nSubject/Object: [Subjek atau objek relevan]\\nAction/Scene: [Aksi konkret]\\nExpression/Emotion: [Ekspresi / impresi]\\nEnvironment: [Setting lingkungan]\\nComposition: Subjek di kanan tengah, ruang kosong luas di kiri atas untuk headline.\\nLighting: Cahaya alami lembut.\\nCamera/Graphic Style: 50mm editorial photography feel.\\nVisual Style: Clean editorial Instagram content, natural, tidak seperti iklan.\\nTypography: Headline besar di area lapang, high contrast.\\nText Overlay: '[Headline slide dari Stage 1]'\\nNegative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable typography, distorted face, extra fingers."
     }
   ]
 }`;
 }
 
 // Helper function to merge Stage 1 (Content Plan) and Stage 2 (Visual Enrichment) into canonical Carousel Plan JSON
+// ENFORCES: Stage 2 MUST NOT rewrite narrative content from Stage 1 (Test F compliant)
 const mergeCarouselPlanStages = (
   stage1Raw: any,
   stage2Raw: any,
@@ -2712,21 +2658,36 @@ const mergeCarouselPlanStages = (
 
   const mergedSlides = s1Slides.map((s1: any, idx: number) => {
     const slideNum = Number(s1.slide || idx + 1);
-    const s2 = s2Slides.find((item: any) => Number(item.slide) === slideNum) || s2Slides[idx] || {};
+    const s2 = s2Slides.find((item: any) => Number(item.slide) === slideNum) || {};
 
+    // Narrative content is strictly protected from Stage 1:
     return {
       ...s1,
-      ...s2,
       slide: slideNum,
-      role: s1.role || s2.role,
-      headline: s1.headline || s2.headline,
-      body: s1.body || s2.body,
-      creative_strategy: s1.creative_strategy || s2.creative_strategy,
-      visual_format: s1.visual_format || s2.visual_format,
-      visual_intent: s2.visual_intent || s1.visual_intent,
-      visual_type: s2.visual_type || s1.visual_type,
-      text_zone: s2.text_zone || s1.text_zone,
-      negative_space_plan: s2.negative_space_plan || s1.negative_space_plan,
+      role: s1.role || 'content',
+      communication_job: s1.communication_job || '',
+      headline: s1.headline || '',
+      body: s1.body || '',
+      swipe_bridge: s1.swipe_bridge || '',
+      emotional_state: s1.emotional_state || '',
+      core_message: s1.core_message || s1.creative_strategy?.core_message || s1.headline || '',
+      audience_emotion: s1.audience_emotion || s1.creative_strategy?.audience_emotion || s1.emotional_state || '',
+
+      // Visual fields enriched from Stage 2 (or retained from previous enrichment)
+      visual_format: s2.visual_format || s1.visual_format || (slideNum === 1 ? 'photography' : 'infographic'),
+      visual_intent: s2.visual_intent || s1.visual_intent || '',
+      visual_type: s2.visual_type || s1.visual_type || (slideNum === 1 ? 'editorial-photo' : 'minimal-diagram'),
+      text_zone: s2.text_zone || s1.text_zone || 'Upper Third / Left Aligned',
+      negative_space_plan: s2.negative_space_plan || s1.negative_space_plan || 'Ruang bersih 40%',
+      creative_strategy: {
+        funnel_stage: s1.creative_strategy?.funnel_stage || s1Obj.funnel_stage || 'TOFU',
+        slide_role: s1.role || 'content',
+        visual_objective: s2.creative_strategy?.visual_objective || s2.visual_intent || s1.creative_strategy?.visual_objective || s1.visual_intent || '',
+        core_message: s1.headline || '',
+        audience_emotion: s1.emotional_state || s1.creative_strategy?.audience_emotion || '',
+        visual_concept: s2.creative_strategy?.visual_concept || s2.visual_production?.visual_metaphor || s1.creative_strategy?.visual_concept || '',
+        text_overlay: s1.headline || '',
+      },
       visual_production: s2.visual_production || s1.visual_production,
       production_prompt: s2.production_prompt || s1.production_prompt,
       slide_image_prompt: s2.slide_image_prompt || s1.slide_image_prompt,
@@ -2735,7 +2696,9 @@ const mergeCarouselPlanStages = (
 
   const mergedPlan = {
     ...s1Obj,
-    ...s2Obj,
+    visual_system_notes: s2Obj.visual_system_notes || s1Obj.visual_system_notes || 'Tema visual konsisten 4:5 vertical editorial.',
+    captionForPost: s2Obj.captionForPost || s1Obj.captionForPost || buildFunnelAlignedCarouselCaption(s1Obj.funnel_stage || 'TOFU', activeItem, mergedSlides, s1Obj.primary_cta_text, activeContext),
+    captionInstruction: s2Obj.captionInstruction || s1Obj.captionInstruction || 'Paste teks ini di caption/keterangan postingan setelah aset dibuat.',
     slides: mergedSlides,
   };
 
@@ -2750,9 +2713,9 @@ function buildFunnelAlignedVideoCaption(
   ctaText?: string
 ): string {
   const existingCaption = (item?.caption || '').trim();
-  const scriptHook = style?.script?.hook || item?.headline || 'Strategi Alur Konten';
+  const scriptHook = style?.script?.hook || item?.headline || 'Wawasan Strategis';
   const scriptSolusi = style?.script?.solusi || '';
-  const cta = ctaText || style?.script?.cta || (funnelStage === 'BOFU' ? 'Akses panduan lengkapnya via link di bio' : funnelStage === 'MOFU' ? 'Simpan video ini untuk referensi alurmu' : 'Follow & save untuk tips konten lainnya');
+  const cta = ctaText || style?.script?.cta || (funnelStage === 'BOFU' ? 'Akses informasi selengkapnya melalui tautan di profil' : funnelStage === 'MOFU' ? 'Simpan video ini untuk referensi alur Anda' : 'Simpan video ini agar tidak terlewat');
 
   if (existingCaption && existingCaption.length >= 40 && !existingCaption.includes('...') && !existingCaption.toLowerCase().includes('lorem')) {
     return existingCaption;
@@ -2761,26 +2724,26 @@ function buildFunnelAlignedVideoCaption(
   if (funnelStage === 'TOFU') {
     return `${scriptHook}
 
-Banyak yang ngira bikin konten yang engage itu harus rumit. Padahal, kuncinya cuma ada di cara kita menyampaikan masalah relatable yang beneran dialami audiens sehari-hari tanpa terkesan menggurui.
+Banyak yang berasumsi bahwa hasil optimal selalu membutuhkan proses yang rumit. Padahal, kuncinya terletak pada kejelasan pendekatan yang menjawab kebutuhan nyata audiens tanpa berbelit-belit.
 
-Tonton videonya sampai habis untuk penjelasan lengkapnya!
+Simak video ini untuk penjelasan selengkapnya.
 
 ${cta}`;
   } else if (funnelStage === 'MOFU') {
     return `${scriptHook}
 
-Kenapa hasil postingan sering terasa stagnan? Karena audiens butuh kejelasan metode dan framework, bukan sekadar teori acak.
+Mengapa proses yang dijalankan kerap kali belum memberikan hasil optimal? Karena audiens membutuhkan kejelasan metode kerja yang terarah dan terbukti.
 
-${scriptSolusi ? `${scriptSolusi}\n\n` : ''}Di video ini kita ringkas alur kerja praktis yang bisa langsung kamu terapkan untuk menyusun pesan yang lebih terarah.
+${scriptSolusi ? `${scriptSolusi}\n\n` : ''}Di video ini kami merangkum langkah-langkah praktis yang dapat langsung Anda terapkan.
 
 ${cta}`;
   } else {
     // BOFU
     return `${scriptHook}
 
-Saatnya tinggalkan cara manual yang memakan waktu dan beralih ke alur produksi terintegrasi.
+Saatnya beralih ke pendekatan yang lebih terpadu, teruji, dan efisien.
 
-${scriptSolusi ? `${scriptSolusi}\n\n` : ''}Dapatkan hasil konten yang lebih terstruktur, konsisten, dan siap mendukung pertumbuhan bisnismu.
+${scriptSolusi ? `${scriptSolusi}\n\n` : ''}Dapatkan hasil yang lebih terstruktur dan siap mendukung pencapaian tujuan Anda secara konsisten.
 
 ${cta}`;
   }
@@ -3322,17 +3285,24 @@ Negative Prompt: hard selling ads, cluttered poster, too much text, generic stoc
         if (normalizedExisting) return normalizedExisting;
         return JSON.stringify(activeItem.carousel_plan, null, 2);
       }
+      const draftTopic = activeItem?.headline || (activeItem as any)?.topik || (activeItem as any)?.title || 'Strategi & Eksekusi Konten';
+      const draftAudience = activeContext?.audience_context?.primary_audience || (activeItem as any)?.target_audience || 'Audiens';
+      const draftProblem = activeItem?.body ? activeItem.body.slice(0, 80) : `Tantangan utama seputar ${draftTopic}`;
+      const draftSolution = activeItem?.keterangan || `Pendekatan terstruktur untuk ${draftTopic}`;
+      const draftProof = activeItem?.tujuan || `Penerapan metode yang konsisten menghasilkan efisiensi nyata`;
+      const draftHook = activeItem?.headline || (activeItem as any)?.hook || `Memahami ${draftTopic} Secara Terstruktur`;
+
       const initialPlan: CarouselPlan = {
         content_goal: activeItem?.tujuan || funnelRules.goal,
         funnel_stage: funnelStage,
-        current_belief: activeItem?.headline ? `Melihat ${activeItem.headline} tanpa alur sistematis.` : `Membuat konten tanpa penyesuaian tahap ${funnelStage}.`,
+        current_belief: activeItem?.headline ? `Melihat ${activeItem.headline} tanpa alur sistematis.` : `Menangani ${draftTopic} tanpa alur yang jelas.`,
         desired_belief: `Memahami pentingnya alur ${funnelStage} untuk hasil komunikasi yang terarah dan konsisten.`,
-        core_promise: `Menguasai alur ${funnelStage} secara terstruktur dan efisien.`,
+        core_promise: `Menguasai alur ${funnelStage} untuk ${draftTopic} secara terstruktur dan efisien.`,
         primary_cta_type: funnelStage === 'BOFU' ? 'direct_offer' : 'engagement_save',
         primary_cta_text: safeCta,
         slide_count: 5,
         slide_count_reason: '5 Slide merupakan panjang optimal untuk alur narasi Hook → Problem → Reframe → How It Works / Value → CTA.',
-        belief_journey_summary: `Mengubah pola pikir audiens agar memahami peran penting alur konten ${funnelStage}.`,
+        belief_journey_summary: `Mengubah pola pikir ${draftAudience} agar memahami pentingnya alur terstruktur untuk ${draftTopic}.`,
         messageAlignmentCheck: {
           isAligned: true,
           issue: '',
@@ -3344,22 +3314,22 @@ Negative Prompt: hard selling ads, cluttered poster, too much text, generic stoc
             slide: 1,
             role: 'hook',
             communication_job: 'Menghentikan scroll dengan alasan keputusan strategis / relatable problem',
-            headline: funnelStage === 'BOFU' ? 'Masih Bikin Konten Harian Tanpa Sistem?' : funnelStage === 'MOFU' ? 'Masalahnya Bukan Rajin Posting, Tapi Alur Narasinya' : 'Kok Caption-nya Terasa Kaku Pas Dibaca Ulang?',
-            body: activeItem?.body || 'Banyak kreator merasa frustrasi karena konten harian mereka dibuat secara dadakan tanpa alur yang jelas.',
+            headline: draftHook,
+            body: activeItem?.body || `Banyak ${draftAudience} menghadapi kendala saat menangani ${draftTopic} tanpa alur yang terencana.`,
             swipe_bridge: 'Kenapa hal ini sering terjadi? ➔',
             emotional_state: 'Empati & Refleksi Kritis',
-            visual_intent: 'Visual editorial portrait kreator sedang menatap layar laptop dengan ekspresi analitis reflektif, pencahayaan alami hangat dari jendela samping.',
+            visual_intent: 'Visual editorial portrait profesional menelaah catatan kerja dengan pencahayaan alami hangat.',
             visual_type: 'editorial-photo',
             text_zone: 'Upper Third / Left Aligned',
             negative_space_plan: 'Ruang bersih di bagian atas untuk headline besar',
             creative_strategy: {
               funnel_stage: funnelStage,
               slide_role: 'hook',
-              visual_objective: 'Visual editorial portrait kreator sedang menatap layar laptop dengan ekspresi analitis reflektif, pencahayaan alami hangat dari jendela samping.',
-              core_message: funnelStage === 'BOFU' ? 'Masih Bikin Konten Harian Tanpa Sistem?' : funnelStage === 'MOFU' ? 'Masalahnya Bukan Rajin Posting, Tapi Alur Narasinya' : 'Kok Caption-nya Terasa Kaku Pas Dibaca Ulang?',
+              visual_objective: 'Visual editorial portrait profesional menelaah catatan kerja dengan pencahayaan alami hangat.',
+              core_message: draftHook,
               audience_emotion: 'Empati & Refleksi Kritis',
               visual_concept: 'Editorial photographic framing dengan pencahayaan alami natural',
-              text_overlay: funnelStage === 'BOFU' ? 'Masih Bikin Konten Harian Tanpa Sistem?' : funnelStage === 'MOFU' ? 'Masalahnya Bukan Rajin Posting, Tapi Alur Narasinya' : 'Kok Caption-nya Terasa Kaku Pas Dibaca Ulang?'
+              text_overlay: draftHook
             },
             visual_format: 'photography',
             visual_production: {
@@ -3367,7 +3337,7 @@ Negative Prompt: hard selling ads, cluttered poster, too much text, generic stoc
               action: 'Menatap layar laptop dengan tatapan berpikir reflektif sambil menelaah draf konten.',
               composition: 'Subjek di kanan tengah, ruang kosong luas di kiri atas untuk headline.',
               layout: 'Format carousel Instagram 4:5 vertical, komposisi bersih dengan teks headline besar di kiri atas.',
-              visual_metaphor: 'Refleksi kejenuhan menghadapi proses produksi konten harian yang belum memiliki sistem terpadu.',
+              visual_metaphor: 'Refleksi kejenuhan menghadapi proses kerja yang belum memiliki sistem terpadu.',
               typography: 'Headline tebal 34pt kontras tinggi, body copy 16pt sans-serif nyaman dibaca, label slide di pojok atas.',
               background: 'Ruang kerja minimalis hangat dengan pencahayaan jendela alami lembut (#F9F8F6).',
               color_mood: `Nuansa profesional hangat (${funnelStage === 'TOFU' ? 'Sage Green & Warm Cream' : funnelStage === 'MOFU' ? 'Teal & Crisp Slate' : 'Deep Emerald'}).`,
@@ -3376,7 +3346,7 @@ Negative Prompt: hard selling ads, cluttered poster, too much text, generic stoc
             },
             production_prompt: `Layout: Format carousel Instagram 4:5 vertical, komposisi bersih dengan teks headline besar di kiri atas.
 Subject/Object Utama: Kreator / praktisi profesional sedang duduk di meja kerja kayu minimalis, menatap laptop dengan tatapan berpikir reflektif.
-Visual Metaphor: Refleksi kejenuhan menghadapi proses produksi konten harian yang belum memiliki sistem terpadu.
+Visual Metaphor: Refleksi kejenuhan menghadapi proses kerja yang belum memiliki sistem terpadu.
 Typography Hierarchy: Headline tebal 34pt kontras tinggi, body copy 16pt sans-serif nyaman dibaca, label slide di pojok atas.
 Background: Ruang kerja minimalis hangat dengan pencahayaan jendela alami lembut (#F9F8F6).
 Color Mood: Nuansa profesional hangat (${funnelStage === 'TOFU' ? 'Sage Green & Warm Cream' : funnelStage === 'MOFU' ? 'Teal & Crisp Slate' : 'Deep Emerald'}).
@@ -3386,9 +3356,9 @@ Image/Illustration Direction: Clean minimalist modern editorial photography.`,
               undefined,
               1,
               'hook',
-              funnelStage === 'BOFU' ? 'Masih Bikin Konten Harian Tanpa Sistem?' : funnelStage === 'MOFU' ? 'Masalahnya Bukan Rajin Posting, Tapi Alur Narasinya' : 'Kok Caption-nya Terasa Kaku Pas Dibaca Ulang?',
+              draftHook,
               funnelStage,
-              'Visual editorial portrait kreator sedang menatap layar laptop dengan ekspresi analitis reflektif, pencahayaan alami hangat dari jendela samping.',
+              'Visual editorial portrait profesional menelaah catatan kerja dengan pencahayaan alami hangat.',
               'photography'
             )
           },
@@ -3396,22 +3366,22 @@ Image/Illustration Direction: Clean minimalist modern editorial photography.`,
             slide: 2,
             role: 'problem',
             communication_job: 'Fokus pada satu masalah utama yang dialami audiens saat ini',
-            headline: funnelStage === 'TOFU' ? 'Nulis Panjang Lebar, Tapi Pesan Intinya Malah Tenggelam' : funnelStage === 'MOFU' ? 'Bikin Konten Rutin, Tapi Audiens Bingung Value yang Ditawarkan' : 'Menunda Sistematisasi Konten Membuang Waktu & Energi Produksi',
-            body: `Menyampaikan pesan tanpa penyesuaian tahap ${funnelStage} membuat audiens membaca sekilas lalu pergi tanpa aksi.`,
-            swipe_bridge: 'Mengapa cara lama tidak lagi cukup? ➔',
+            headline: `Kendala Nyata: ${draftProblem}`,
+            body: `Banyak ${draftAudience} terjebak ketika menghadapi ${draftProblem} tanpa panduan terarah.`,
+            swipe_bridge: 'Mengapa pendekatan biasa belum memadai? ➔',
             emotional_state: 'Kesadaran Masalah Tunggal',
-            visual_intent: 'Perbandingan draf catatan manual yang berantakan tanpa alur narasi yang jelas.',
+            visual_intent: 'Perbandingan visual antara proses kerja yang tidak terarah versus alur kerja terstruktur.',
             visual_type: 'comparison-split',
             text_zone: 'Center / Left Aligned',
             negative_space_plan: 'Sisi kanan bersih untuk ilustrasi pembanding',
             creative_strategy: {
               funnel_stage: funnelStage,
               slide_role: 'problem',
-              visual_objective: 'Infografis kartu pembanding satu masalah utama: draf tulisan acak vs alur hierarki pesan terstruktur.',
-              core_message: funnelStage === 'TOFU' ? 'Nulis Panjang Lebar, Tapi Pesan Intinya Malah Tenggelam' : funnelStage === 'MOFU' ? 'Bikin Konten Rutin, Tapi Audiens Bingung Value yang Ditawarkan' : 'Menunda Sistematisasi Konten Membuang Waktu & Energi Produksi',
+              visual_objective: `Infografis kartu pembanding masalah utama: alur kerja terputus vs alur terstruktur untuk ${draftTopic}.`,
+              core_message: `Kendala Nyata: ${draftProblem}`,
               audience_emotion: 'Kesadaran Masalah Tunggal',
               visual_concept: 'Kartu UI diagram alur dan hierarki tipografi modern bersih',
-              text_overlay: funnelStage === 'TOFU' ? 'Nulis Panjang Lebar, Tapi Pesan Intinya Malah Tenggelam' : funnelStage === 'MOFU' ? 'Bikin Konten Rutin, Tapi Audiens Bingung Value yang Ditawarkan' : 'Menunda Sistematisasi Konten Membuang Waktu & Energi Produksi'
+              text_overlay: `Kendala Nyata: ${draftProblem}`
             },
             visual_format: 'infographic',
             visual_production: {
@@ -3419,7 +3389,7 @@ Image/Illustration Direction: Clean minimalist modern editorial photography.`,
               action: 'Penataan visual kartu masalah dengan highlight lembut pada titik hambatan utama.',
               composition: 'Center card layout / structured split grid dengan ruang negatif 40% lapang di area atas untuk headline.',
               layout: 'Split composition dua kartu perbandingan berdampingan.',
-              visual_metaphor: 'Transformasi dari tumpukan catatan kusut menjadi alur kartu yang tertata rapi.',
+              visual_metaphor: 'Transformasi dari proses yang tidak terarah menjadi alur yang terorganisir rapi.',
               typography: 'Headline 28pt bold, bullet perbandingan 15pt dengan ikon cross merah dan check hijau.',
               background: 'Neutral off-white canvas (#F8F7F4).',
               color_mood: 'Nuansa analitis & informatif.',
@@ -3428,7 +3398,7 @@ Image/Illustration Direction: Clean minimalist modern editorial photography.`,
             },
             production_prompt: `Layout: Split composition dua kartu perbandingan berdampingan.
 Subject/Object Utama: Ilustrasi grafis perbandingan draf acak vs alur hierarki pesan terstruktur.
-Visual Metaphor: Transformasi dari tumpukan catatan kusut menjadi alur kartu yang tertata rapi.
+Visual Metaphor: Transformasi dari proses yang tidak terarah menjadi alur yang terorganisir rapi.
 Typography Hierarchy: Headline 28pt bold, bullet perbandingan 15pt dengan ikon cross merah dan check hijau.
 Background: Neutral off-white canvas (#F8F7F4).
 Color Mood: Nuansa analitis & informatif.
@@ -3438,9 +3408,9 @@ Image/Illustration Direction: Clean minimalist infographic diagram UI.`,
               undefined,
               2,
               'problem',
-              funnelStage === 'TOFU' ? 'Nulis Panjang Lebar, Tapi Pesan Intinya Malah Tenggelam' : funnelStage === 'MOFU' ? 'Bikin Konten Rutin, Tapi Audiens Bingung Value yang Ditawarkan' : 'Menunda Sistematisasi Konten Membuang Waktu & Energi Produksi',
+              `Kendala Nyata: ${draftProblem}`,
               funnelStage,
-              'Perbandingan draf catatan manual yang berantakan tanpa alur narasi yang jelas.',
+              'Perbandingan visual antara proses kerja yang tidak terarah versus alur kerja terstruktur.',
               'infographic'
             )
           },
@@ -3448,22 +3418,22 @@ Image/Illustration Direction: Clean minimalist infographic diagram UI.`,
             slide: 3,
             role: 'reframe',
             communication_job: 'Menjelaskan mengapa metode lama gagal dan menyajikan sudut pandang sistemik',
-            headline: 'Satu Sistem untuk Ide, Struktur, dan Eksekusi Konten',
-            body: 'Bukan sekadar gonta-ganti ide dadakan, tapi menyelaraskan setiap postingan dengan tahap pemahaman audiens dalam satu alur terpadu.',
-            swipe_bridge: 'Bagaimana sistem ini bekerja? ➔',
+            headline: `Sudut Pandang Baru: Mengurai ${draftTopic}`,
+            body: `Kunci keberhasilan bukan bekerja lebih keras tanpa arah, melainkan menyelaraskan alur ${funnelStage} dengan kebutuhan nyata ${draftAudience}.`,
+            swipe_bridge: 'Bagaimana pendekatan ini diterapkan? ➔',
             emotional_state: 'Pencerahan (Aha Moment)',
-            visual_intent: 'Infografis kartu pencerahan 3 pilar sistem terpadu (ide, struktur, eksekusi) dengan tipografi kontras tinggi.',
+            visual_intent: `Infografis diagram pilar fondasi untuk pemahaman menyeluruh seputar ${draftTopic}.`,
             visual_type: 'minimal-diagram',
             text_zone: 'Center Aligned',
             negative_space_plan: 'Latar belakang netral dengan aksen hijau lembut',
             creative_strategy: {
               funnel_stage: funnelStage,
               slide_role: 'reframe',
-              visual_objective: 'Infografis kartu pencerahan 3 pilar sistem terpadu (ide, struktur, eksekusi) dengan tipografi kontras tinggi.',
-              core_message: 'Satu Sistem untuk Ide, Struktur, dan Eksekusi Konten',
+              visual_objective: `Infografis kartu pencerahan fondasi strategis seputar ${draftTopic} dengan tipografi kontras tinggi.`,
+              core_message: `Sudut Pandang Baru: Mengurai ${draftTopic}`,
               audience_emotion: 'Pencerahan (Aha Moment)',
               visual_concept: 'Kartu UI diagram alur dan hierarki tipografi modern bersih',
-              text_overlay: 'Satu Sistem untuk Ide, Struktur, dan Eksekusi Konten'
+              text_overlay: `Sudut Pandang Baru: Mengurai ${draftTopic}`
             },
             visual_format: 'infographic',
             visual_production: {
@@ -3490,9 +3460,9 @@ Image/Illustration Direction: Modern minimalist 3D isometric or flat geometric d
               undefined,
               3,
               'reframe',
-              'Satu Sistem untuk Ide, Struktur, dan Eksekusi Konten',
+              `Sudut Pandang Baru: Mengurai ${draftTopic}`,
               funnelStage,
-              'Infografis kartu pencerahan 3 pilar sistem terpadu (ide, struktur, eksekusi) dengan tipografi kontras tinggi.',
+              `Infografis kartu pencerahan fondasi strategis seputar ${draftTopic} dengan tipografi kontras tinggi.`,
               'infographic'
             )
           },
@@ -3500,22 +3470,22 @@ Image/Illustration Direction: Modern minimalist 3D isometric or flat geometric d
             slide: 4,
             role: 'learn',
             communication_job: 'Menyajikan solusi terpadu dan pembuktian nilai efisiensi kerja nyata',
-            headline: 'Workflow Terstruktur, Waktu Produksi Singkat & Output Konsisten',
-            body: 'Dengan sistem yang terintegrasi, draf konten tervalidasi sebelum dibuat, memangkas waktu produksi tanpa mengorbankan kualitas pesan.',
+            headline: `Solusi & Pembuktian: ${draftSolution}`,
+            body: `Dengan kerangka kerja yang jelas, ${draftProof}, sehingga hasil yang dicapai lebih konsisten dan terukur.`,
             swipe_bridge: 'Mulai terapkan langkahnya ➔',
             emotional_state: 'Optimisme & Kejelasan Sistem',
-            visual_intent: 'Tampilan antarmuka alur kerja efisien yang menghubungkan kalender dan formula prompt terstruktur.',
+            visual_intent: `Tampilan alur kerja praktis dan langkah penerapan ${draftSolution}.`,
             visual_type: 'step-framework',
             text_zone: 'Upper Third',
             negative_space_plan: 'Ruang lega di sekitar checklist framework',
             creative_strategy: {
               funnel_stage: funnelStage,
               slide_role: 'learn',
-              visual_objective: 'Tampilan antarmuka alur kerja efisien yang menghubungkan kalender dan formula prompt terstruktur.',
-              core_message: 'Workflow Terstruktur, Waktu Produksi Singkat & Output Konsisten',
+              visual_objective: `Tampilan alur kerja terstruktur yang mendemonstrasikan implementasi ${draftSolution}.`,
+              core_message: `Solusi & Pembuktian: ${draftSolution}`,
               audience_emotion: 'Optimisme & Kejelasan Sistem',
               visual_concept: 'Kartu UI diagram alur dan hierarki tipografi modern bersih',
-              text_overlay: 'Workflow Terstruktur, Waktu Produksi Singkat & Output Konsisten'
+              text_overlay: `Solusi & Pembuktian: ${draftSolution}`
             },
             visual_format: 'infographic',
             visual_production: {
@@ -3542,9 +3512,9 @@ Image/Illustration Direction: High-contrast product UI framework style.`,
               undefined,
               4,
               'learn',
-              'Workflow Terstruktur, Waktu Produksi Singkat & Output Konsisten',
+              `Solusi & Pembuktian: ${draftSolution}`,
               funnelStage,
-              'Tampilan antarmuka alur kerja efisien yang menghubungkan kalender dan formula prompt terstruktur.',
+              `Tampilan alur kerja terstruktur yang mendemonstrasikan implementasi ${draftSolution}.`,
               'infographic'
             )
           },
@@ -3552,8 +3522,8 @@ Image/Illustration Direction: High-contrast product UI framework style.`,
             slide: 5,
             role: 'cta',
             communication_job: 'Mendorong aksi penutup berbasis value yang sesuai dengan tahap corong',
-            headline: funnelStage === 'BOFU' ? 'Mulai Bangun Sistem Kontenmu Hari Ini.' : funnelStage === 'MOFU' ? 'Rapikan Alur Kontenmu Mulai Sekarang.' : 'Simpan & Terapkan Pola Ini Saat Menulis.',
-            body: 'Akses seluruh panduan alur dan sistem produksi terpadu melalui tautan di profil.',
+            headline: `Langkah Lanjutan: ${safeCta}`,
+            body: `Ambil langkah berikutnya untuk mendalami ${draftTopic} dan menerapkan strategi ini secara bertahap.`,
             swipe_bridge: safeCta,
             emotional_state: 'Dorongan Aksi Berbasis Value',
             visual_intent: 'Visual closing card bersih dengan tombol CTA kontras tinggi dan instruksi aksi berbasis value.',
@@ -3564,10 +3534,10 @@ Image/Illustration Direction: High-contrast product UI framework style.`,
               funnel_stage: funnelStage,
               slide_role: 'cta',
               visual_objective: 'Visual closing card bersih dengan tombol CTA kontras tinggi dan instruksi aksi berbasis value.',
-              core_message: funnelStage === 'BOFU' ? 'Mulai Bangun Sistem Kontenmu Hari Ini.' : funnelStage === 'MOFU' ? 'Rapikan Alur Kontenmu Mulai Sekarang.' : 'Simpan & Terapkan Pola Ini Saat Menulis.',
+              core_message: `Langkah Lanjutan: ${safeCta}`,
               audience_emotion: 'Dorongan Aksi Berbasis Value',
               visual_concept: 'Kartu UI penutup dan tombol aksi kontras tinggi',
-              text_overlay: funnelStage === 'BOFU' ? 'Mulai Bangun Sistem Kontenmu Hari Ini.' : funnelStage === 'MOFU' ? 'Rapikan Alur Kontenmu Mulai Sekarang.' : 'Simpan & Terapkan Pola Ini Saat Menulis.'
+              text_overlay: `Langkah Lanjutan: ${safeCta}`
             },
             visual_format: 'infographic',
             visual_production: {
@@ -3594,7 +3564,7 @@ Image/Illustration Direction: Clean minimalist social media closing card.`,
               undefined,
               5,
               'cta',
-              funnelStage === 'BOFU' ? 'Mulai Bangun Sistem Kontenmu Hari Ini.' : funnelStage === 'MOFU' ? 'Rapikan Alur Kontenmu Mulai Sekarang.' : 'Simpan & Terapkan Pola Ini Saat Menulis.',
+              `Langkah Lanjutan: ${safeCta}`,
               funnelStage,
               'Visual closing card bersih dengan tombol CTA kontras tinggi dan instruksi aksi berbasis value.',
               'infographic'
@@ -3816,7 +3786,7 @@ export default function ProductionStudioPage() {
     const requestItemId = sourceItem.content_item_id;
 
     const item = sourceItem;
-    const context: SharedContentContext = sharedContextSnapshot;
+    const context: SharedContentContext = sharedContextSnapshot!;
     const payload = buildJson2VideoPayload(
       activeVideo,
       item,
@@ -4093,7 +4063,7 @@ export default function ProductionStudioPage() {
     }
 
     const item = sourceItem;
-    const context: SharedContentContext = sharedContextSnapshot;
+    const context: SharedContentContext = sharedContextSnapshot!;
     const payload = buildJson2VideoPayload(
       activeVideo,
       item,
@@ -4484,7 +4454,7 @@ export default function ProductionStudioPage() {
       const requestItemId = sourceItem.content_item_id;
 
       const activeItem = sourceItem;
-      const activeContext: SharedContentContext = sharedContextSnapshot;
+      const activeContext: SharedContentContext = sharedContextSnapshot!;
       const funnelStage = normalizeFunnelStage(activeItem.jenis);
       const funnelRules = getFunnelRules(activeItem.jenis);
       const funnelPromptBlock = buildFunnelPromptBlock(activeItem.jenis);
@@ -4500,26 +4470,26 @@ JIKA IDE UTAMA TERLALU PANJANG, UBAH MENJADI HOOK PENDEK YANG TETAP UTUH, MAKSIM
 ATURAN CORONG ${funnelStage} (SANGAT KETAT):
 ${funnelStage === 'TOFU' ? `
 - Visual Objective: Membangun awareness alami, relatable problem sehari-hari, dan curiosity tanpa pesan jualan.
-- Action: Audiens/kreator mengalami masalah sehari-hari (contoh: membaca ulang draf caption di laptop sambil menopang dagu heran, ragu menekan tombol posting).
-- Expression: Bingung ringan, penasaran, merasa relate, senyum kecut reflektif, frustrasi kecil (reflektif terhadap kesulitan sehari-hari).
-- Text Overlay: Pertanyaan atau problem awareness relatable utuh tanpa terpotong (contoh: "Kok caption-nya terasa kaku?", "Udah nulis lama, tetap hambar?").
+- Action: Subjek berinteraksi dengan situasi atau hambatan yang relevan dengan topik pada SELECTED CONTENT ITEM.
+- Expression: Bingung ringan, penasaran, merasa relate, senyum kecut reflektif (reflektif terhadap kesulitan sehari-hari).
+- Text Overlay: Pertanyaan reflektif atau hook masalah spesifik dari headline item tanpa terpotong (maksimal 6-10 kata).
 - Caption For Post: Menjelaskan masalah dan insight ringan.
-- DILARANG KERAS DI TOFU: Social proof ("ratusan pemilik bisnis", "klien terbukti"), urgency, bonus, daftar sekarang, beli sekarang, hard selling.
+- DILARANG KERAS DI TOFU: Social proof ("ratusan pengguna", "klien terbukti"), urgency, bonus, daftar sekarang, beli sekarang, hard selling.
 ` : funnelStage === 'MOFU' ? `
 - Visual Objective: Membangun pemahaman mendalam, framework solusi terstruktur, perbandingan metode, dan trust edukatif.
-- Action: Talent menganalisis, membandingkan diagram alur/checklist di notebook/tablet di samping laptop, menemukan metode teratur.
-- Expression: Fokus, mulai paham, tatapan 'aha moment' yang tenang saat menyadari kejelasan solusi baru.
-- Text Overlay: Insight, framework, comparison utuh tanpa terpotong (contoh: "Bukan kurang rajin, cuma belum sistematis", "Masalahnya bukan di ide, tapi alurnya").
+- Action: Subjek menganalisis atau membandingkan diagram alur atau catatan kerja terstruktur yang relevan dengan topik item.
+- Expression: Fokus, mulai paham, tatapan 'aha moment' yang tenang saat menyadari kejelasan metode baru.
+- Text Overlay: Insight, kerangka alur, atau sudut pandang baru yang relevan dengan topik item tanpa terpotong (maksimal 6-10 kata).
 - Caption For Post: Menjelaskan solusi/metode edukatif secara terstruktur.
 - DILARANG KERAS DI MOFU: Hard closing, FOMO berlebihan, adegan kebingungan mentah tanpa solusi.
 ` : `
-- Visual Objective: Membangun kepercayaan mendalam dan mendorong keputusan akhir melalui social proof kredibel, demonstrasi hasil nyata, dan validasi produk.
-- Action: Talent meninjau dashboard statistik anggota komunitas / laporan analitik pertumbuhan nyata / demo alur otomatis di laptop bersama tim.
-- Expression: Ekspresi yakin, bangga, dan percaya dengan senyum subtle puas (subtle confident smile), siap mengambil keputusan/bergabung.
-- Text Overlay: Proof, benefit nyata, atau decision CTA utuh tanpa terpotong (contoh: "100+ Bisnis Sudah Bergabung", "Lihat hasil nyata alurnya sekarang").
+- Visual Objective: Membangun kepercayaan mendalam dan mendorong keputusan akhir melalui validasi solusi, demonstrasi hasil nyata, dan kejelasan nilai.
+- Action: Subjek meninjau hasil nyata, implementasi sistem, atau bukti nilai yang relevan dengan topik item.
+- Expression: Ekspresi yakin, mantap, dan percaya dengan senyum subtle puas, siap mengambil keputusan lanjutan.
+- Text Overlay: Penegasan nilai, hasil nyata, atau ajakan aksi terarah dari topik item tanpa terpotong (maksimal 6-10 kata).
 - Caption For Post: Menguatkan trust, benefit nyata, dan dorongan Call to Action.
-- DILARANG KERAS DI BOFU: Adegan problem awareness TOFU (seperti: membaca ulang caption dengan ekspresi bingung, menopang dagu frustrasi kecil, masalah umum tanpa produk/hasil).
-- KHUSUS BOFU DENGAN SOCIAL PROOF: Visual wajib menggambarkan social proof nyata (dashboard komunitas/metrik), ekspresi percaya/bangga, dan keputusan akhir, dengan visual clean editorial yang tidak tampak seperti iklan hard-selling berlebihan.
+- DILARANG KERAS DI BOFU: Adegan problem awareness TOFU tanpa penegasan solusi/hasil nyata.
+- KHUSUS BOFU: Visual wajib menggambarkan kejelasan implementasi nyata, ekspresi percaya/mantap, dan keputusan akhir dengan gaya clean editorial.
 `}
 
 VALIDASI INTERNAL WAJIB (messageAlignmentCheck):
@@ -4608,333 +4578,8 @@ URUTAN WAJIB STRUKTUR finalPrompt:
 HINDARI: ${funnelRules.avoid}
 Kembalikan HANYA JSON murni tanpa markdown pembungkus tambahan di luar JSON.`;
       } else if (activeTab === 'carousel') {
-        promptTitle = `CAROUSEL BLUEPRINT WITH IMAGE PROMPTS - FUNNEL ${funnelStage} (CANONICAL SINGLE JSON OBJECT)`;
-        formatDirection = `Hasilkan 1 (SATU) blueprint Carousel yang utuh dan terstruktur untuk tahap corong ${funnelStage} dalam format JSON object canonical murni (BUKAN array, tanpa markdown pembungkus).
-
-STRUKTUR NARASI CAROUSEL WAJIB:
-Hook → Problem → Why Current Method Fails → Solution → Proof/Value → CTA
-
-ATURAN STRUKTUR UNTUK 5 SLIDE (DEFAULT):
-- Slide 1: Hook (Peran: "hook") - Hook berbasis alasan keputusan / relatable problem, BUKAN langsung "beli" atau jualan.
-- Slide 2: Problem (Peran: "problem") - Fokus pada SATU masalah utama yang spesifik (jangan campur masalah).
-- Slide 3: Why Current Method Fails / Reframe (Peran: "reframe") - Menjelaskan mengapa metode lama gagal dan menyajikan sudut pandang sistemik yang konkret (HINDARI headline generik).
-- Slide 4: Solution + Proof/Value (Peran: "learn") - Solusi terstruktur dengan proof/value yang aman dan bisa dipertanggungjawabkan (berbasis fitur/workflow, BUKAN klaim palsu).
-- Slide 5: CTA (Peran: "cta") - CTA berbasis value (bukan cuma "Link di bio").
-
-ATURAN STRUKTUR UNTUK 6 SLIDE:
-- Slide 1: Hook
-- Slide 2: Problem
-- Slide 3: Why Current Method Fails
-- Slide 4: Solution
-- Slide 5: Proof/Value
-- Slide 6: CTA
-
-ATURAN KHUSUS BOFU:
-- BOFU boleh menjual, tapi DILARANG LANGSUNG HARD SELLING DI SLIDE 1.
-- Slide 1 BOFU wajib membuka dengan alasan keputusan atau refleksi masalah strategis, contoh:
-  * "Masih Bikin Konten Harian Tanpa Sistem?"
-  * "Sebelum Beli Tool Konten, Cek 3 Hal Ini."
-  * "Konten Harian Butuh Sistem, Bukan Tebakan."
-
-LARANGAN DI SLIDE 1:
-- DILARANG menggunakan headline seperti: "Kenapa Harus Beli ... Hari Ini?", "Peluang Emas Terakhir", "Buruan Beli" di Slide 1.
-- Jika perlu urgency, simpan di CTA akhir secara halus dan profesional.
-
-SLIDE 2 - FOKUS SATU MASALAH:
-- Fokus pada satu masalah utama saja.
-- Jangan campur aduk "manual vs otomatis" dengan "tanpa struktur funnel" jika visual dan headline tidak selaras. Pilih satu fokus dan jaga konsisten sampai slide akhir.
-
-SLIDE 3 - WHY CURRENT METHOD FAILS / REFRAME:
-- DILARANG memakai headline generik seperti:
-  * "Solusi: Optimasi Alur BOFU"
-  * "Optimasi Strategi Konten"
-- Ganti dengan pesan bernilai yang mudah dipahami audiens, contoh:
-  * "Satu Sistem untuk Ide, Struktur, dan Eksekusi Konten."
-  * "Dari Ide Sampai Konten Siap Posting, Dalam Satu Alur."
-  * "Bukan Cuma Posting, Tapi Punya Alur Keputusan."
-
-SLIDE 4 - PROOF / VALUE:
-- Proof/Value harus aman dan bisa dipertanggungjawabkan.
-- DILARANG mengarang "hasil proyek melampaui target", "testimoni terverifikasi", atau "ratusan pengguna terbukti sukses" KECUALI data tersebut memang ada di input.
-- Jika tidak ada data riil, gunakan proof berbasis fitur/value konkret:
-  * workflow lebih terstruktur
-  * waktu produksi lebih singkat
-  * output lebih konsisten
-  * kalender, prompt, dan produksi konten menyatu
-
-SLIDE 5 - CTA BERBASIS VALUE:
-- CTA jangan hanya "Link Bio!" atau "Cek bio sekarang!".
-- Gunakan CTA berbasis value nyata, contoh:
-  * "Mulai Bangun Sistem Kontenmu Hari Ini."
-  * "Akses Panduan & Workflow Konten Terpadu."
-  * "Rapikan Alur Kontenmu Mulai Sekarang."
-  * "Simpan & Terapkan Pola Ini Saat Menulis."
-- "Link di bio" hanya boleh menjadi keterangan pendukung di body, bukan headline utama CTA.
-
-VALIDASI messageAlignmentCheck WAJIB MEMERIKSA 5 ASPEK:
-1. Apakah slide 1 terlalu jualan? (Jika ya: ubah ke hook alasan keputusan)
-2. Apakah problem slide 2 sinkron dengan visual dan fokus pada 1 masalah tunggal?
-3. Apakah slide 3 terlalu generik? (Jika ya: reframe ke manfaat sistemik nyata)
-4. Apakah proof slide 4 memakai klaim berlebihan tanpa dasar input? (Jika ya: ubah ke proof fitur/workflow)
-5. Apakah CTA slide akhir berbasis value dan sesuai tahap ${funnelStage}?
-JIKA ADA KONFLIK: Catat di "issue", set "isAligned": false, dan perbaiki seluruh teks, visual_intent, production_prompt, serta slide_image_prompt di "fixApplied".
-
-ATURAN STRUKTUR 3-LAPIS WAJIB PER SLIDE:
-1. creative_strategy:
-   - funnel_stage: "${funnelStage}"
-   - slide_role: "hook" | "problem" | "reframe" | "learn" | "cta"
-   - visual_objective: Tujuan visual konkret sesuai pesan corong
-   - core_message: Pesan inti slide yang selaras dengan headline
-   - audience_emotion: Respon emosional audiens yang ditargetkan
-   - visual_concept: Konsep visual editorial / infografis
-   - text_overlay: Teks headline yang diselaraskan tanpa kata-kata BOFU jika TOFU/MOFU
-2. visual_format: HANYA BOLEH salah satu dari: "photography" | "infographic" | "hybrid"
-   - ATURAN FORMAT:
-     * Slide 1 Hook: "photography" atau "hybrid" (visual portrait/workspace manusia nyata).
-     * Slide 2 Problem: "infographic" (perbandingan kartu UI, draf acak vs alur terstruktur).
-     * Slide 3 Reframe: "infographic" (diagram 3 pilar sistem, kartu hierarki pesan).
-     * Slide 4 Solution / How It Works / Value: "infographic" (checklist framework bertingkat, UI workflow).
-     * Slide 5 CTA: "infographic" (closing value card & CTA pill button).
-     * JIKA "infographic": DILARANG KERAS memuat camera lens (50mm/35mm), ekspresi wajah, pakaian manusia, atau close-up talent. Gunakan instruksi kartu UI, diagram alur, dan hierarki tipografi.
-3. visual_production:
-   - subject: Deskripsi subjek (manusia/scene untuk photography, elemen diagram/kartu UI untuk infographic)
-   - action: Aksi konkret / penataan tata letak visual
-   - composition: Komposisi 4:5, penempatan kartu, ruang negatif lapang di area headline
-   - layout: Detail layout tata letak
-   - visual_metaphor: Metafora visual yang memperjelas pesan
-   - typography: Hierarki tipografi kontras tinggi
-   - background: Background bernuansa hangat / netral bersih
-   - color_mood: Mood palet warna
-   - negative_space: Ruang negatif bernapas (35-50%)
-   - negative_prompt: Negative prompt yang sesuai format
-
-ATURAN WAJIB slide_image_prompt PER SLIDE (14 BARIS PROMPT FINAL SIAP PAKAI):
-Setiap slide dalam "slides" WAJIB menyertakan field "slide_image_prompt" yang berisi prompt gambar siap pakai untuk Midjourney / Flux / AI image generator dengan format:
-Buatkan saya image untuk slide carousel Instagram 4:5.
-
-Funnel Stage: ${funnelStage}
-Slide Role: [Hook | Problem | Why Current Method Fails | Solution | Proof/Value | CTA]
-Visual Objective: [Tujuan visual sesuai peran slide dan tahap funnel ${funnelStage}]
-Subject/Object: [Subjek / figur / kartu UI diagram di dalam frame]
-Action/Scene: [Aksi konkret / penataan visual kartu yang sedang berlangsung]
-Expression/Emotion: [Ekspresi wajah subjek untuk photography ATAU impresi visual pencerahan untuk infographic]
-Environment: [Setting latar / workspace bersih / background netral terstruktur]
-Composition: [Komposisi editorial 4:5, penempatan kartu / subjek, ruang negatif lapang di kiri atas]
-Lighting: [Pencahayaan alami lembut dari jendela / ambient studio]
-Camera/Graphic Style: [Gaya visual: 50mm editorial photography feel UNTUK photography ATAU Clean minimalist UI infographic diagram UNTUK infographic]
-Visual Style: Clean editorial Instagram content, natural, tidak seperti iklan.
-Typography: Headline besar 3-5 baris di kiri atas, high contrast, tidak ada teks kecil lain.
-Text Overlay: '[Headline slide yang diselaraskan tanpa kata-kata BOFU jika TOFU/MOFU]'
-Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable typography, distorted face, extra fingers.
-
-WAJIB KEMBALIKAN HANYA JSON OBJECT TUNGGAL MURNI DENGAN SCHEMA CANONICAL INI (TANPA MARKDOWN):
-{
-  "content_goal": "${funnelRules.goal}",
-  "funnel_stage": "${funnelStage}",
-  "current_belief": "[Keyakinan lama audiens yang keliru atau membatasi]",
-  "desired_belief": "[Keyakinan baru yang ingin ditanamkan setelah membaca carousel]",
-  "core_promise": "[Janji nilai utama yang ditawarkan carousel ini]",
-  "primary_cta_type": "${funnelStage === 'BOFU' ? 'direct_offer' : 'engagement_save'}",
-  "primary_cta_text": "[Teks CTA utama berbasis value yang sesuai corong ${funnelStage}]",
-  "slide_count": 5,
-  "slide_count_reason": "5 Slide merupakan panjang optimal untuk alur narasi Hook → Problem → Reframe → How It Works / Value → CTA.",
-  "belief_journey_summary": "[Ringkasan transformasi pola pikir audiens dari slide awal hingga akhir]",
-  "messageAlignmentCheck": {
-    "isAligned": true,
-    "issue": "",
-    "fixApplied": "Penyelarasan pesan dan alur narasi telah divalidasi sesuai corong ${funnelStage}."
-  },
-  "visual_system_notes": "[Catatan sistem visual, keseragaman palet warna, tipografi, dan format 4:5 vertical]",
-  "slides": [
-    {
-      "slide": 1,
-      "role": "hook",
-      "communication_job": "Menghentikan scroll dengan alasan keputusan strategis / relatable problem",
-      "headline": "${funnelStage === 'BOFU' ? 'Masih Bikin Konten Harian Tanpa Sistem?' : funnelStage === 'MOFU' ? 'Masalahnya Bukan Rajin Posting, Tapi Alur Narasinya' : 'Kok Caption-nya Terasa Kaku Pas Dibaca Ulang?'}",
-      "body": "[1-2 kalimat pengantar yang relate dengan masalah sehari-hari]",
-      "swipe_bridge": "Kenapa hal ini sering terjadi? ➔",
-      "emotional_state": "Empati & Refleksi Kritis",
-      "visual_intent": "[Instruksi visual editorial konkret untuk slide 1]",
-      "visual_type": "editorial-photo",
-      "text_zone": "Upper Third / Left Aligned",
-      "negative_space_plan": "Ruang lega di area atas untuk headline",
-      "creative_strategy": {
-        "funnel_stage": "${funnelStage}",
-        "slide_role": "hook",
-        "visual_objective": "Menghentikan scroll dengan visual editorial reflektif proses menulis konten.",
-        "core_message": "${funnelStage === 'BOFU' ? 'Masih Bikin Konten Harian Tanpa Sistem?' : funnelStage === 'MOFU' ? 'Masalahnya Bukan Rajin Posting, Tapi Alur Narasinya' : 'Kok Caption-nya Terasa Kaku Pas Dibaca Ulang?'}",
-        "audience_emotion": "Empati & Refleksi Kritis",
-        "visual_concept": "Editorial photographic framing dengan pencahayaan alami natural",
-        "text_overlay": "${funnelStage === 'BOFU' ? 'Masih Bikin Konten Harian Tanpa Sistem?' : funnelStage === 'MOFU' ? 'Masalahnya Bukan Rajin Posting, Tapi Alur Narasinya' : 'Kok Caption-nya Terasa Kaku Pas Dibaca Ulang?'}"
-      },
-      "visual_format": "photography",
-      "visual_production": {
-        "subject": "Seorang kreator muda berpakaian kasual rapi duduk di meja kerja hangat dengan laptop terbuka.",
-        "action": "Menatap laptop dengan tatapan berpikir reflektif, jemari di atas touchpad.",
-        "composition": "Subjek di kanan tengah, ruang kosong luas di kiri atas untuk headline.",
-        "layout": "Format 4:5 vertical, headline dominan di kiri atas.",
-        "visual_metaphor": "Refleksi kejenuhan proses produksi konten yang belum memiliki alur sistemik.",
-        "typography": "Headline tebal 32pt kontras tinggi, body 16pt sans-serif.",
-        "background": "Ruang kerja minimalis hangat dengan pencahayaan jendela alami lembut (#F9F8F6).",
-        "color_mood": "Profesional hangat.",
-        "negative_space": "Ruang lega 40% di area kiri atas untuk headline.",
-        "negative_prompt": "hard selling ads, cluttered poster, too much text, generic stock photo, unreadable typography, distorted face, extra fingers."
-      },
-      "production_prompt": "Layout: Format 4:5 vertical, headline dominan di atas.\\nSubject/Object Utama: ...\\nVisual Metaphor: ...\\nTypography Hierarchy: Headline tebal 32pt kontras tinggi, body 16pt sans-serif.\\nBackground: Warm neutral light background (#F9F8F6).\\nColor Mood: Profesional hangat.\\nNegative Space: Ruang bersih di sekitar teks.\\nImage/Illustration Direction: Clean editorial modern photography feel.",
-      "slide_image_prompt": "Buatkan saya image untuk slide carousel Instagram 4:5.\\n\\nFunnel Stage: ${funnelStage}\\nSlide Role: Hook\\nVisual Objective: Menghentikan scroll dengan visual reflektif proses menulis konten.\\nSubject/Object: Seorang kreator muda berpakaian kasual rapi duduk di meja kerja hangat dengan laptop terbuka.\\nAction/Scene: Menatap laptop dengan tatapan berpikir reflektif, jemari di atas touchpad.\\nExpression/Emotion: Reflektif, tatapan analitis, senyum tipis penasaran.\\nEnvironment: Meja kerja kayu minimalis hangat, secangkir kopi dan notebook catatan.\\nComposition: Subjek di kanan tengah, ruang kosong luas di kiri atas untuk headline.\\nLighting: Cahaya alami lembut dari jendela samping.\\nCamera/Graphic Style: 50mm editorial photography, shallow depth of field.\\nVisual Style: Clean editorial Instagram content, natural, tidak seperti iklan.\\nTypography: Headline besar 3-5 baris di kiri atas, high contrast, tidak ada teks kecil lain.\\nText Overlay: '${funnelStage === 'BOFU' ? 'Masih Bikin Konten Harian Tanpa Sistem?' : funnelStage === 'MOFU' ? 'Masalahnya Bukan Rajin Posting, Tapi Alur Narasinya' : 'Kok Caption-nya Terasa Kaku Pas Dibaca Ulang?'}'\\nNegative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable typography, distorted face, extra fingers."
-    },
-    {
-      "slide": 2,
-      "role": "problem",
-      "communication_job": "Fokus pada satu masalah utama yang dihadapi audiens secara spesifik",
-      "headline": "${funnelStage === 'TOFU' ? 'Nulis Panjang Lebar, Tapi Pesan Intinya Malah Tenggelam' : funnelStage === 'MOFU' ? 'Bikin Konten Rutin, Tapi Audiens Bingung Value yang Ditawarkan' : 'Menunda Sistematisasi Konten Membuang Waktu & Energi Produksi'}",
-      "body": "[Penjelasan satu masalah konkret tanpa mencampur aduk isu lain]",
-      "swipe_bridge": "Mengapa cara lama tidak lagi cukup? ➔",
-      "emotional_state": "Kesadaran Masalah Tunggal",
-      "visual_intent": "[Instruksi visual masalah tunggal slide 2]",
-      "visual_type": "comparison-split",
-      "text_zone": "Center / Left Aligned",
-      "negative_space_plan": "Ruang negatif di sisi kanan",
-      "creative_strategy": {
-        "funnel_stage": "${funnelStage}",
-        "slide_role": "problem",
-        "visual_objective": "Infografis kartu pembanding satu masalah utama: draf acak vs alur hierarki pesan terstruktur.",
-        "core_message": "${funnelStage === 'TOFU' ? 'Nulis Panjang Lebar, Tapi Pesan Intinya Malah Tenggelam' : funnelStage === 'MOFU' ? 'Bikin Konten Rutin, Tapi Audiens Bingung Value yang Ditawarkan' : 'Menunda Sistematisasi Konten Membuang Waktu & Energi Produksi'}",
-        "audience_emotion": "Kesadaran Masalah Tunggal",
-        "visual_concept": "Kartu UI diagram alur dan hierarki tipografi modern bersih",
-        "text_overlay": "${funnelStage === 'TOFU' ? 'Nulis Panjang Lebar, Tapi Pesan Intinya Malah Tenggelam' : funnelStage === 'MOFU' ? 'Bikin Konten Rutin, Tapi Audiens Bingung Value yang Ditawarkan' : 'Menunda Sistematisasi Konten Membuang Waktu & Energi Produksi'}"
-      },
-      "visual_format": "infographic",
-      "visual_production": {
-        "subject": "Ilustrasi grafis perbandingan draf acak vs alur hierarki pesan terstruktur.",
-        "action": "Penataan visual kartu masalah dengan highlight lembut pada titik hambatan utama.",
-        "composition": "Center card layout / structured split grid dengan ruang negatif 40% lapang di area atas untuk headline.",
-        "layout": "Split composition dua kartu perbandingan berdampingan.",
-        "visual_metaphor": "Transformasi dari tumpukan catatan kusut menjadi alur kartu yang tertata rapi.",
-        "typography": "Headline 28pt bold, bullet perbandingan 15pt dengan ikon cross merah dan check hijau.",
-        "background": "Neutral off-white canvas (#F8F7F4).",
-        "color_mood": "Nuansa analitis & informatif.",
-        "negative_space": "Margin 32px di sekeliling kartu pembanding.",
-        "negative_prompt": "photography, realistic person, complex faces, human hands, messy sketch, stock photo, blurry text, cluttered layout, hard selling ads."
-      },
-      "production_prompt": "Layout: Split composition...\\nSubject/Object Utama: ...\\nVisual Metaphor: ...\\nTypography Hierarchy: ...\\nBackground: ...\\nColor Mood: ...\\nNegative Space: ...\\nImage/Illustration Direction: ...",
-      "slide_image_prompt": "Buatkan saya image untuk slide carousel Instagram 4:5.\\n\\nFunnel Stage: ${funnelStage}\\nSlide Role: Problem\\nVisual Objective: Menggambarkan satu masalah konkret saat pesan tidak terstruktur dengan rapi.\\nSubject/Object: Kartu UI diagram perbandingan draf catatan acak vs struktur hierarki pesan rapi.\\nAction/Scene: Penataan visual dua kartu pembanding berdampingan dengan penanda kontras jelas.\\nExpression/Emotion: Kesadaran jernih dan analitis terhadap hambatan cara kerja lama.\\nEnvironment: Kanvas grafis netral bersih bertekstur halus (#F8F7F4).\\nComposition: Structured split card grid, ruang negatif lapang di area kiri atas untuk headline teks.\\nLighting: Soft diffuse studio illumination merata tanpa bayangan tajam.\\nCamera/Graphic Style: Clean minimalist UI infographic diagram, flat editorial graphic system.\\nVisual Style: Clean editorial Instagram content, natural, tidak seperti iklan.\\nTypography: Headline besar 3-5 baris di kiri atas, high contrast, tidak ada teks kecil lain.\\nText Overlay: '${funnelStage === 'TOFU' ? 'Nulis Panjang Lebar, Tapi Pesan Intinya Malah Tenggelam' : funnelStage === 'MOFU' ? 'Bikin Konten Rutin, Tapi Audiens Bingung Value yang Ditawarkan' : 'Menunda Sistematisasi Konten Membuang Waktu & Energi Produksi'}'\\nNegative Prompt: photography, realistic person, complex faces, human hands, messy sketch, stock photo, blurry text, cluttered layout, hard selling ads."
-    },
-    {
-      "slide": 3,
-      "role": "reframe",
-      "communication_job": "Menjelaskan mengapa metode lama gagal dan memberikan sudut pandang sistemik yang tidak generik",
-      "headline": "Satu Sistem untuk Ide, Struktur, dan Eksekusi Konten",
-      "body": "Bukan sekadar gonta-ganti ide dadakan, tapi menyelaraskan setiap postingan dengan tahap pemahaman audiens dalam satu alur terpadu.",
-      "swipe_bridge": "Bagaimana sistem ini bekerja? ➔",
-      "emotional_state": "Pencerahan (Aha-Moment)",
-      "visual_intent": "[Instruksi visual perubahan sudut pandang sistemik slide 3]",
-      "visual_type": "minimal-diagram",
-      "text_zone": "Center Aligned",
-      "negative_space_plan": "Ruang lega mengelilingi diagram",
-      "creative_strategy": {
-        "funnel_stage": "${funnelStage}",
-        "slide_role": "reframe",
-        "visual_objective": "Infografis kartu pencerahan 3 pilar sistem terpadu (ide, struktur, eksekusi) dengan tipografi kontras tinggi.",
-        "core_message": "Satu Sistem untuk Ide, Struktur, dan Eksekusi Konten",
-        "audience_emotion": "Pencerahan (Aha-Moment)",
-        "visual_concept": "Kartu UI diagram alur dan hierarki tipografi modern bersih",
-        "text_overlay": "Satu Sistem untuk Ide, Struktur, dan Eksekusi Konten"
-      },
-      "visual_format": "infographic",
-      "visual_production": {
-        "subject": "Tiga lapisan kartu strategi yang saling terhubung secara harmonis.",
-        "action": "Penataan tata letak visual bertingkat dengan penunjuk alur dan kartu berbayang halus.",
-        "composition": "Center card layout / structured split grid dengan ruang negatif 40% lapang di area atas untuk headline.",
-        "layout": "Center card composition dengan diagram 3 pilar utama.",
-        "visual_metaphor": "Pilar fondasi komunikasi yang kokoh dan mudah dipahami.",
-        "typography": "Headline 28pt bold, body deskripsi 16pt, nomor urut minimalis 01-02-03.",
-        "background": "Warm neutral light texture (#FAF9F6).",
-        "color_mood": "Pencerahan & kejelasan strategi.",
-        "negative_space": "Ruang bernapas lapang di sekeliling diagram tengah.",
-        "negative_prompt": "photography, realistic person, complex faces, human hands, messy sketch, stock photo, blurry text, cluttered layout, hard selling ads."
-      },
-      "production_prompt": "Layout: Center card composition...\\nSubject/Object Utama: ...\\nVisual Metaphor: ...\\nTypography Hierarchy: ...\\nBackground: ...\\nColor Mood: ...\\nNegative Space: ...\\nImage/Illustration Direction: ...",
-      "slide_image_prompt": "Buatkan saya image untuk slide carousel Instagram 4:5.\\n\\nFunnel Stage: ${funnelStage}\\nSlide Role: Why Current Method Fails\\nVisual Objective: Memberikan pencerahan bahwa alur konten terpadu menggantikan metode acak lama.\\nSubject/Object: Tiga kartu infografis pilar sistem alur kerja terhubung secara hierarkis (Ide -> Struktur -> Eksekusi).\\nAction/Scene: Penataan kartu bertingkat dengan panah konektor lembut dan nomor urut elegan 01, 02, 03.\\nExpression/Emotion: Pencerahan visual, kejelasan alur, rasa lega menemukan solusi sistemik.\\nEnvironment: Kanvas grafis warm neutral bersih (#FAF9F6).\\nComposition: Center card composition, ruang lapang 40% di bagian atas untuk teks headline pencerahan.\\nLighting: Soft studio ambient lighting merata tanpa distorsi bayangan.\\nCamera/Graphic Style: Clean minimalist UI infographic diagram, flat editorial graphic system.\\nVisual Style: Clean editorial Instagram content, natural, tidak seperti iklan.\\nTypography: Headline besar 3-5 baris di kiri atas, high contrast, tidak ada teks kecil lain.\\nText Overlay: 'Satu Sistem untuk Ide, Struktur, dan Eksekusi Konten'\\nNegative Prompt: photography, realistic person, complex faces, human hands, messy sketch, stock photo, blurry text, cluttered layout, hard selling ads."
-    },
-    {
-      "slide": 4,
-      "role": "learn",
-      "communication_job": "Menyajikan solusi terpadu dan pembuktian nilai efisiensi kerja nyata berbasis fitur/workflow",
-      "headline": "Workflow Terstruktur, Waktu Produksi Singkat & Output Konsisten",
-      "body": "Dengan sistem yang terintegrasi, draf konten tervalidasi sebelum dibuat, memangkas waktu produksi tanpa mengorbankan kualitas pesan.",
-      "swipe_bridge": "Mulai terapkan langkahnya ➔",
-      "emotional_state": "Optimis & Paham Nilai Nyata",
-      "visual_intent": "[Instruksi visual framework alur kerja terverifikasi slide 4]",
-      "visual_type": "step-framework",
-      "text_zone": "Upper Third",
-      "negative_space_plan": "Margin luas di tepi slide",
-      "creative_strategy": {
-        "funnel_stage": "${funnelStage}",
-        "slide_role": "learn",
-        "visual_objective": "Tampilan antarmuka alur kerja efisien yang menghubungkan kalender dan formula prompt terstruktur.",
-        "core_message": "Workflow Terstruktur, Waktu Produksi Singkat & Output Konsisten",
-        "audience_emotion": "Optimis & Paham Nilai Nyata",
-        "visual_concept": "Kartu UI diagram alur dan hierarki tipografi modern bersih",
-        "text_overlay": "Workflow Terstruktur, Waktu Produksi Singkat & Output Konsisten"
-      },
-      "visual_format": "infographic",
-      "visual_production": {
-        "subject": "Checklist framework langkah kerja dengan indikator verifikasi hijau.",
-        "action": "Tata letak kartu proses bertingkat dengan penanda step yang jelas dan ruang bernapas lega.",
-        "composition": "Center card layout / structured split grid dengan ruang negatif 40% lapang di area atas untuk headline.",
-        "layout": "Card list 3 langkah praktis bertingkat.",
-        "visual_metaphor": "Percepatan alur kerja yang efisien dan minim hambatan.",
-        "typography": "Headline 28pt bold, poin langkah 16pt dengan icon badge.",
-        "background": "Clean light cream (#F7F6F2).",
-        "color_mood": "Kepercayaan, kredibilitas, dan optimisme.",
-        "negative_space": "Padding internal 24px di setiap card langkah.",
-        "negative_prompt": "photography, realistic person, complex faces, human hands, messy sketch, stock photo, blurry text, cluttered layout, hard selling ads."
-      },
-      "production_prompt": "Layout: 3-step structured cards...\\nSubject/Object Utama: ...\\nVisual Metaphor: ...\\nTypography Hierarchy: ...\\nBackground: ...\\nColor Mood: ...\\nNegative Space: ...\\nImage/Illustration Direction: ...",
-      "slide_image_prompt": "Buatkan saya image untuk slide carousel Instagram 4:5.\\n\\nFunnel Stage: ${funnelStage}\\nSlide Role: Solution & Proof\\nVisual Objective: Menunjukkan workflow efisien terstruktur yang menghubungkan strategi dan eksekusi.\\nSubject/Object: Kartu framework 3 langkah kerja praktis dengan indikator checklist verifikasi hijau.\\nAction/Scene: Tampilan checklist terstruktur dengan penomoran langkah rapi dan kartu berbayang lembut.\\nExpression/Emotion: Optimisme, kepastian cara kerja, dan rasa percaya diri terhadap sistem.\\nEnvironment: Kanvas infografis bersih kontemporer (#F7F6F2).\\nComposition: 3-step vertical card stack, ruang negatif lapang di area atas untuk headline teks.\\nLighting: Soft even studio lighting tanpa bayangan keras.\\nCamera/Graphic Style: Clean minimalist UI infographic diagram, flat editorial graphic system.\\nVisual Style: Clean editorial Instagram content, natural, tidak seperti iklan.\\nTypography: Headline besar 3-5 baris di kiri atas, high contrast, tidak ada teks kecil lain.\\nText Overlay: 'Workflow Terstruktur, Waktu Produksi Singkat & Output Konsisten'\\nNegative Prompt: photography, realistic person, complex faces, human hands, messy sketch, stock photo, blurry text, cluttered layout, hard selling ads."
-    },
-    {
-      "slide": 5,
-      "role": "cta",
-      "communication_job": "Mendorong aksi penutup berbasis value yang sesuai dengan tahap corong ${funnelStage}",
-      "headline": "${funnelStage === 'BOFU' ? 'Mulai Bangun Sistem Kontenmu Hari Ini.' : funnelStage === 'MOFU' ? 'Rapikan Alur Kontenmu Mulai Sekarang.' : 'Simpan & Terapkan Pola Ini Saat Menulis.'}",
-      "body": "Akses seluruh panduan alur dan sistem produksi terpadu melalui tautan di profil.",
-      "swipe_bridge": "${funnelStage === 'BOFU' ? 'Mulai Sekarang' : 'Simpan Postingan'}",
-      "emotional_state": "Terdorong Bertindak Berbasis Value",
-      "visual_intent": "[Instruksi visual penutup berbasis value slide 5]",
-      "visual_type": "cta-card",
-      "text_zone": "Center Aligned",
-      "negative_space_plan": "Latar bersih dengan tombol CTA kontras tinggi",
-      "creative_strategy": {
-        "funnel_stage": "${funnelStage}",
-        "slide_role": "cta",
-        "visual_objective": "Visual closing card bersih dengan tombol CTA kontras tinggi dan instruksi aksi berbasis value.",
-        "core_message": "${funnelStage === 'BOFU' ? 'Mulai Bangun Sistem Kontenmu Hari Ini.' : funnelStage === 'MOFU' ? 'Rapikan Alur Kontenmu Mulai Sekarang.' : 'Simpan & Terapkan Pola Ini Saat Menulis.'}",
-        "audience_emotion": "Dorongan Aksi Berbasis Value",
-        "visual_concept": "Kartu UI penutup dan tombol aksi kontras tinggi",
-        "text_overlay": "${funnelStage === 'BOFU' ? 'Mulai Bangun Sistem Kontenmu Hari Ini.' : funnelStage === 'MOFU' ? 'Rapikan Alur Kontenmu Mulai Sekarang.' : 'Simpan & Terapkan Pola Ini Saat Menulis.'}"
-      },
-      "visual_format": "infographic",
-      "visual_production": {
-        "subject": "Kartu ajakan tindakan berbasis value dengan tipografi headline kuat dan button CTA berbayang halus.",
-        "action": "Komposisi terpusat dengan headline ajakan nilai di atas dan tombol pill CTA elegan di tengah.",
-        "composition": "Center card layout / structured split grid dengan ruang negatif 40% lapang di area atas untuk headline.",
-        "layout": "Clean closing card layout dengan tombol CTA pill besar yang dominan di tengah.",
-        "visual_metaphor": "Gerbang menuju implementasi strategi alur konten yang terstruktur.",
-        "typography": "Headline 32pt bold, body naskah 16pt, CTA button text 18pt bold.",
-        "background": "Subtle warm emerald gradient ambient (#F0FDF4 ke #FFFFFF).",
-        "color_mood": "Tegas, terpercaya, dan berfokus pada value.",
-        "negative_space": "Ruang lega 50% di sekitar tombol aksi utama.",
-        "negative_prompt": "photography, realistic person, complex faces, human hands, messy sketch, stock photo, blurry text, cluttered layout, hard selling ads."
-      },
-      "production_prompt": "Layout: Clean closing card layout with prominent CTA pill button...\\nSubject/Object Utama: ...\\nVisual Metaphor: ...\\nTypography Hierarchy: Headline 28pt, CTA text 18pt bold.\\nBackground: Subtle gradient matching funnel theme.\\nColor Mood: Action-oriented & trustworthy.\\nNegative Space: Generous negative space around CTA button.\\nImage/Illustration Direction: Clean minimalist social media closing card.",
-      "slide_image_prompt": "Buatkan saya image untuk slide carousel Instagram 4:5.\\n\\nFunnel Stage: ${funnelStage}\\nSlide Role: Value-Based CTA\\nVisual Objective: Mengajak audiens mengambil langkah nyata berdasarkan value yang telah dipelajari.\\nSubject/Object: Kartu ajakan tindakan penutup bernuansa value dengan tombol CTA pill menonjol di tengah.\\nAction/Scene: Desain penutup terpusat yang elegan dengan tombol aksi kontras tinggi dan instruksi pendukung di bio.\\nExpression/Emotion: Ketegasan bertindak, rasa percaya diri, dan apresiasi terhadap nilai konten.\\nEnvironment: Kanvas grafis bergradasi lembut (#F0FDF4 ke #FFFFFF).\\nComposition: Center card layout, ruang bernapas luas di sekeliling tombol aksi utama.\\nLighting: Soft ambient studio light bersih dan terang.\\nCamera/Graphic Style: Clean minimalist UI infographic diagram, flat editorial graphic system.\\nVisual Style: Clean editorial Instagram content, natural, tidak seperti iklan.\\nTypography: Headline besar 3-5 baris di kiri atas, high contrast, tidak ada teks kecil lain.\\nText Overlay: '${funnelStage === 'BOFU' ? 'Mulai Bangun Sistem Kontenmu Hari Ini.' : funnelStage === 'MOFU' ? 'Rapikan Alur Kontenmu Mulai Sekarang.' : 'Simpan & Terapkan Pola Ini Saat Menulis.'}'\\nNegative Prompt: photography, realistic person, complex faces, human hands, messy sketch, stock photo, blurry text, cluttered layout, hard selling ads."
-    }
-  ],
-  "captionForPost": "[Tulis caption Instagram yang merangkum isi seluruh slide sesuai funnel ${funnelStage}]",
-  "captionInstruction": "Paste teks ini di caption/keterangan postingan setelah aset dibuat."
-}`;
+        promptTitle = `CAROUSEL BLUEPRINT - FUNNEL ${funnelStage}`;
+        formatDirection = `Blueprint carousel diproses melalui 2-stage architecture (Stage 1 Content Plan + Stage 2 Visual Enrichment).`;
       } else if (activeTab === 'video') {
         promptTitle = `3 VIDEO STYLE OPTIONS - FUNNEL ${funnelStage} (JSON ARRAY)`;
         formatDirection = `Hasilkan 3 opsi gaya video (A = UGC, B = TikTok Loop, C = Sinematik) untuk tahap funnel ${funnelStage}.
@@ -5234,17 +4879,6 @@ ${formatDirection}${revisionDirective}`;
               showToast(`Aset IMAGE (3 Angle) berhasil dioptimalkan oleh Gemini AI!`);
             } else {
               setGenerationError("Format respon AI tidak valid atau tidak memenuhi skema Image Angle canonical. Silakan coba lagi.");
-              showToast("Gagal: Format respon AI tidak sesuai skema.");
-              return;
-            }
-          } else if (activeTab === 'carousel') {
-            const normalized = validateAndNormalizeCarouselPlan(generatedText, activeItem, activeContext);
-            if (normalized) {
-              setGenerationError(null);
-              saveCarouselOutput(normalized);
-              showToast(`Aset CAROUSEL (Canonical Blueprint) berhasil dioptimalkan oleh Gemini AI!`);
-            } else {
-              setGenerationError("Format respon AI tidak valid atau tidak memenuhi skema Carousel canonical. Silakan coba lagi.");
               showToast("Gagal: Format respon AI tidak sesuai skema.");
               return;
             }

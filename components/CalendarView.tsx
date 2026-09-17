@@ -44,7 +44,8 @@ import {
 import { buildGeminiRequestHeaders } from '@/lib/client-gemini-key';
 import { extractJSON } from '@/lib/geminiUtils';
 import { saveProjectData, getActiveProjectId, saveProjectSelectedItem } from '@/lib/storage';
-import { getProductionStatus, getProductionStatusBadge } from '@/lib/content-contract';
+import { getProductionStatus, getProductionStatusBadge, buildSharedContentContext } from '@/lib/content-contract';
+import { buildProductionContext, formatProductionContextForPrompt, ANTI_DRIFT_RULES } from '@/lib/production-context';
 import { ContentItem, ConfigDataProps } from './calendar/types';
 import { CalendarDay } from './calendar/CalendarDay';
 import { CalendarConfigWizard } from './calendar/CalendarConfigWizard';
@@ -179,11 +180,36 @@ export default function CalendarView({
     assetType: 'brief' | 'caption' | 'image' | 'carousel' | 'video'
   ) => {
     if (!editingItem || isGeneratingAsset) return;
-    const requestProjectId = getActiveProjectId();
+    const requestProjectId =
+      editingItem.project_id ||
+      editingItem.projectId ||
+      configData?.sharedContentContext?.project_id ||
+      configData?.strategyBlueprint?.project_id ||
+      configData?.selectedProject ||
+      getActiveProjectId() ||
+      '';
     const requestItemNo = editingItem.no;
+    const requestItemId = editingItem.content_item_id || String(editingItem.no);
+
     setIsGeneratingAsset(true);
     setCopiedAsset(false);
+
     try {
+      const sharedContext =
+        configData?.sharedContentContext ||
+        (configData?.strategyBlueprint ? buildSharedContentContext(configData.strategyBlueprint) : null);
+
+      const prodContextRes = buildProductionContext(requestProjectId, sharedContext, editingItem);
+      if (!prodContextRes.isValid || !prodContextRes.context) {
+        setProductionAsset({
+          type: assetType,
+          title: 'Strategy Context Diperlukan',
+          content: `### ⚠️ STRATEGY CONTEXT BELUM LENGKAP\n\n${prodContextRes.error || 'Silakan lengkapi atau impor Strategy Blueprint terlebih dahulu untuk menghasilkan aset produksi.'}`,
+        });
+        setIsGeneratingAsset(false);
+        return;
+      }
+
       let promptTitle = '';
       if (assetType === 'brief') promptTitle = 'Brief';
       else if (assetType === 'caption') promptTitle = 'Caption';
@@ -191,7 +217,13 @@ export default function CalendarView({
       else if (assetType === 'carousel') promptTitle = 'Carousel Blueprint';
       else if (assetType === 'video') promptTitle = 'Video Script';
 
-      let prompt = `Buatkan ${promptTitle} (Bahasa Indonesia, rapi, siap pakai) untuk post konten ini:
+      const formattedContext = formatProductionContextForPrompt(prodContextRes.context);
+      let prompt = `Buatkan ${promptTitle} (Bahasa Indonesia, rapi, siap pakai) untuk post konten ini.
+
+${ANTI_DRIFT_RULES}
+
+${formattedContext}
+
 No: ${editingItem.no} | Tgl: ${editingItem.tanggal} | Funnel: ${editingItem.jenis} | Objective: ${editingItem.tujuan} | Hook: ${editingItem.hookType} | Format: ${editingItem.format}
 Headline: ${editingItem.headline}
 Body: ${editingItem.body}
@@ -199,6 +231,11 @@ Keterangan: ${editingItem.keterangan}`;
 
       if (assetType === 'image') {
         prompt = `Buatkan Prompt Image Konten (Bahasa Indonesia, rapi, siap pakai) untuk post konten ini. PASTIKAN hasil prompt image selalu diawali dengan teks persis: "Buatkan saya image untuk konten Instagram...".
+
+${ANTI_DRIFT_RULES}
+
+${formattedContext}
+
 No: ${editingItem.no} | Tgl: ${editingItem.tanggal} | Funnel: ${editingItem.jenis} | Objective: ${editingItem.tujuan} | Hook: ${editingItem.hookType} | Format: ${editingItem.format}
 Headline: ${editingItem.headline}
 Body: ${editingItem.body}
@@ -208,7 +245,14 @@ Keterangan: ${editingItem.keterangan}`;
       const response = await fetch('/api/gemini/recommendation', {
         method: 'POST',
         headers: buildGeminiRequestHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({
+          project_id: requestProjectId,
+          content_item_id: requestItemId,
+          item_no: requestItemNo,
+          generation_type: assetType === 'carousel' ? 'carousel_plan' : assetType,
+          production_context: prodContextRes.context,
+          prompt,
+        }),
       });
 
       if (!response.ok) {
@@ -261,75 +305,43 @@ Keterangan: ${editingItem.keterangan}`;
   };
 
   const getAIRecommendation = async (step: number) => {
-    if (isRecommending) return;
-    const requestProjectId = getActiveProjectId();
-    setIsRecommending(true);
-    try {
-      let prompt = '';
+    // Derive recommendations strictly from authoritative Strategy Context / Blueprint
+    const shared = configData?.sharedContentContext;
+    if (shared) {
       if (step === 0) {
-        prompt = `Rekomendasikan Core Topic (masalah utama/ide) untuk konten. HANYA return JSON: {"coreTopic": "..."}`;
+        const topic = shared.strategy_context?.core_message || shared.strategy_context?.main_offer || shared.brand_context?.brand_name;
+        if (topic) setRecommendations((prev) => ({ ...prev, [step]: { coreTopic: topic } }));
       } else if (step === 2) {
-        prompt = `Topik: ${configData.coreTopic}. Rekomendasikan target audience. HANYA return JSON: {"gender": "Male/Female/Both", "minAge": 20, "maxAge": 50}`;
-      } else if (step === 3) {
-        prompt = `Topik: ${configData.coreTopic}. Rekomendasikan komposisi konten. HANYA return JSON: {"tofu": 6, "mofu": 5, "bofu": 3}`;
-      } else if (step === 5) {
-        prompt = `Topik: ${configData.coreTopic}. Rekomendasikan 3 jenis hook konten (pilih dari: Call-Out, Curiosity Gap, Social Proof, Negativity Bias, Authority, Relatability). HANYA return JSON: {"hook1": "...", "hook2": "...", "hook3": "..."}`;
-      } else if (step === 6) {
-        prompt = `Topik: ${configData.coreTopic}. Rekomendasikan formula kampanye konten (Penjualan, Awareness & Soft Selling, Mencari Follower, atau Publikasi untuk Brand). HANYA return JSON: {"selectedFormula": "..."}`;
-      }
-
-      if (!prompt) return;
-
-      const response = await fetch('/api/gemini/recommendation', {
-        method: 'POST',
-        headers: buildGeminiRequestHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ prompt }),
-      });
-
-      if (!response.ok) {
-        let errText = 'API server returned error description.';
-        try {
-          const errData = await response.json();
-          if (errData && errData.error) {
-            errText = errData.error;
+        setRecommendations((prev) => ({
+          ...prev,
+          [step]: {
+            gender: "Both",
+            minAge: 20,
+            maxAge: 50,
+            note: shared.audience_context?.primary_audience || ''
           }
-        } catch (_) {}
-        throw new Error(errText);
+        }));
+      } else if (step === 3) {
+        setRecommendations((prev) => ({ ...prev, [step]: { tofu: 6, mofu: 5, bofu: 3 } }));
+      } else if (step === 5) {
+        setRecommendations((prev) => ({
+          ...prev,
+          [step]: {
+            hook1: "Call-Out",
+            hook2: "Curiosity Gap",
+            hook3: "Social Proof"
+          }
+        }));
+      } else if (step === 6) {
+        setRecommendations((prev) => ({ ...prev, [step]: { selectedFormula: "Awareness & Soft Selling" } }));
       }
-
-      const resData = await response.json();
-
-      // ASYNC GUARD: check if active project changed during async recommendation
-      if (getActiveProjectId() !== requestProjectId) {
-        console.warn('[Async Guard] Discarding stale AI recommendation response');
-        return;
-      }
-
-      try {
-        const json = extractJSON(resData.text || '{}');
-        setRecommendations((prev) => ({ ...prev, [step]: json }));
-      } catch (e) {
-        console.error('Failed to parse AI recommendation:', e);
-        setRecommendations((prev) => ({ ...prev, [step]: resData.text || '' }));
-      }
-    } catch (err: any) {
-      if (getActiveProjectId() !== requestProjectId) {
-        return;
-      }
-      console.error('AI Recommendation Error:', err);
-      const errMsg = err.message || '';
-      const isRateLimited =
-        /dibatasi/i.test(errMsg) ||
-        /rate.*limit/i.test(errMsg) || /quota/i.test(errMsg) || /429/i.test(errMsg) || /503/i.test(errMsg) || /high.*demand/i.test(errMsg) || /unavailable/i.test(errMsg);
-
-      const fallbackMsg = isRateLimited
-        ? '⚠️ PERMINTAAN AI DIBATASI (Rate Limit / High Demand). Coba lagi beberapa saat.'
-        : '⚠️ Gagal memuat rekomendasi. Anda dapat mengedit secara manual.';
-
-      setRecommendations((prev) => ({ ...prev, [step]: { error: fallbackMsg } }));
-    } finally {
-      setIsRecommending(false);
+      return;
     }
+
+    setRecommendations((prev) => ({
+      ...prev,
+      [step]: { note: "Silakan impor Strategy Blueprint untuk rekomendasi berbasis fakta proyek." }
+    }));
   };
 
   const handleApplyRecommendation = (step: number, field: string, text: any) => {
