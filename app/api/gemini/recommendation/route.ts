@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { resolveGeminiApiKey, missingGeminiApiKeyMessage } from "@/lib/gemini-api-key";
+import { validateProductionGenerationRequest } from "@/lib/production-context";
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +30,16 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
+    if (body.production_context || body.project_id) {
+      const validation = validateProductionGenerationRequest(body);
+      if (!validation.isValid) {
+        return NextResponse.json(
+          { error: validation.error },
+          { status: 400 }
+        );
+      }
+    }
+
     const prompt = body.prompt || "Berikan rekomendasi strategi konten digital.";
     const hash = getPromptHash(prompt);
 

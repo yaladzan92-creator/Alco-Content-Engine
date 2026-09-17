@@ -8,6 +8,45 @@ import {
 } from './content-contract';
 import { normalizeFunnelStage } from './funnel-rules';
 
+export interface ProductionGenerationRequest {
+  project_id: string;
+  content_item_id: string;
+  item_no?: number;
+  generation_type: 'image' | 'carousel_plan' | 'carousel_stage1' | 'carousel_stage2' | 'video' | 'review';
+  stage?: 'stage1_plan' | 'stage2_enrichment' | 'full';
+  production_context: ProductionContext;
+  revision_notes?: string;
+  stage1_content_plan?: any;
+}
+
+export function validateProductionGenerationRequest(
+  reqBody: any
+): { isValid: boolean; error?: string } {
+  if (!reqBody || typeof reqBody !== 'object' || reqBody === null) {
+    return { isValid: false, error: 'Request body must be a valid JSON object.' };
+  }
+  const { project_id, content_item_id, production_context } = reqBody;
+  if (!project_id || typeof project_id !== 'string' || !project_id.trim()) {
+    return { isValid: false, error: 'Missing or invalid project_id in request.' };
+  }
+  if (!production_context || typeof production_context !== 'object') {
+    return { isValid: false, error: 'Missing production_context in request.' };
+  }
+  if (production_context.identity?.project_id !== project_id) {
+    return {
+      isValid: false,
+      error: `Request project_id (${project_id}) mismatch with production_context.identity.project_id (${production_context.identity?.project_id}).`,
+    };
+  }
+  if (content_item_id && production_context.identity?.content_item_id && production_context.identity.content_item_id !== content_item_id) {
+    return {
+      isValid: false,
+      error: `Request content_item_id (${content_item_id}) mismatch with production_context.identity.content_item_id (${production_context.identity?.content_item_id}).`,
+    };
+  }
+  return { isValid: true };
+}
+
 export interface ProductionContext {
   identity: {
     project_id: string;

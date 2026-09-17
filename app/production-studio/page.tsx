@@ -2446,6 +2446,302 @@ ${cta}`;
   }
 }
 
+// Helper function to build Stage 1 Content Plan prompt for 2-stage Carousel generation
+function buildCarouselStage1Prompt(
+  funnelStage: string,
+  funnelPromptBlock: string,
+  formattedContext: string,
+  funnelRules: any,
+  activeItem: any,
+  revisionDirective: string
+): string {
+  return `Buatkan CAROUSEL STAGE 1: CONTENT PLAN - FUNNEL ${funnelStage} (Bahasa Indonesia, profesional).
+
+${ANTI_DRIFT_RULES}
+
+### FUNNEL STRATEGY RULES CONTRACT:
+${funnelPromptBlock}
+
+${formattedContext}
+
+### OUTPUT FORMAT DIRECTION (STAGE 1: CONTENT PLAN):
+Hasilkan 1 (SATU) Content Plan Carousel yang utuh dan terstruktur untuk tahap corong ${funnelStage} dalam format JSON object canonical murni (BUKAN array, tanpa markdown pembungkus).
+
+STRUKTUR NARASI CAROUSEL WAJIB:
+Hook → Problem → Why Current Method Fails → Solution → Proof/Value → CTA
+
+ATURAN STRUKTUR UNTUK 5 SLIDE (DEFAULT):
+- Slide 1: Hook (Peran: "hook") - Hook berbasis alasan keputusan / relatable problem, BUKAN langsung "beli" atau jualan.
+- Slide 2: Problem (Peran: "problem") - Fokus pada SATU masalah utama yang spesifik (jangan campur masalah).
+- Slide 3: Why Current Method Fails / Reframe (Peran: "reframe") - Menjelaskan mengapa metode lama gagal dan menyajikan sudut pandang sistemik yang konkret.
+- Slide 4: Solution + Proof/Value (Peran: "learn") - Solusi terstruktur dengan proof/value yang aman dan bisa dipertanggungjawabkan (berbasis fitur/workflow).
+- Slide 5: CTA (Peran: "cta") - CTA berbasis value (bukan cuma "Link di bio").
+
+ATURAN KHUSUS BOFU:
+- Slide 1 BOFU wajib membuka dengan alasan keputusan atau refleksi masalah strategis, DILARANG HARD SELLING DI SLIDE 1.
+
+visual_format HANYA BOLEH salah satu dari: "photography" | "infographic" | "hybrid"
+- Slide 1 Hook: "photography" atau "hybrid"
+- Slide 2 Problem: "infographic"
+- Slide 3 Reframe: "infographic"
+- Slide 4 Solution: "infographic"
+- Slide 5 CTA: "infographic"
+
+WAJIB KEMBALIKAN HANYA JSON OBJECT STAGE 1 (TANPA MARKDOWN):
+{
+  "content_goal": "${funnelRules.goal}",
+  "funnel_stage": "${funnelStage}",
+  "current_belief": "[Keyakinan lama audiens yang keliru atau membatasi]",
+  "desired_belief": "[Keyakinan baru yang ingin ditanamkan setelah membaca carousel]",
+  "core_promise": "[Janji nilai utama yang ditawarkan carousel ini]",
+  "primary_cta_type": "${funnelStage === 'BOFU' ? 'direct_offer' : 'engagement_save'}",
+  "primary_cta_text": "[Teks CTA utama berbasis value yang sesuai corong ${funnelStage}]",
+  "slide_count": 5,
+  "slide_count_reason": "5 Slide merupakan panjang optimal untuk alur narasi Hook → Problem → Reframe → How It Works / Value → CTA.",
+  "belief_journey_summary": "[Ringkasan transformasi pola pikir audiens dari slide awal hingga akhir]",
+  "messageAlignmentCheck": {
+    "isAligned": true,
+    "issue": "",
+    "fixApplied": "Penyelarasan pesan dan alur narasi telah divalidasi sesuai corong ${funnelStage}."
+  },
+  "slides": [
+    {
+      "slide": 1,
+      "role": "hook",
+      "communication_job": "Menghentikan scroll dengan alasan keputusan strategis / relatable problem",
+      "headline": "${funnelStage === 'BOFU' ? 'Masih Bikin Konten Harian Tanpa Sistem?' : funnelStage === 'MOFU' ? 'Masalahnya Bukan Rajin Posting, Tapi Alur Narasinya' : 'Kok Caption-nya Terasa Kaku Pas Dibaca Ulang?'}",
+      "body": "[1-2 kalimat pengantar yang relate dengan masalah sehari-hari]",
+      "swipe_bridge": "Kenapa hal ini terjadi? ➔",
+      "emotional_state": "Empati & Refleksi Kritis",
+      "creative_strategy": {
+        "funnel_stage": "${funnelStage}",
+        "slide_role": "hook",
+        "visual_objective": "Menghentikan scroll dengan visual reflektif proses menulis konten.",
+        "core_message": "${funnelStage === 'BOFU' ? 'Masih Bikin Konten Harian Tanpa Sistem?' : funnelStage === 'MOFU' ? 'Masalahnya Bukan Rajin Posting, Tapi Alur Narasinya' : 'Kok Caption-nya Terasa Kaku Pas Dibaca Ulang?'}",
+        "audience_emotion": "Empati & Refleksi Kritis",
+        "visual_concept": "Editorial photographic framing dengan pencahayaan alami natural",
+        "text_overlay": "${funnelStage === 'BOFU' ? 'Masih Bikin Konten Harian Tanpa Sistem?' : funnelStage === 'MOFU' ? 'Masalahnya Bukan Rajin Posting, Tapi Alur Narasinya' : 'Kok Caption-nya Terasa Kaku Pas Dibaca Ulang?'}"
+      },
+      "visual_format": "photography"
+    },
+    {
+      "slide": 2,
+      "role": "problem",
+      "communication_job": "Fokus pada satu masalah utama yang dihadapi audiens secara spesifik",
+      "headline": "${funnelStage === 'TOFU' ? 'Nulis Panjang Lebar, Tapi Pesan Intinya Malah Tenggelam' : funnelStage === 'MOFU' ? 'Bikin Konten Rutin, Tapi Audiens Bingung Value yang Ditawarkan' : 'Menunda Sistematisasi Konten Membuang Waktu & Energi Produksi'}",
+      "body": "[Penjelasan satu masalah konkret]",
+      "swipe_bridge": "Mengapa cara lama tidak lagi cukup? ➔",
+      "emotional_state": "Kesadaran Masalah Tunggal",
+      "creative_strategy": {
+        "funnel_stage": "${funnelStage}",
+        "slide_role": "problem",
+        "visual_objective": "Infografis kartu pembanding satu masalah utama.",
+        "core_message": "${funnelStage === 'TOFU' ? 'Nulis Panjang Lebar, Tapi Pesan Intinya Malah Tenggelam' : funnelStage === 'MOFU' ? 'Bikin Konten Rutin, Tapi Audiens Bingung Value yang Ditawarkan' : 'Menunda Sistematisasi Konten Membuang Waktu & Energi Produksi'}",
+        "audience_emotion": "Kesadaran Masalah Tunggal",
+        "visual_concept": "Kartu UI diagram alur dan hierarki tipografi modern bersih",
+        "text_overlay": "${funnelStage === 'TOFU' ? 'Nulis Panjang Lebar, Tapi Pesan Intinya Malah Tenggelam' : funnelStage === 'MOFU' ? 'Bikin Konten Rutin, Tapi Audiens Bingung Value yang Ditawarkan' : 'Menunda Sistematisasi Konten Membuang Waktu & Energi Produksi'}"
+      },
+      "visual_format": "infographic"
+    },
+    {
+      "slide": 3,
+      "role": "reframe",
+      "communication_job": "Menjelaskan mengapa metode lama gagal dan memberikan sudut pandang sistemik yang tidak generik",
+      "headline": "Satu Sistem untuk Ide, Struktur, dan Eksekusi Konten",
+      "body": "Bukan sekadar gonta-ganti ide dadakan, tapi menyelaraskan setiap postingan dengan tahap pemahaman audiens dalam satu alur terpadu.",
+      "swipe_bridge": "Bagaimana sistem ini bekerja? ➔",
+      "emotional_state": "Pencerahan (Aha-Moment)",
+      "creative_strategy": {
+        "funnel_stage": "${funnelStage}",
+        "slide_role": "reframe",
+        "visual_objective": "Infografis kartu pencerahan 3 pilar sistem terpadu.",
+        "core_message": "Satu Sistem untuk Ide, Struktur, dan Eksekusi Konten",
+        "audience_emotion": "Pencerahan (Aha-Moment)",
+        "visual_concept": "Kartu UI diagram alur dan hierarki tipografi modern bersih",
+        "text_overlay": "Satu Sistem untuk Ide, Struktur, dan Eksekusi Konten"
+      },
+      "visual_format": "infographic"
+    },
+    {
+      "slide": 4,
+      "role": "learn",
+      "communication_job": "Menyajikan solusi terpadu dan pembuktian nilai efisiensi kerja nyata berbasis fitur/workflow",
+      "headline": "Workflow Terstruktur, Waktu Produksi Singkat & Output Konsisten",
+      "body": "Dengan sistem yang terintegrasi, draf konten tervalidasi sebelum dibuat, memangkas waktu produksi tanpa mengorbankan kualitas pesan.",
+      "swipe_bridge": "Mulai terapkan langkahnya ➔",
+      "emotional_state": "Optimis & Paham Nilai Nyata",
+      "creative_strategy": {
+        "funnel_stage": "${funnelStage}",
+        "slide_role": "learn",
+        "visual_objective": "Tampilan antarmuka alur kerja efisien.",
+        "core_message": "Workflow Terstruktur, Waktu Produksi Singkat & Output Konsisten",
+        "audience_emotion": "Optimis & Paham Nilai Nyata",
+        "visual_concept": "Kartu UI diagram alur dan hierarki tipografi modern bersih",
+        "text_overlay": "Workflow Terstruktur, Waktu Produksi Singkat & Output Konsisten"
+      },
+      "visual_format": "infographic"
+    },
+    {
+      "slide": 5,
+      "role": "cta",
+      "communication_job": "Mendorong aksi penutup berbasis value yang sesuai dengan tahap corong ${funnelStage}",
+      "headline": "${funnelStage === 'BOFU' ? 'Mulai Bangun Sistem Kontenmu Hari Ini.' : funnelStage === 'MOFU' ? 'Rapikan Alur Kontenmu Mulai Sekarang.' : 'Simpan & Terapkan Pola Ini Saat Menulis.'}",
+      "body": "Akses seluruh panduan alur dan sistem produksi terpadu melalui tautan di profil.",
+      "swipe_bridge": "${funnelStage === 'BOFU' ? 'Mulai Sekarang' : 'Simpan Postingan'}",
+      "emotional_state": "Terdorong Bertindak Berbasis Value",
+      "creative_strategy": {
+        "funnel_stage": "${funnelStage}",
+        "slide_role": "cta",
+        "visual_objective": "Visual closing card bersih dengan tombol CTA kontras tinggi.",
+        "core_message": "${funnelStage === 'BOFU' ? 'Mulai Bangun Sistem Kontenmu Hari Ini.' : funnelStage === 'MOFU' ? 'Rapikan Alur Kontenmu Mulai Sekarang.' : 'Simpan & Terapkan Pola Ini Saat Menulis.'}",
+        "audience_emotion": "Dorongan Aksi Berbasis Value",
+        "visual_concept": "Kartu UI penutup dan tombol aksi kontras tinggi",
+        "text_overlay": "${funnelStage === 'BOFU' ? 'Mulai Bangun Sistem Kontenmu Hari Ini.' : funnelStage === 'MOFU' ? 'Rapikan Alur Kontenmu Mulai Sekarang.' : 'Simpan & Terapkan Pola Ini Saat Menulis.'}"
+      },
+      "visual_format": "infographic"
+    }
+  ]
+}${revisionDirective}`;
+}
+
+// Helper function to build Stage 2 Visual Enrichment prompt for 2-stage Carousel generation
+function buildCarouselStage2Prompt(
+  funnelStage: string,
+  stage1JsonString: string,
+  formattedContext: string
+): string {
+  return `Buatkan CAROUSEL STAGE 2: VISUAL ENRICHMENT - FUNNEL ${funnelStage} (Bahasa Indonesia, profesional).
+
+${ANTI_DRIFT_RULES}
+
+${formattedContext}
+
+### STAGE 1 CONTENT PLAN INPUT:
+${stage1JsonString}
+
+### OUTPUT FORMAT DIRECTION (STAGE 2: VISUAL ENRICHMENT):
+Hasilkan pengayaan visual lengkap untuk setiap slide dari Stage 1 Content Plan di atas dalam format JSON object canonical murni (BUKAN array, tanpa markdown pembungkus).
+
+UNTUK SETIAP SLIDE DI "slides", BERIKAN PETUNJUK VISUAL & SLIDE IMAGE PROMPT 14 BARIS:
+1. visual_intent: Instruksi visual konkret
+2. visual_type: "editorial-photo" | "comparison-split" | "minimal-diagram" | "step-framework" | "cta-card"
+3. text_zone: "Upper Third / Left Aligned" | "Center / Left Aligned" | "Center Aligned"
+4. negative_space_plan: Perencanaan ruang negatif (min 35-50%)
+5. visual_production: {
+     subject: string;
+     action: string;
+     composition: string;
+     layout: string;
+     visual_metaphor: string;
+     typography: string;
+     background: string;
+     color_mood: string;
+     negative_space: string;
+     negative_prompt: string;
+   }
+6. production_prompt: Prompt ringkasan tata letak
+7. slide_image_prompt: Prompt 14 baris lengkap siap pakai untuk Midjourney/Flux:
+   Buatkan saya image untuk slide carousel Instagram 4:5.
+
+   Funnel Stage: ${funnelStage}
+   Slide Role: [Hook | Problem | Why Current Method Fails | Solution | Proof/Value | CTA]
+   Visual Objective: [Tujuan visual konkret]
+   Subject/Object: [Subjek / figur / kartu UI]
+   Action/Scene: [Aksi konkret]
+   Expression/Emotion: [Ekspresi mikro wajah ATAU impresi visual]
+   Environment: [Setting latar / workspace]
+   Composition: [Subjek di kanan tengah, ruang negatif lapang di kiri atas]
+   Lighting: [Pencahayaan alami lembut / studio]
+   Camera/Graphic Style: [50mm editorial photography UNTUK photography OR Clean minimalist UI infographic UNTUK infographic]
+   Visual Style: Clean editorial Instagram content, natural, tidak seperti iklan.
+   Typography: Headline besar 3-5 baris di kiri atas, high contrast, tidak ada teks kecil lain.
+   Text Overlay: '[Headline slide dari Stage 1]'
+   Negative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable typography, distorted face, extra fingers.
+
+WAJIB KEMBALIKAN HANYA JSON OBJECT STAGE 2 (TANPA MARKDOWN):
+{
+  "visual_system_notes": "Sistem visual 4:5 vertical editorial selaras corong ${funnelStage}.",
+  "captionForPost": "[Caption Instagram yang merangkum pesan carousel sesuai funnel ${funnelStage}]",
+  "captionInstruction": "Paste teks ini di caption/keterangan postingan setelah aset dibuat.",
+  "slides": [
+    {
+      "slide": 1,
+      "visual_intent": "Visual editorial portrait kreator sedang menatap layar laptop dengan ekspresi analitis reflektif.",
+      "visual_type": "editorial-photo",
+      "text_zone": "Upper Third / Left Aligned",
+      "negative_space_plan": "Ruang lega di area atas untuk headline",
+      "visual_production": {
+        "subject": "Seorang kreator muda berpakaian kasual rapi duduk di meja kerja hangat dengan laptop terbuka.",
+        "action": "Menatap laptop dengan tatapan berpikir reflektif, jemari di atas touchpad.",
+        "composition": "Subjek di kanan tengah, ruang kosong luas di kiri atas untuk headline.",
+        "layout": "Format 4:5 vertical, headline dominan di kiri atas.",
+        "visual_metaphor": "Refleksi proses produksi konten yang belum memiliki alur sistemik.",
+        "typography": "Headline tebal 32pt kontras tinggi, body 16pt sans-serif.",
+        "background": "Ruang kerja minimalis hangat dengan pencahayaan jendela alami lembut (#F9F8F6).",
+        "color_mood": "Profesional hangat.",
+        "negative_space": "Ruang lega 40% di area kiri atas untuk headline.",
+        "negative_prompt": "hard selling ads, cluttered poster, too much text, generic stock photo, unreadable typography, distorted face, extra fingers."
+      },
+      "production_prompt": "Layout: Format 4:5 vertical, headline dominan di atas.\\nSubject/Object Utama: Kreator muda di meja kerja.\\nVisual Metaphor: Refleksi alur konten.\\nTypography Hierarchy: Headline tebal 32pt, body 16pt.\\nBackground: Warm neutral (#F9F8F6).\\nColor Mood: Profesional hangat.\\nNegative Space: 40% ruang bersih.\\nImage/Illustration Direction: Clean editorial modern photography feel.",
+      "slide_image_prompt": "Buatkan saya image untuk slide carousel Instagram 4:5.\\n\\nFunnel Stage: ${funnelStage}\\nSlide Role: Hook\\nVisual Objective: Menghentikan scroll dengan visual reflektif proses menulis konten.\\nSubject/Object: Seorang kreator muda berpakaian kasual rapi duduk di meja kerja hangat dengan laptop terbuka.\\nAction/Scene: Menatap laptop dengan tatapan berpikir reflektif, jemari di atas touchpad.\\nExpression/Emotion: Reflektif, tatapan analitis, senyum tipis penasaran.\\nEnvironment: Meja kerja kayu minimalis hangat, secangkir kopi dan notebook catatan.\\nComposition: Subjek di kanan tengah, ruang kosong luas di kiri atas untuk headline.\\nLighting: Cahaya alami lembut dari jendela samping.\\nCamera/Graphic Style: 50mm editorial photography, shallow depth of field.\\nVisual Style: Clean editorial Instagram content, natural, tidak seperti iklan.\\nTypography: Headline besar 3-5 baris di kiri atas, high contrast, tidak ada teks kecil lain.\\nText Overlay: '[Headline slide 1 Stage 1]'\\nNegative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable typography, distorted face, extra fingers."
+    }
+  ]
+}`;
+}
+
+// Helper function to merge Stage 1 (Content Plan) and Stage 2 (Visual Enrichment) into canonical Carousel Plan JSON
+const mergeCarouselPlanStages = (
+  stage1Raw: any,
+  stage2Raw: any,
+  activeItem?: any,
+  activeContext?: any
+): string | null => {
+  const stage1Obj = typeof stage1Raw === 'string' ? tryParseJSON(stage1Raw) : stage1Raw;
+  if (!stage1Obj || typeof stage1Obj !== 'object') return null;
+
+  const stage2Obj = typeof stage2Raw === 'string' ? tryParseJSON(stage2Raw) : stage2Raw;
+  const s1Obj = Array.isArray(stage1Obj) ? stage1Obj[0] : stage1Obj;
+  const s2Obj = (stage2Obj && typeof stage2Obj === 'object')
+    ? (Array.isArray(stage2Obj) ? stage2Obj[0] : stage2Obj)
+    : {};
+
+  const s1Slides = Array.isArray(s1Obj.slides) ? s1Obj.slides : [];
+  const s2Slides = Array.isArray(s2Obj.slides) ? s2Obj.slides : [];
+
+  if (s1Slides.length === 0) return null;
+
+  const mergedSlides = s1Slides.map((s1: any, idx: number) => {
+    const slideNum = Number(s1.slide || idx + 1);
+    const s2 = s2Slides.find((item: any) => Number(item.slide) === slideNum) || s2Slides[idx] || {};
+
+    return {
+      ...s1,
+      ...s2,
+      slide: slideNum,
+      role: s1.role || s2.role,
+      headline: s1.headline || s2.headline,
+      body: s1.body || s2.body,
+      creative_strategy: s1.creative_strategy || s2.creative_strategy,
+      visual_format: s1.visual_format || s2.visual_format,
+      visual_intent: s2.visual_intent || s1.visual_intent,
+      visual_type: s2.visual_type || s1.visual_type,
+      text_zone: s2.text_zone || s1.text_zone,
+      negative_space_plan: s2.negative_space_plan || s1.negative_space_plan,
+      visual_production: s2.visual_production || s1.visual_production,
+      production_prompt: s2.production_prompt || s1.production_prompt,
+      slide_image_prompt: s2.slide_image_prompt || s1.slide_image_prompt,
+    };
+  });
+
+  const mergedPlan = {
+    ...s1Obj,
+    ...s2Obj,
+    slides: mergedSlides,
+  };
+
+  return validateAndNormalizeCarouselPlan(JSON.stringify(mergedPlan), activeItem, activeContext);
+};
+
 // Funnel-aligned caption generator for Video summarizing full video
 function buildFunnelAlignedVideoCaption(
   funnelStage: string,
@@ -4682,6 +4978,182 @@ Pastikan evaluasi memeriksa kepatuhan aturan funnel ${funnelStage}:
 
       const formattedContext = formatProductionContextForPrompt(productionContext, { includeCharacter: true });
 
+      // ==========================================
+      // SPECIAL 2-STAGE GENERATION FOR CAROUSEL
+      // ==========================================
+      if (activeTab === 'carousel') {
+        setGenerationError(null);
+        showToast("[1/2] Gemini AI: Menghasilkan Stage 1 (Content Plan)...");
+
+        const stage1Prompt = buildCarouselStage1Prompt(
+          funnelStage,
+          funnelPromptBlock,
+          formattedContext,
+          funnelRules,
+          activeItem,
+          revisionDirective
+        );
+
+        const controller1 = new AbortController();
+        const timeoutId1 = setTimeout(() => controller1.abort(), 45000);
+
+        try {
+          const resp1 = await fetch('/api/gemini/recommendation', {
+            method: 'POST',
+            headers: buildGeminiRequestHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({
+              project_id: requestProjectId,
+              content_item_id: requestItemId,
+              item_no: requestItemNo,
+              generation_type: 'carousel_stage1',
+              production_context: productionContext,
+              prompt: stage1Prompt,
+            }),
+            signal: controller1.signal,
+          });
+
+          clearTimeout(timeoutId1);
+
+          if (!resp1.ok) {
+            let errText = 'API request failed';
+            let is429 = resp1.status === 429;
+            try {
+              const errData = await resp1.json();
+              if (errData && errData.error) errText = errData.error;
+              if (errData?.isRateLimit) is429 = true;
+            } catch (_) {}
+
+            if (is429 || /dibatasi|rate.*limit|quota|429/i.test(errText)) {
+              setGenerationError("Permintaan AI sedang dibatasi (Rate Limit / High Demand). Coba lagi beberapa saat.");
+              showToast("Permintaan AI sedang dibatasi. Coba lagi beberapa saat.");
+            } else {
+              setGenerationError(errText || "Gagal memproses Stage 1 Carousel. Silakan coba lagi.");
+              showToast(`Gagal Stage 1: ${errText}`);
+            }
+            return;
+          }
+
+          const data1 = await resp1.json();
+
+          // ASYNC GUARD check for Stage 1
+          if (
+            getActiveProjectId() !== requestProjectId ||
+            canonicalProjectId !== requestProjectId ||
+            !sourceItem ||
+            (requestItemId && sourceItem.content_item_id !== requestItemId) ||
+            sourceItem.no !== requestItemNo
+          ) {
+            console.warn('[Async Guard] Discarding stale Stage 1 Carousel response');
+            return;
+          }
+
+          const stage1Text = data1.text || '';
+          let stage1Parsed = tryParseJSON(stage1Text);
+          if (!stage1Parsed || typeof stage1Parsed !== 'object') {
+            const normalizedFallback = validateAndNormalizeCarouselPlan(stage1Text, activeItem, activeContext);
+            if (normalizedFallback) {
+              stage1Parsed = tryParseJSON(normalizedFallback);
+            }
+          }
+
+          const normalizedStage1 = validateAndNormalizeCarouselPlan(
+            typeof stage1Parsed === 'object' ? JSON.stringify(stage1Parsed) : stage1Text,
+            activeItem,
+            activeContext
+          );
+
+          if (normalizedStage1) {
+            saveCarouselOutput(normalizedStage1);
+          }
+
+          // STAGE 2: VISUAL ENRICHMENT
+          showToast("[2/2] Gemini AI: Menghasilkan Stage 2 (Visual Enrichment)...");
+
+          const stage2Prompt = buildCarouselStage2Prompt(
+            funnelStage,
+            normalizedStage1 || JSON.stringify(stage1Parsed || {}),
+            formattedContext
+          );
+
+          const controller2 = new AbortController();
+          const timeoutId2 = setTimeout(() => controller2.abort(), 45000);
+
+          const resp2 = await fetch('/api/gemini/recommendation', {
+            method: 'POST',
+            headers: buildGeminiRequestHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({
+              project_id: requestProjectId,
+              content_item_id: requestItemId,
+              item_no: requestItemNo,
+              generation_type: 'carousel_stage2',
+              production_context: productionContext,
+              stage1_content_plan: stage1Parsed,
+              prompt: stage2Prompt,
+            }),
+            signal: controller2.signal,
+          });
+
+          clearTimeout(timeoutId2);
+
+          if (!resp2.ok) {
+            let errText = 'Stage 2 request failed';
+            try {
+              const errData = await resp2.json();
+              if (errData && errData.error) errText = errData.error;
+            } catch (_) {}
+
+            showToast(`Stage 2 bermasalah (${errText}). Menggunakan Stage 1 Content Plan.`);
+            if (normalizedStage1) {
+              setGenerationError(null);
+              saveCarouselOutput(normalizedStage1);
+            }
+            return;
+          }
+
+          const data2 = await resp2.json();
+
+          // ASYNC GUARD check for Stage 2
+          if (
+            getActiveProjectId() !== requestProjectId ||
+            canonicalProjectId !== requestProjectId ||
+            !sourceItem ||
+            (requestItemId && sourceItem.content_item_id !== requestItemId) ||
+            sourceItem.no !== requestItemNo
+          ) {
+            console.warn('[Async Guard] Discarding stale Stage 2 Carousel response');
+            return;
+          }
+
+          const stage2Text = data2.text || '';
+          const mergedPlanStr = mergeCarouselPlanStages(stage1Parsed, stage2Text, activeItem, activeContext);
+
+          if (mergedPlanStr) {
+            setGenerationError(null);
+            saveCarouselOutput(mergedPlanStr);
+            showToast(`Aset CAROUSEL (2-Stage Blueprint) berhasil dioptimalkan oleh Gemini AI!`);
+          } else if (normalizedStage1) {
+            setGenerationError(null);
+            saveCarouselOutput(normalizedStage1);
+            showToast(`Aset CAROUSEL Stage 1 Content Plan berhasil disimpan!`);
+          } else {
+            setGenerationError("Format respon AI tidak valid atau tidak memenuhi skema Carousel canonical. Silakan coba lagi.");
+            showToast("Gagal: Format respon AI tidak sesuai skema.");
+          }
+        } catch (err: any) {
+          if (err?.name === 'AbortError') {
+            setGenerationError("Permintaan Carousel AI melebihi batas waktu (timeout). Silakan coba lagi.");
+            showToast("Gagal: Timeout permintaan Carousel AI.");
+          } else {
+            setGenerationError(err?.message || "Terjadi kesalahan saat menghubungi server AI.");
+            showToast("Terjadi kesalahan jaringan.");
+          }
+        }
+        return;
+      }
+
+      // ==========================================
+      // SINGLE-STAGE GENERATION FOR IMAGE, VIDEO, REVIEW
+      // ==========================================
       const systemPrompt = `Buatkan ${promptTitle} (Bahasa Indonesia, profesional).
 
 ${ANTI_DRIFT_RULES}
@@ -4701,7 +5173,14 @@ ${formatDirection}${revisionDirective}`;
         const response = await fetch('/api/gemini/recommendation', {
           method: 'POST',
           headers: buildGeminiRequestHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ prompt: systemPrompt }),
+          body: JSON.stringify({
+            project_id: requestProjectId,
+            content_item_id: requestItemId,
+            item_no: requestItemNo,
+            generation_type: activeTab,
+            production_context: productionContext,
+            prompt: systemPrompt,
+          }),
           signal: controller.signal,
         });
 
