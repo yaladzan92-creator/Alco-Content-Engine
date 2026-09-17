@@ -16,6 +16,12 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { ContentItem, SharedContentContext, CharacterDNA, ProductionProgress, validateProductionGenerationContext } from '@/lib/content-contract';
 import { 
+  ProductionContext, 
+  buildProductionContext, 
+  formatProductionContextForPrompt, 
+  ANTI_DRIFT_RULES 
+} from '@/lib/production-context';
+import { 
   buildFunnelPromptBlock, 
   getFunnelRules, 
   normalizeFunnelStage, 
@@ -233,28 +239,33 @@ const createShortOverlay = (text: string, maxWords = 8): string => {
   return words.slice(0, maxWords).join(' ');
 };
 
-const getFallbackOverlayByRole = (stage: FunnelStage, role: string): string => {
+const getFallbackOverlayByRole = (stage: FunnelStage, role: string, headline?: string): string => {
+  if (headline && headline.trim()) {
+    const words = headline.trim().replace(/[\r\n]+/g, ' ').split(/\s+/);
+    if (words.length <= 8) return headline.trim();
+    return words.slice(0, 8).join(' ');
+  }
   const r = (role || '').toLowerCase();
   if (stage === 'MOFU') {
-    if (r.includes('hook') || r.includes('insight')) return 'Leads ramai, hasil sepi?';
-    if (r.includes('problem') || r.includes('breakdown')) return 'Masalahnya bukan rajin posting';
-    if (r.includes('framework') || r.includes('solusi')) return 'Cek ulang funnel kontenmu';
-    if (r.includes('cta') || r.includes('checklist')) return 'Simpan checklist ini';
-    return 'Cek framework ini';
+    if (r.includes('hook') || r.includes('insight')) return 'Wawasan Penting & Sudut Pandang Baru';
+    if (r.includes('problem') || r.includes('breakdown')) return 'Akar Masalah yang Perlu Ditinjau';
+    if (r.includes('framework') || r.includes('solusi')) return 'Struktur Langkah & Solusi Praktis';
+    if (r.includes('cta') || r.includes('checklist')) return 'Simpan Panduan Lengkap Ini';
+    return 'Simak Panduan Terstruktur Ini';
   }
   if (stage === 'BOFU') {
-    if (r.includes('hook') || r.includes('proof')) return 'Ingin konversi konten naik?';
-    if (r.includes('context') || r.includes('problem')) return 'Solusi instan tanpa kerumitan';
-    if (r.includes('offer') || r.includes('demo') || r.includes('solusi')) return 'Lihat demo solusinya';
-    if (r.includes('cta') || r.includes('decision')) return 'Daftar sekarang';
-    return 'Lihat demo sekarang';
+    if (r.includes('hook') || r.includes('proof')) return 'Solusi Teruji & Bukti Nyata';
+    if (r.includes('context') || r.includes('problem')) return 'Hasil Optimal dengan Pendekatan Tepat';
+    if (r.includes('offer') || r.includes('demo') || r.includes('solusi')) return 'Kelebihan & Manfaat Utama Solusi';
+    if (r.includes('cta') || r.includes('decision')) return 'Dapatkan Akses Lengkap Sekarang';
+    return 'Pelajari Penawaran Terbaik Ini';
   }
   // TOFU
-  if (r.includes('hook') || r.includes('relatable')) return 'Pernah merasa bikin konten sia-sia?';
-  if (r.includes('problem') || r.includes('awareness')) return 'Bukan kurang rajin, tapi tanpa alur';
-  if (r.includes('insight') || r.includes('light')) return 'Satu kebiasaan kecil ubah hasil';
-  if (r.includes('cta') || r.includes('curiosity')) return 'Simpan ide ini';
-  return 'Simpan ide ini';
+  if (r.includes('hook') || r.includes('relatable')) return 'Pernah Mengalami Hal Serupa?';
+  if (r.includes('problem') || r.includes('awareness')) return 'Tantangan Utama yang Sering Dihadapi';
+  if (r.includes('insight') || r.includes('light')) return 'Sudut Pandang Baru yang Membuka Wawasan';
+  if (r.includes('cta') || r.includes('curiosity')) return 'Simpan & Ikuti Ulasan Selanjutnya';
+  return 'Simpan Catatan Bermanfaat Ini';
 };
 
 const limitWords = (str: string, maxWords = 10): string => {
@@ -264,7 +275,7 @@ const limitWords = (str: string, maxWords = 10): string => {
   return words.slice(0, maxWords).join(' ');
 };
 
-const getOverlayText = (scriptText: string | undefined, stage: FunnelStage, role: string): string => {
+const getOverlayText = (scriptText: string | undefined, stage: FunnelStage, role: string, headline?: string): string => {
   if (scriptText && scriptText.trim()) {
     const cleaned = scriptText.trim().replace(/^[-*•\d.]+\s*/, '');
     const words = cleaned.split(/\s+/);
@@ -275,7 +286,7 @@ const getOverlayText = (scriptText: string | undefined, stage: FunnelStage, role
       return limitWords(cleaned, 10);
     }
   }
-  return getFallbackOverlayByRole(stage, role);
+  return getFallbackOverlayByRole(stage, role, headline);
 };
 
 interface GoogleFlowSceneItem {
@@ -1062,42 +1073,51 @@ const buildShortImageOverlay = (headline: string, funnelStage: string = 'TOFU'):
 };
 
 const buildDefaultCaptionForImage = (headline: string, funnelStage: string, angleId: string, shortOverlay: string): string => {
-  const lowerH = (headline || '').toLowerCase();
-  if (lowerH.includes('copy ads manual') && lowerH.includes('membunuh bisnismu')) {
-    if (angleId === 'A') {
-      return "Menulis copy ads manual satu per satu sering memakan waktu berjam-jam dan hasilnya belum tentu konsisten. Saat bisnis mulai berkembang, proses manual ini perlahan menguras energi yang seharusnya dipakai untuk scale up. Simak bagaimana sistem alur pesan membantu kamu membuat materi iklan yang terarah dan konsisten.";
-    }
-    if (angleId === 'B') {
-      return "Pernah merasa begini? Menghabiskan seharian hanya untuk merangkai satu copy iklan, tapi performanya tidak sesuai harapan. Masalahnya bukan di kreativitasmu, tapi ketiadaan framework pesan yang teruji.";
-    }
-    return "Satu kesalahan fatal dalam scaling iklan adalah memaksakan penulisan manual tanpa formula terstruktur. Pelajari bagaimana sistem alur narasi memudahkan pembuatan variasi ad copy berkualitas tinggi.";
-  }
+  const cleanHeadline = (headline || '').trim();
 
   if (funnelStage === 'TOFU') {
     if (angleId === 'A') {
-      return `Banyak kreator dan pemilik bisnis terjebak pada proses manual yang melelahkan saat memproduksi konten. ${headline ? `Topik seputar "${headline}"` : 'Masalah ini'} sering kali berakar dari belum adanya alur pesan yang jelas. Simak bagaimana menyederhanakan proses penulisan agar pesan tersampaikan dengan efektif.`;
+      return cleanHeadline
+        ? `Banyak yang menghadapi tantangan seputar "${cleanHeadline}". Sering kali hal ini terjadi karena belum menemukan pendekatan yang tepat. Simak ulasan berikut untuk menemukan sudut pandang baru yang lebih praktis.`
+        : 'Menghadapi tantangan tanpa pemahaman yang tepat sering kali membuat proses terasa melelahkan. Simak ulasan berikut untuk menemukan pendekatan baru yang lebih praktis.';
     }
     if (angleId === 'B') {
-      return "Pernah merasa begini? Sudah luangkan waktu menyusun draf kalimat, tapi saat dibaca ulang rasanya kurang nendang. Biasanya masalahnya bukan pada pemilihan kata yang rumit, melainkan struktur pesan yang belum menargetkan rasa penasaran audiens.";
+      return cleanHeadline
+        ? `Terkait "${cleanHeadline}", sering kali kita merasa sudah berusaha maksimal tapi hasilnya belum sesuai harapan. Masalahnya bukan pada niat, melainkan langkah awal yang perlu disesuaikan.`
+        : 'Sering kali kita merasa sudah berusaha maksimal tapi hasilnya belum sesuai harapan. Masalahnya bukan pada niat, melainkan langkah awal yang perlu disesuaikan.';
     }
-    return "Satu kebiasaan kecil yang sering dilewatkan adalah menguji kejelasan hook sebelum mempublikasikan postingan. Luangkan waktu 30 detik untuk membaca dari sudut pandang audiens awam.";
+    return cleanHeadline
+      ? `Satu wawasan penting mengenai "${cleanHeadline}" adalah mengevaluasi kejelasan tujuan sebelum mengambil tindakan. Luangkan waktu sejenak untuk meninjau kembali pendekatan yang digunakan.`
+      : 'Satu wawasan penting adalah mengevaluasi kejelasan tujuan sebelum mengambil tindakan. Luangkan waktu sejenak untuk meninjau kembali pendekatan yang digunakan.';
   } else if (funnelStage === 'MOFU') {
     if (angleId === 'A') {
-      return "Konsistensi tanpa sistem yang rapi hanya akan berujung pada burnout. Saat kamu memiliki framework alur konten yang terstruktur, setiap ide bisa diubah menjadi materi edukasi yang bernilai tinggi.";
+      return cleanHeadline
+        ? `Terkait "${cleanHeadline}", memahami alur dan metode yang terstruktur membantu mengatasi persoalan secara lebih menyeluruh dan berkelanjutan.`
+        : 'Memahami alur dan metode yang terstruktur membantu mengatasi persoalan secara lebih menyeluruh dan berkelanjutan.';
     }
     if (angleId === 'B') {
-      return "Memposting setiap hari tanpa narasi yang jelas seperti berbicara tanpa arah. Framework konten membantu menghubungkan masalah audiens dengan solusi yang kamu tawarkan secara logis.";
+      return cleanHeadline
+        ? `Pendekatan yang tepat terhadap "${cleanHeadline}" menghubungkan kebutuhan utama dengan solusi yang terbukti secara logis.`
+        : 'Pendekatan yang tepat menghubungkan kebutuhan utama dengan solusi yang terbukti secara logis.';
     }
-    return "Berikut alur framework praktis yang bisa kamu terapkan: Tangkap perhatian dengan hook relevan, bedah masalah intinya, sajikan sudut pandang baru, dan tutup dengan langkah aksi konkret.";
+    return cleanHeadline
+      ? `Berikut poin penting yang perlu diperhatikan seputar "${cleanHeadline}": pahami inti masalah, telaah opsi solusi yang ada, dan ambil langkah terarah.`
+      : 'Berikut poin penting yang perlu diperhatikan: pahami inti masalah, telaah opsi solusi yang ada, dan ambil langkah terarah.';
   } else {
     // BOFU
     if (angleId === 'A') {
-      return "Lebih dari ratusan kreator dan pemilik bisnis telah membuktikan efisiensi alur kerja konten terpadu. Dapatkan akses ke sistem lengkapnya dan mulai kembangkan aset bisnismu sekarang.";
+      return cleanHeadline
+        ? `Dapatkan solusi terpercaya untuk "${cleanHeadline}". Mulai langkah terbaikmu sekarang dan rasakan kemudahan serta manfaat nyatanya.`
+        : 'Dapatkan solusi terpercaya untuk kebutuhanmu. Mulai langkah terbaikmu sekarang dan rasakan kemudahan serta manfaat nyatanya.';
     }
     if (angleId === 'B') {
-      return "Lihat bagaimana sistem otomatisasi dan framework prompt terstruktur memangkas waktu produksi konten secara signifikan. Cek alur kerjanya dan terapkan langsung.";
+      return cleanHeadline
+        ? `Pelajari bagaimana solusi praktis untuk "${cleanHeadline}" dapat membantu mencapai hasil optimal secara efisien.`
+        : 'Pelajari bagaimana solusi praktis ini dapat membantu mencapai hasil optimal secara efisien.';
     }
-    return "Siap membawa produksi konten bisnismu ke level berikutnya? Akses seluruh modul, kalender strategi, dan template workflow siap pakai hari ini.";
+    return cleanHeadline
+      ? `Siap mengambil keputusan terbaik seputar "${cleanHeadline}"? Cek detail lengkapnya sekarang.`
+      : 'Siap mengambil keputusan terbaik untuk kebutuhanmu? Cek detail lengkapnya sekarang.';
   }
 };
 
@@ -3486,10 +3506,10 @@ export default function ProductionStudioPage() {
       return;
     }
 
-    const contextValidation = validateProductionGenerationContext(canonicalProjectId, sharedContextSnapshot, sourceItem);
-    if (!contextValidation.valid || !sharedContextSnapshot || !canonicalProjectId) {
-      setRenderError(contextValidation.reason || 'Konteks project tidak sinkron.');
-      showToast(contextValidation.reason || 'Konteks project tidak sinkron.');
+    const prodCtxResult = buildProductionContext(canonicalProjectId, sharedContextSnapshot, sourceItem, characterDNA);
+    if (!prodCtxResult.isValid || !prodCtxResult.context) {
+      setRenderError(prodCtxResult.error || 'Konteks project tidak sinkron.');
+      showToast(prodCtxResult.error || 'Konteks project tidak sinkron.');
       return;
     }
 
@@ -3769,10 +3789,10 @@ export default function ProductionStudioPage() {
       return;
     }
 
-    const contextValidation = validateProductionGenerationContext(canonicalProjectId, sharedContextSnapshot, sourceItem);
-    if (!contextValidation.valid || !sharedContextSnapshot || !canonicalProjectId) {
-      setRenderError(contextValidation.reason || 'Konteks project tidak sinkron.');
-      showToast(contextValidation.reason || 'Konteks project tidak sinkron.');
+    const prodCtxResult = buildProductionContext(canonicalProjectId, sharedContextSnapshot, sourceItem, characterDNA);
+    if (!prodCtxResult.isValid || !prodCtxResult.context) {
+      setRenderError(prodCtxResult.error || 'Konteks project tidak sinkron.');
+      showToast(prodCtxResult.error || 'Konteks project tidak sinkron.');
       return;
     }
 
@@ -4155,12 +4175,13 @@ export default function ProductionStudioPage() {
         return;
       }
 
-      const contextValidation = validateProductionGenerationContext(canonicalProjectId, sharedContextSnapshot, sourceItem);
-      if (!contextValidation.valid || !sharedContextSnapshot || !canonicalProjectId) {
-        setGenerationError(contextValidation.reason || 'Konteks project tidak sinkron.');
-        showToast(contextValidation.reason || 'Konteks project tidak sinkron.');
+      const prodCtxResult = buildProductionContext(canonicalProjectId, sharedContextSnapshot, sourceItem, characterDNA);
+      if (!prodCtxResult.isValid || !prodCtxResult.context) {
+        setGenerationError(prodCtxResult.error || 'Konteks project tidak sinkron.');
+        showToast(prodCtxResult.error || 'Konteks project tidak sinkron.');
         return;
       }
+      const productionContext = prodCtxResult.context;
 
       const requestProjectId = canonicalProjectId;
       const requestItemNo = sourceItem.no;
@@ -4659,36 +4680,16 @@ Pastikan evaluasi memeriksa kepatuhan aturan funnel ${funnelStage}:
         ? `\n\n### CATATAN REVISI KHUSUS DARI USER (WAJIB DIIKUTI):\n- ${revisionNotes.trim()}`
         : '';
 
-      const brandVis = activeContext.brand_visual_context;
-      const visualIdentityBlock = brandVis ? `
-### BRAND VISUAL IDENTITY & STYLE RULES:
-- Visual Style: ${brandVis.visual_style || '-'}
-- Color Palette: ${Array.isArray(brandVis.color_palette) ? brandVis.color_palette.join(', ') : (brandVis.color_palette || '-')}
-- Typography Style: ${brandVis.typography_style || '-'}
-- Image Style Rules: ${Array.isArray(brandVis.image_style_rules) ? brandVis.image_style_rules.join('; ') : (brandVis.image_style_rules || '-')}
-- Design Mood: ${brandVis.design_mood || '-'}` : '';
+      const formattedContext = formatProductionContextForPrompt(productionContext, { includeCharacter: true });
 
       const systemPrompt = `Buatkan ${promptTitle} (Bahasa Indonesia, profesional).
+
+${ANTI_DRIFT_RULES}
 
 ### FUNNEL STRATEGY RULES CONTRACT:
 ${funnelPromptBlock}
 
-### ITEM:
-No: #${activeItem.no} | Funnel: ${activeItem.jenis} (${funnelStage}) | Objective: ${activeItem.tujuan} | Hook: ${activeItem.hookType} | Format: ${activeItem.format}
-Headline: ${activeItem.headline}
-Body: ${activeItem.body}
-Caption: ${activeItem.caption}
-Visual: ${activeItem.visual}
-CTA: ${activeItem.cta}
-Keterangan: ${activeItem.keterangan}
-
-### BRAND:
-Name: ${activeContext.brand_context?.brand_name}
-Summary: ${activeContext.brand_context?.brand_summary}
-Voice: ${activeContext.brand_context?.brand_voice}
-Audience: ${activeContext.audience_context?.primary_audience}
-USP: ${activeContext.strategy_context?.usp?.join(', ')}
-Offer: ${activeContext.strategy_context?.main_offer}${visualIdentityBlock}
+${formattedContext}
 
 ### OUTPUT FORMAT:
 ${formatDirection}${revisionDirective}`;
