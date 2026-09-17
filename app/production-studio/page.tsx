@@ -313,7 +313,7 @@ const getGoogleFlowVideoPack = (
   customDialogues?: { scene1?: string; scene2?: string; scene3?: string }
 ): GoogleFlowSceneItem[] => {
   const stage = normalizeFunnelStage(stageInput);
-  const brandName = activeContext?.brand_context?.brand_name || 'ALCO Engine';
+  const brandName = activeContext?.brand_context?.brand_name || '';
   const creator = customCreator?.trim() || 
     characterDNA?.prompt_assets?.dna_summary_prompt ||
     characterDNA?.identity?.display_name ||
@@ -691,7 +691,7 @@ const buildJson2VideoPayload = (
 ) => {
   const funnelStage = normalizeFunnelStage(activeItem.jenis);
   const funnelRules = getFunnelRules(activeItem.jenis);
-  const brandName = activeContext.brand_context?.brand_name || 'ALCO Content Engine';
+  const brandName = activeContext.brand_context?.brand_name || '';
   const videoModeLabel = getVideoModeLabel(videoModeInput);
 
   const rawScenes = getJson2VideoScenePlan(funnelStage, activeVideo, {
@@ -3303,13 +3303,13 @@ Image/Illustration Direction: Clean minimalist social media closing card.`,
           script: {
             hook: `Pernah merasa konten kamu sudah dibuat maksimal tapi hasilnya stagnan?`,
             masalah: `Banyak yang asal posting tanpa memperhatikan struktur ${funnelStage}.`,
-            solusi: `Dengan ${activeContext.brand_context?.brand_name || 'ALCO Engine'}, kamu bisa menyusun alur konten ${funnelStage} secara otomatis.`,
+            solusi: activeContext.brand_context?.brand_name ? `Dengan ${activeContext.brand_context.brand_name}, kamu bisa menyusun alur konten ${funnelStage} secara otomatis.` : `Dengan sistem terarah, kamu bisa menyusun alur konten ${funnelStage} secara otomatis.`,
             proof: `Banyak kreator menghemat waktu dan menghasilkan narasi yang lebih terarah.`,
             cta: voiceoverCta
           },
           videoPrompt: "A friendly creator looking at their laptop screen, showing surprise and happiness, warm aesthetic home office, soft background, vertical 9:16.",
           visualPlan: `0-5s: Talent close-up penasaran. 5-15s: Tampilkan rekaman layar dasbor alur konten ${funnelStage}. 15-25s: Penjelasan visual strategi. 25-30s: Tampilan CTA ${safeCta}.`,
-          captionForPost: buildFunnelAlignedVideoCaption(funnelStage, activeItem, { script: { hook: `Pernah merasa konten kamu sudah dibuat maksimal tapi hasilnya stagnan?`, solusi: `Dengan ${activeContext.brand_context?.brand_name || 'ALCO Engine'}, kamu bisa menyusun alur konten ${funnelStage} secara otomatis.`, cta: voiceoverCta } }, voiceoverCta),
+          captionForPost: buildFunnelAlignedVideoCaption(funnelStage, activeItem, { script: { hook: `Pernah merasa konten kamu sudah dibuat maksimal tapi hasilnya stagnan?`, solusi: activeContext.brand_context?.brand_name ? `Dengan ${activeContext.brand_context.brand_name}, kamu bisa menyusun alur konten ${funnelStage} secara otomatis.` : `Dengan sistem terarah, kamu bisa menyusun alur konten ${funnelStage} secara otomatis.`, cta: voiceoverCta } }, voiceoverCta),
           captionInstruction: "Paste teks ini di caption/keterangan postingan setelah aset dibuat."
         },
         {
@@ -3321,14 +3321,14 @@ Image/Illustration Direction: Clean minimalist social media closing card.`,
           voiceoverOutline: `Membuka loop -> Fakta mengejutkan -> Solusi ${funnelStage} -> CTA menggantung`,
           script: {
             hook: `Inilah alasan kenapa alur konten kamu belum efektif...`,
-            masalah: `Membuat konten tanpa penyesuaian tahap ${funnelStage} membuat audiens bingung.`,
-            solusi: `${activeContext.brand_context?.brand_name || 'ALCO Engine'} membantu merapikan alur ${funnelStage} secara instan.`,
+            masalah: `Membuat konten tanpa penyesisuan tahap ${funnelStage} membuat audiens bingung.`,
+            solusi: activeContext.brand_context?.brand_name ? `${activeContext.brand_context.brand_name} membantu merapikan alur ${funnelStage} secara instan.` : `Sistem ini membantu merapikan alur ${funnelStage} secara instan.`,
             proof: `Sistem ini membantu menjaga konsistensi narasi harianmu.`,
             cta: `${voiceoverCta}`
           },
           videoPrompt: "Satisfying looping motion graphic of abstract futuristic clockwork gears spinning seamlessly on a clean minimalist gray background, 3D render vertical 9:16.",
           visualPlan: "0-5s: Teks tebal kontras tinggi berkedip cepat di layar. 5-15s: Animasi transisi corong warna neon. 15-25s: Grafik panah menanjak cepat. 25-30s: Layar meredup cepat bersiap menyambung ke awal loop.",
-          captionForPost: buildFunnelAlignedVideoCaption(funnelStage, activeItem, { script: { hook: `Inilah alasan kenapa alur konten kamu belum efektif...`, solusi: `${activeContext.brand_context?.brand_name || 'ALCO Engine'} membantu merapikan alur ${funnelStage} secara instan.`, cta: voiceoverCta } }, voiceoverCta),
+          captionForPost: buildFunnelAlignedVideoCaption(funnelStage, activeItem, { script: { hook: `Inilah alasan kenapa alur konten kamu belum efektif...`, solusi: activeContext.brand_context?.brand_name ? `${activeContext.brand_context.brand_name} membantu merapikan alur ${funnelStage} secara instan.` : `Sistem ini membantu merapikan alur ${funnelStage} secara instan.`, cta: voiceoverCta } }, voiceoverCta),
           captionInstruction: "Paste teks ini di caption/keterangan postingan setelah aset dibuat."
         },
         {
@@ -3355,7 +3355,7 @@ Image/Illustration Direction: Clean minimalist social media closing card.`,
     }
 
     case 'ugc': {
-      const brandName = activeContext.brand_context?.brand_name || 'ALCO Engine';
+      const brandName = activeContext.brand_context?.brand_name || '';
       const creator = 'a 26-year-old Indonesian content creator wearing a casual beige shirt';
       const setting = 'in a modern minimalist room with natural ambient lighting';
 
@@ -5360,7 +5360,7 @@ ${formatDirection}${revisionDirective}`;
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-0.5">
                   <div className="text-[11px] font-semibold text-stone-500">Nama Brand</div>
-                  <p className="text-xs text-[#1f2933] font-bold">{activeContext.brand_context?.brand_name || 'ALCO Engine'}</p>
+                  <p className="text-xs text-[#1f2933] font-bold">{activeContext.brand_context?.brand_name || '-'}</p>
                 </div>
                 <div className="space-y-0.5">
                   <div className="text-[11px] font-semibold text-stone-500">Suara Brand</div>

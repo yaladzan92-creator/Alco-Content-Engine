@@ -114,10 +114,7 @@ export default function HomePageClient() {
     const fallbackDefaults = getDefaultCalendarSettings(blueprint, projectName);
     const s = settings || fallbackDefaults;
 
-    const resolvedCoreTopic =
-      s.coreTopic && s.coreTopic !== 'Digital Course Launch Strategy'
-        ? s.coreTopic
-        : fallbackDefaults.coreTopic;
+    const resolvedCoreTopic = s.coreTopic || fallbackDefaults.coreTopic;
 
     setCoreTopic(resolvedCoreTopic);
     setStartDate(s.startDate || fallbackDefaults.startDate);

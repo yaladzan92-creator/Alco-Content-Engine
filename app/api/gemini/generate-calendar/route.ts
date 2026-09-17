@@ -5,6 +5,7 @@ import {
   horizonToCount,
   inferPlanningHorizon,
   buildSharedContentContext,
+  validateBlueprint,
   SharedContentContext
 } from "@/lib/content-contract";
 import { buildFunnelPromptBlock, sanitizeCtaForFunnel } from "@/lib/funnel-rules";
@@ -64,6 +65,19 @@ export async function POST(req: NextRequest) {
         {
           error: "Project context tidak valid atau belum diimpor. Silakan impor Strategy Blueprint terlebih dahulu sebelum membuat kalender konten.",
           isBlocked: true,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Gate against incomplete strategy contexts
+    const missingFields = context.system_flags?.missing_required_fields || [];
+    if (context.system_flags?.is_complete_for_planning === false || missingFields.length > 0) {
+      return NextResponse.json(
+        {
+          error: `Strategi project belum lengkap (${missingFields.join(', ')}). Lengkapi atau impor ulang data strategi sebelum membuat kalender konten.`,
+          isBlocked: true,
+          missingFields,
         },
         { status: 400 }
       );
