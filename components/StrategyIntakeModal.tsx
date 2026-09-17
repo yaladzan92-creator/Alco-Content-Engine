@@ -7,6 +7,8 @@ import {
   validateBlueprint,
   buildSharedContentContext,
   parseAndMapStrategyJson,
+  createEmptyStrategyBlueprint,
+  detectLegacyFallbackSignatures,
   SAMPLE_STRATEGY_BLUEPRINT
 } from '@/lib/content-contract';
 import {
@@ -50,10 +52,17 @@ export function StrategyIntakeModal({
 
   // Editable Blueprint State
   const [blueprint, setBlueprint] = useState<StrategyBlueprint>(
-    currentBlueprint || SAMPLE_STRATEGY_BLUEPRINT
+    currentBlueprint || createEmptyStrategyBlueprint()
   );
 
+  React.useEffect(() => {
+    if (currentBlueprint) {
+      setBlueprint(currentBlueprint);
+    }
+  }, [currentBlueprint]);
+
   const validation = validateBlueprint(blueprint);
+  const legacyCheck = detectLegacyFallbackSignatures(blueprint);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -287,6 +296,19 @@ export function StrategyIntakeModal({
                     <span className="text-[10px] text-sky-800 font-semibold bg-sky-100 border border-sky-200 px-2.5 py-1 rounded-lg shrink-0 self-start sm:self-center">
                       Mapped into Content Context
                     </span>
+                  </div>
+                )}
+
+                {/* Legacy Fallback Warning Banner */}
+                {legacyCheck.hasLegacySignatures && (
+                  <div className="p-4 bg-amber-50 border border-amber-300 rounded-xl text-amber-900 text-xs flex items-start gap-3">
+                    <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold text-xs text-amber-950">Data Mengandung Nilai Bawaan Lama</span>
+                      <p className="text-xs text-amber-800 mt-0.5">
+                        Konteks strategi terdeteksi mengandung nilai default lama ({legacyCheck.detectedSignatures.join(', ')}). Perbarui nilai di bawah agar sesuai dengan bisnis dan campaign asli Anda.
+                      </p>
+                    </div>
                   </div>
                 )}
 

@@ -153,6 +153,10 @@ export default function CharacterDNASection({
     } else if (list.length > 0) {
       setDna(list[0]);
       setSelectedCharId(list[0].character_id);
+    } else {
+      // Clear character DNA when switching to project with no characters
+      setDna(null);
+      setSelectedCharId(null);
     }
   }, [targetProjectId, activeCharacterId]);
 
@@ -296,6 +300,13 @@ Output a complete JSON object with the following schema:
           ? data.message
           : 'Gagal menganalisis foto. Periksa koneksi atau foto Anda.';
         setErrorMessage(msg);
+        return;
+      }
+
+      // ASYNC PROJECT GUARD: Discard response if user switched projects during async generation
+      const currentActiveProject = getActiveProjectId();
+      if (currentActiveProject && currentActiveProject !== targetProjectId) {
+        console.warn(`[Async Guard] Discarding Character DNA response for stale project ${targetProjectId} (current: ${currentActiveProject})`);
         return;
       }
 

@@ -5,6 +5,7 @@ import {
   horizonToCount,
   inferPlanningHorizon,
   buildSharedContentContext,
+  validateBlueprint,
   SharedContentContext
 } from "@/lib/content-contract";
 import { buildFunnelPromptBlock, sanitizeCtaForFunnel } from "@/lib/funnel-rules";
@@ -53,44 +54,44 @@ export async function POST(req: NextRequest) {
       sharedContentContext: providedContext,
     } = bodyData;
 
-    // Build or refine Shared Content Context
+    // Build or refine Shared Content Context - Strictly require valid Blueprint or Context
     let context: SharedContentContext;
-    if (providedContext) {
+    if (providedContext && providedContext.brand_context?.brand_name) {
       context = providedContext;
-    } else if (strategyBlueprint) {
+    } else if (strategyBlueprint && (strategyBlueprint.brand_identity?.brand_name || strategyBlueprint.messaging?.core_message)) {
       context = buildSharedContentContext(strategyBlueprint, 'creative_system_json');
     } else {
-      // Fallback manual context if no blueprint uploaded
-      context = {
-        project_id: `manual_${Date.now()}`,
-        project_name: coreTopic,
-        source: { origin: 'manual_context' },
-        brand_context: {
-          brand_name: coreTopic || "ALCO Client Brand",
-          category: "General Business",
-          brand_summary: `Campaign centered on: ${coreTopic}`,
-          brand_voice: selectedVoices.join(', ') || "Professional & Direct",
+      return NextResponse.json(
+        {
+          error: "Project context tidak valid atau belum diimpor. Silakan impor Strategy Blueprint terlebih dahulu sebelum membuat kalender konten.",
+          isBlocked: true,
         },
-        audience_context: {
-          primary_audience: `Target Audience (${gender}, Age ${ageRange[0]}-${ageRange[1]})`,
-          pain_points: ["Kesulitan menemukan solusi yang terbukti", "Tidak punya cukup waktu"],
-          desires: ["Hasil nyata yang efisien dan terukur"],
-          objections: ["Apakah solusi ini benar-benar efisien?"],
+        { status: 400 }
+      );
+    }
+
+    // Gate against incomplete strategy contexts
+    const missingFields = context.system_flags?.missing_required_fields || [];
+    if (context.system_flags?.is_complete_for_planning === false || missingFields.length > 0) {
+      return NextResponse.json(
+        {
+          error: `Strategi project belum lengkap (${missingFields.join(', ')}). Lengkapi atau impor ulang data strategi sebelum membuat kalender konten.`,
+          isBlocked: true,
+          missingFields,
         },
-        strategy_context: {
-          positioning: coreTopic,
-          usp: ["Strategi terarah", "Hasil efisien"],
-          main_offer: "Akses produk / layanan utama",
-          offer_benefits: ["Solusi instan", "Nilai jangka panjang"],
-          core_message: coreTopic,
-          copy_direction: ["Gunakan hook kuat", "Fokus ke masalah dan solusi"],
-          content_pillars: ["Edukasi & Problem Awareness", "Solusi & Social Proof", "Penawaran & Direct Action"],
+        { status: 400 }
+      );
+    }
+
+    const resolvedProjectId = bodyData.projectId || context.project_id || (strategyBlueprint as any)?.project_id;
+    if (bodyData.projectId && context.project_id && bodyData.projectId !== context.project_id) {
+      return NextResponse.json(
+        {
+          error: `Mismatch Project Context: Request project (${bodyData.projectId}) berbeda dengan context (${context.project_id}).`,
+          isBlocked: true,
         },
-        system_flags: {
-          is_complete_for_planning: false,
-          missing_required_fields: ["Minimal Blueprint Upload disarankan untuk hasil maksimal"],
-        },
-      };
+        { status: 400 }
+      );
     }
 
     const normalizedHorizon = inferPlanningHorizon(planningHorizon);
@@ -267,14 +268,28 @@ Return ONLY the JSON matching the specified schema.`;
     });
 
     const parsed = JSON.parse(response.text || '{"items":[]}');
-    const sanitizedItems = (parsed.items || []).map((item: any) => ({
-      ...item,
-      cta: sanitizeCtaForFunnel(item.cta, item.jenis),
-    }));
-    const sanitizedGrowthItems = (parsed.growthItems || []).map((item: any) => ({
-      ...item,
-      cta: sanitizeCtaForFunnel(item.cta, item.jenis),
-    }));
+    const sanitizedItems = (parsed.items || []).map((item: any, idx: number) => {
+      const itemNo = item.no !== undefined && item.no !== null ? item.no : (idx + 1);
+      return {
+        ...item,
+        no: itemNo,
+        project_id: resolvedProjectId,
+        projectId: resolvedProjectId,
+        content_item_id: item.content_item_id || `${resolvedProjectId}_item_${itemNo}_${Date.now()}_${idx + 1}`,
+        cta: sanitizeCtaForFunnel(item.cta, item.jenis),
+      };
+    });
+    const sanitizedGrowthItems = (parsed.growthItems || []).map((item: any, idx: number) => {
+      const itemNo = item.no !== undefined && item.no !== null ? item.no : (idx + 1);
+      return {
+        ...item,
+        no: itemNo,
+        project_id: resolvedProjectId,
+        projectId: resolvedProjectId,
+        content_item_id: item.content_item_id || `${resolvedProjectId}_growth_${itemNo}_${Date.now()}_${idx + 1}`,
+        cta: sanitizeCtaForFunnel(item.cta, item.jenis),
+      };
+    });
 
     return NextResponse.json({
       items: sanitizedItems,

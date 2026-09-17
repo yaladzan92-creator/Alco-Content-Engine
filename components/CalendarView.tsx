@@ -43,7 +43,7 @@ import {
 
 import { buildGeminiRequestHeaders } from '@/lib/client-gemini-key';
 import { extractJSON } from '@/lib/geminiUtils';
-import { saveProjectData, getActiveProjectId } from '@/lib/storage';
+import { saveProjectData, getActiveProjectId, saveProjectSelectedItem } from '@/lib/storage';
 import { getProductionStatus, getProductionStatusBadge } from '@/lib/content-contract';
 import { ContentItem, ConfigDataProps } from './calendar/types';
 import { CalendarDay } from './calendar/CalendarDay';
@@ -179,6 +179,8 @@ export default function CalendarView({
     assetType: 'brief' | 'caption' | 'image' | 'carousel' | 'video'
   ) => {
     if (!editingItem || isGeneratingAsset) return;
+    const requestProjectId = getActiveProjectId();
+    const requestItemNo = editingItem.no;
     setIsGeneratingAsset(true);
     setCopiedAsset(false);
     try {
@@ -221,12 +223,23 @@ Keterangan: ${editingItem.keterangan}`;
       }
 
       const resData = await response.json();
+
+      // ASYNC GUARD: Check project and item
+      if (getActiveProjectId() !== requestProjectId || !editingItem || editingItem.no !== requestItemNo) {
+        console.warn('[Async Guard] Discarding stale calendar production asset response');
+        return;
+      }
+
       setProductionAsset({
         type: assetType,
         title: promptTitle,
         content: resData.text || 'Gagal menghasilkan asset.',
       });
     } catch (err: any) {
+      // If project or item changed, do not set error into current item UI
+      if (getActiveProjectId() !== requestProjectId || !editingItem || editingItem.no !== requestItemNo) {
+        return;
+      }
       console.error('Production Asset Generation Error:', err);
       const errMsg = err.message || '';
       const isRateLimited =
@@ -249,6 +262,7 @@ Keterangan: ${editingItem.keterangan}`;
 
   const getAIRecommendation = async (step: number) => {
     if (isRecommending) return;
+    const requestProjectId = getActiveProjectId();
     setIsRecommending(true);
     try {
       let prompt = '';
@@ -284,6 +298,13 @@ Keterangan: ${editingItem.keterangan}`;
       }
 
       const resData = await response.json();
+
+      // ASYNC GUARD: check if active project changed during async recommendation
+      if (getActiveProjectId() !== requestProjectId) {
+        console.warn('[Async Guard] Discarding stale AI recommendation response');
+        return;
+      }
+
       try {
         const json = extractJSON(resData.text || '{}');
         setRecommendations((prev) => ({ ...prev, [step]: json }));
@@ -292,6 +313,9 @@ Keterangan: ${editingItem.keterangan}`;
         setRecommendations((prev) => ({ ...prev, [step]: resData.text || '' }));
       }
     } catch (err: any) {
+      if (getActiveProjectId() !== requestProjectId) {
+        return;
+      }
       console.error('AI Recommendation Error:', err);
       const errMsg = err.message || '';
       const isRateLimited =
@@ -927,7 +951,8 @@ Keterangan: ${editingItem.keterangan}`;
                               <button
                                 onClick={() => {
                                   const resolvedProjectId =
-                                    (item as any)?.projectId ||
+                                    item.project_id ||
+                                    item.projectId ||
                                     configData?.sharedContentContext?.project_id ||
                                     configData?.strategyBlueprint?.project_id ||
                                     configData?.selectedProject ||
@@ -935,29 +960,23 @@ Keterangan: ${editingItem.keterangan}`;
                                     '';
 
                                   if (resolvedProjectId) {
-                                    localStorage.setItem('alco_selected_project_id', resolvedProjectId);
-                                    saveProjectData(resolvedProjectId, 'selectedContentItem', item);
-                                    if (configData?.sharedContentContext) {
-                                      saveProjectData(resolvedProjectId, 'context', configData.sharedContentContext);
-                                    }
+                                    saveProjectSelectedItem(resolvedProjectId, item);
                                   }
 
-                                  const itemWithProject = resolvedProjectId
-                                    ? { ...item, projectId: resolvedProjectId }
-                                    : item;
-
-                                  localStorage.setItem('alco_selected_item', JSON.stringify(itemWithProject));
-                                  localStorage.setItem(
-                                    'alco_shared_context',
-                                    JSON.stringify(configData?.sharedContentContext || null)
-                                  );
                                   const tab =
                                     item.primaryAssetType === 'carousel'
                                       ? 'carousel'
                                       : item.primaryAssetType === 'video'
                                       ? 'video'
                                       : 'image';
-                                  router.push(`/production-studio?tab=${tab}`);
+                                  const contentItemId = item.content_item_id || String(item.no);
+                                  const query = new URLSearchParams({
+                                    tab,
+                                    ...(resolvedProjectId ? { projectId: resolvedProjectId } : {}),
+                                    contentItemId,
+                                    itemNo: String(item.no),
+                                  });
+                                  router.push(`/production-studio?${query.toString()}`);
                                 }}
                                 className="min-h-[40px] px-3.5 bg-primary/10 hover:bg-primary text-primary hover:text-white border border-primary/30 font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition"
                                 title="Buka di Production Studio"

@@ -16,8 +16,8 @@ export const FUNNEL_CONTENT_RULES = {
     audienceState: 'Audiens sudah sadar masalah dan mulai mencari cara yang lebih masuk akal.',
     contentStyle: 'Edukasi, framework, checklist, comparison, myth-busting, objection handling.',
     visualStyle: 'Explainer visual, diagram, checklist, side-by-side comparison, step-by-step.',
-    ctaStyle: 'Soft action CTA: cek framework, bandingkan, simpan checklist, audit kontenmu.',
-    allowedCta: ['Cek framework ini', 'Simpan checklist ini', 'Bandingkan dengan kontenmu', 'Audit alur kontenmu'],
+    ctaStyle: 'Soft action CTA: cek framework, bandingkan, simpan checklist, pelajari detail.',
+    allowedCta: ['Cek framework ini', 'Simpan checklist ini', 'Bandingkan opsinya', 'Pelajari detailnya'],
     forbiddenPhrases: ['link bio', 'link di bio', 'klik link bio', 'klik link di bio', 'daftar sekarang', 'ambil penawaran', 'mumpung gratis', 'beli sekarang', 'dm', 'dm kami'],
     avoid: 'Hard closing, diskon besar, scarcity berlebihan, klaim hasil instan.'
   },
@@ -86,13 +86,13 @@ export function getVoiceoverCtaForFunnel(ctaInput: string, stageInput?: string):
   }
 
   if (stage === 'MOFU') {
-    return 'Kalau mau cek struktur kontenmu, simpan ini dulu lalu lanjut cek panduan lengkapnya.';
+    return 'Kalau kamu ingin mempelajari framework ini lebih detail, simpan video ini dan cek panduan lengkapnya.';
   }
   if (stage === 'BOFU') {
-    return 'Kalau kamu ingin mulai lebih cepat, cek detail penawaran dan langkah berikutnya di link bio.';
+    return 'Kalau kamu ingin mulai mendapatkan solusi ini secara praktis, cek detail penawaran lengkap sekarang.';
   }
   // TOFU
-  return 'Simpan ide ini dulu supaya kamu bisa pakai saat menyusun konten berikutnya.';
+  return 'Simpan postingan ini supaya kamu bisa mempelajarinya kembali saat butuh solusi praktis nanti.';
 }
 
 export function buildFunnelPromptBlock(stageInput?: string) {
@@ -134,7 +134,7 @@ export function cleanDialogueText(text?: string | null): string {
 }
 
 /**
- * Prevents duplicated brand phrases (e.g., "Dengan ALCO, kamu dapat Dengan ALCO, kamu bisa...").
+ * Prevents duplicated brand phrases (e.g., "Dengan Brand, kamu dapat Dengan Brand, kamu bisa...").
  */
 export function removeBrandDuplication(text?: string | null, brandName?: string): string {
   if (!text) return '';
@@ -162,11 +162,11 @@ export function removeBrandDuplication(text?: string | null, brandName?: string)
 /**
  * Normalizes 3-scene Google Flow UGC dialogues for 8-second video shots:
  * - Target: 24-30 words per scene (Min: 22 words, Max: 32 words)
- * - Natural spoken Indonesian, easy and pleasant to pronounce
+ * - Natural spoken Indonesian, strictly grounded in the project facts
  * - Scene 1: Hook / Problem
  * - Scene 2: Solusi / Demo / Framework
  * - Scene 3: Proof / Value + Complete CTA (never just a short CTA)
- * - Safe against brand duplication and generic placeholders
+ * - Safe against brand duplication and generic content-marketing placeholders
  */
 export function normalizeGoogleFlowDialogue(
   scene: 1 | 2 | 3,
@@ -176,12 +176,32 @@ export function normalizeGoogleFlowDialogue(
 ): string {
   const stage = normalizeFunnelStage(stageInput);
   const brandName =
+    context?.brand?.name ||
     context?.brand_context?.brand_name ||
-    context?.brandName ||
-    'ALCO Engine';
+    '';
+  const audience =
+    context?.audience?.primary_audience ||
+    context?.audience_context?.primary_audience ||
+    '';
+  const painPoint =
+    (context?.audience?.pain_points && context?.audience.pain_points[0]) ||
+    (context?.audience_context?.pain_points && context?.audience_context.pain_points[0]) ||
+    '';
+  const solutionOffer =
+    context?.strategy?.main_offer ||
+    context?.strategy_context?.main_offer ||
+    context?.strategy?.positioning ||
+    context?.strategy_context?.positioning ||
+    '';
+  const headlineTopic =
+    context?.content?.headline ||
+    context?.headline ||
+    '';
 
   let cleaned = cleanDialogueText(rawDialogue || '');
-  cleaned = removeBrandDuplication(cleaned, brandName);
+  if (brandName) {
+    cleaned = removeBrandDuplication(cleaned, brandName);
+  }
 
   const currentCount = countWords(cleaned);
   const isTooShort = currentCount < 18;
@@ -193,20 +213,26 @@ export function normalizeGoogleFlowDialogue(
   // SCENE 1: Hook / Problem (Target: 24-30 kata, min 22, max 32)
   if (scene === 1) {
     if (!cleaned || isTooShort) {
-      if (stage === 'TOFU') {
-        cleaned = `Pernah gak ngerasa udah rajin bikin konten tiap hari tapi views tetap sepi? Ternyata masalah terbesarnya bukan di konsistensi, tapi hook awal yang kurang memikat audiens.`;
-      } else if (stage === 'MOFU') {
-        cleaned = `Banyak yang terjebak di views tinggi tapi penjualannya tetap nol karena alur funnel kontennya bolong di tengah. Tanpa struktur yang jelas, audiens cuma nonton tanpa pernah konversi.`;
+      if (painPoint) {
+        if (stage === 'TOFU') {
+          cleaned = `Pernah merasa bingung saat menghadapi ${painPoint}? Seringkali kita mengira masalahnya rumit, padahal ada langkah awal yang jauh lebih sederhana untuk memahaminya.`;
+        } else if (stage === 'MOFU') {
+          cleaned = `Banyak yang mencoba mengatasi ${painPoint} dengan cara sementara yang kurang efektif. Padahal tanpa pemahaman akar masalah, hasilnya akan terus berulang.`;
+        } else {
+          cleaned = `Masih bingung mencari solusi paling terbukti untuk ${painPoint}? Saatnya berhenti coba-coba dan beralih ke pendekatan terstruktur yang memberikan hasil nyata.`;
+        }
+      } else if (headlineTopic) {
+        cleaned = `Mengenai ${headlineTopic}, banyak yang belum menyadari pentingnya langkah yang tepat sejak awal agar tidak membuang waktu dan energi berharga.`;
       } else {
-        cleaned = `Masih ragu apakah konten bisnismu beneran bisa menghasilkan penjualan konsisten? Kuncinya bukan coba-coba format acak, tapi pakai sistem terbukti yang langsung mengarahkan audiens untuk mengambil keputusan.`;
+        cleaned = `Pernah merasa proses yang kamu jalani belum memberikan hasil optimal? Mari kita bedah penyebab utamanya dan cara praktis untuk mengatasinya secara efektif.`;
       }
     } else if (currentCount < 22) {
       if (stage === 'TOFU') {
-        cleaned = `${cleaned.replace(/[.!?]+$/, '')}. Padahal kalau hook awal diperbaiki, audiens bakal langsung berhenti scroll dan menyimak sampai selesai.`;
+        cleaned = `${cleaned.replace(/[.!?]+$/, '')}. Padahal jika dipahami dengan baik, kamu bisa menemukan langkah paling tepat secara lebih cepat.`;
       } else if (stage === 'MOFU') {
-        cleaned = `${cleaned.replace(/[.!?]+$/, '')}. Masalah ini sering terjadi kalau kontenmu belum punya alur evaluasi yang terarah bagi audiens.`;
+        cleaned = `${cleaned.replace(/[.!?]+$/, '')}. Hal ini penting diperhatikan agar kamu bisa mengevaluasi pilihan solusi dengan lebih objektif.`;
       } else {
-        cleaned = `${cleaned.replace(/[.!?]+$/, '')}. Di titik ini, kamu butuh sistem yang langsung membuktikan hasil nyata tanpa buang-buang waktu lagi.`;
+        cleaned = `${cleaned.replace(/[.!?]+$/, '')}. Sekarang adalah momen yang tepat untuk mengambil langkah nyata menuju hasil terbaik.`;
       }
     }
   }
@@ -214,20 +240,26 @@ export function normalizeGoogleFlowDialogue(
   // SCENE 2: Solusi / Demo / Framework (Target: 24-30 kata, min 22, max 32)
   else if (scene === 2) {
     if (!cleaned || isTooShort) {
-      if (stage === 'TOFU') {
-        cleaned = `Kuncinya ada di pola tiga detik pertama: bangun rasa penasaran yang kuat, berikan satu insight praktis, dan akhiri dengan pesan yang bikin mereka langsung paham nilainya.`;
-      } else if (stage === 'MOFU') {
-        cleaned = `Pakai framework tiga langkah ini: petakan masalah utama audiens, susun perbandingan solusi yang masuk akal dengan ${brandName}, lalu tunjukkan cara kerja sistemnya secara transparan dan terarah.`;
+      if (solutionOffer && brandName) {
+        if (stage === 'TOFU') {
+          cleaned = `Kuncinya adalah memahami polanya: kenali kebutuhan utamamu, temukan solusi terpercaya seperti ${brandName}, dan terapkan secara konsisten untuk hasil maksimal.`;
+        } else if (stage === 'MOFU') {
+          cleaned = `Melalui pendekatan ${brandName}, kamu mendapatkan ${solutionOffer} yang dirancang khusus untuk mempermudah setiap langkah secara terstruktur dan jelas.`;
+        } else {
+          cleaned = `Dengan ${solutionOffer} dari ${brandName}, kamu tidak perlu bingung lagi karena seluruh proses sudah terbukti efektif dan siap digunakan langsung.`;
+        }
+      } else if (brandName) {
+        cleaned = `Bersama ${brandName}, kami memberikan panduan terarah dan solusi praktis yang dirancang sesuai kebutuhanmu tanpa proses yang berbelit-belit.`;
       } else {
-        cleaned = `Lewat sistem ${brandName}, semua naskah video, arahan visual, sampai penawaran utama langsung dirancang terstruktur sehingga kamu tinggal eksekusi tanpa perlu pusing mikir dari nol lagi.`;
+        cleaned = `Kuncinya ada pada penerapan langkah yang tepat: pahami inti persoalan, gunakan metode teruji, lalu evaluasi perkembangannya secara berkala.`;
       }
     } else if (currentCount < 22) {
       if (stage === 'TOFU') {
-        cleaned = `Solusinya sederhana: ${cleaned.replace(/[.!?]+$/, '')}, lalu sajikan dengan visual relevan agar pesan intinya langsung dipahami audiens dengan cepat.`;
+        cleaned = `Solusinya jelas: ${cleaned.replace(/[.!?]+$/, '')}, sehingga kamu bisa memahaminya dengan mudah dan langsung mengambil tindakan.`;
       } else if (stage === 'MOFU') {
-        cleaned = `Pakai alur terstruktur ini: ${cleaned.replace(/[.!?]+$/, '')}, sehingga audiens dengan mudah membandingkan solusi terbaik untuk kebutuhan mereka.`;
+        cleaned = `Dengan metode ini: ${cleaned.replace(/[.!?]+$/, '')}, membantu kamu membandingkan dan memilih solusi yang paling sesuai.`;
       } else {
-        cleaned = `Dengan sistem terintegrasi: ${cleaned.replace(/[.!?]+$/, '')}, membuat seluruh eksekusi kontenmu berjalan otomatis dan siap menghasilkan konversi maksimal.`;
+        cleaned = `Hasilnya terbukti nyata: ${cleaned.replace(/[.!?]+$/, '')}, memastikan langkah yang kamu ambil memberikan manfaat maksimal.`;
       }
     }
   }
@@ -236,25 +268,26 @@ export function normalizeGoogleFlowDialogue(
   else if (scene === 3) {
     if (!cleaned || isShortCta) {
       if (stage === 'TOFU') {
-        cleaned = `Simpan video ini sekarang biar kamu gak bingung pas bikin konten nanti, dan follow akun ini untuk tips strategi pembuatan konten yang terbukti efektif setiap harinya.`;
+        cleaned = `Simpan informasi ini sekarang agar kamu bisa membacanya kembali saat butuh, dan bagikan kepada orang terdekat yang membutuhkan tips bermanfaat ini.`;
       } else if (stage === 'MOFU') {
-        cleaned = `Kalau kamu mau lihat studi kasus dan alur framework lengkapnya secara detail, langsung klik link di bio sekarang untuk mempelajari panduan praktis yang siap kamu terapkan.`;
+        cleaned = `Pelajari framework dan panduan lengkapnya sekarang juga untuk memahami bagaimana solusi ini bisa membantu menyelesaikan tantangan yang kamu hadapi.`;
       } else {
-        // BOFU standard proof/value + CTA:
-        cleaned = `Yang paling penting, kamu tidak perlu mulai dari nol lagi. Cek demonya sekarang, lihat alurnya, lalu putuskan apakah sistem ini cocok untuk mengakselerasi bisnismu hari ini.`;
+        cleaned = `Jangan tunda lagi untuk mendapatkan solusi terbaik bagi kebutuhanmu. Cek informasi selengkapnya sekarang dan mulai langkah pertamamu hari ini.`;
       }
     } else if (currentCount < 22) {
       if (stage === 'TOFU') {
-        cleaned = `Simpan video ini sekarang biar tidak hilang saat eksekusi nanti, dan follow akun ini untuk update tips pembuatan konten yang praktis dan terbukti setiap harinya.`;
+        cleaned = `Simpan postingan ini sekarang biar tidak lupa, dan ikuti kami untuk mendapatkan wawasan serta tips bermanfaat lainnya setiap hari.`;
       } else if (stage === 'MOFU') {
-        cleaned = `Pelajari alur framework lengkapnya sekarang juga, lalu klik link di bio untuk mendapatkan panduan praktis yang bisa langsung kamu terapkan pada konten bisnismu.`;
+        cleaned = `Pelajari detail lengkapnya sekarang juga, dan simpan panduan ini agar kamu bisa menerapkannya langsung saat dibutuhkan nanti.`;
       } else {
-        cleaned = `Yang paling penting, kamu tidak perlu mulai dari nol lagi. Cek demonya sekarang, pelajari alurnya, lalu putuskan apakah sistem ini pilihan terbaik untuk bisnismu.`;
+        cleaned = `Ambil keputusan terbaik untuk kebutuhanmu sekarang juga. Cek penawaran lengkap dan mulai nikmati hasilnya secara nyata hari ini.`;
       }
     }
   }
 
-  cleaned = removeBrandDuplication(cleaned, brandName);
+  if (brandName) {
+    cleaned = removeBrandDuplication(cleaned, brandName);
+  }
 
   // If word count > 32 words, trim gracefully to 26-28 words with proper sentence ending
   const words = cleaned.trim().split(/\s+/).filter(Boolean);

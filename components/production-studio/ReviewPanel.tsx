@@ -315,7 +315,7 @@ export default function ReviewPanel(props: any) {
             <div>
               <span className="text-[10px] font-bold text-stone-500 uppercase block">Nama Brand &amp; Voice</span>
               <p className="text-stone-900 font-semibold mt-0.5">
-                {activeContext?.brand_context?.brand_name || 'ALCO Engine'} &bull; {activeContext?.brand_context?.brand_voice || '-'}
+                {activeContext?.brand_context?.brand_name || '-'} &bull; {activeContext?.brand_context?.brand_voice || '-'}
               </p>
             </div>
             <div>

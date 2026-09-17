@@ -14,7 +14,13 @@ import {
   ChevronDown, ChevronRight, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ContentItem, SharedContentContext, CharacterDNA, ProductionProgress } from '@/lib/content-contract';
+import { ContentItem, SharedContentContext, CharacterDNA, ProductionProgress, validateProductionGenerationContext } from '@/lib/content-contract';
+import { 
+  ProductionContext, 
+  buildProductionContext, 
+  formatProductionContextForPrompt, 
+  ANTI_DRIFT_RULES 
+} from '@/lib/production-context';
 import { 
   buildFunnelPromptBlock, 
   getFunnelRules, 
@@ -32,6 +38,11 @@ import {
   loadProjectData, 
   saveProjectData, 
   removeProjectData, 
+  loadProjectSharedContext,
+  loadProjectCalendarItems,
+  loadProjectSelectedItem,
+  saveProjectSelectedItem,
+  ensureContentItemIdentity,
   getProjectCharacterDNA, 
   saveProjectCharacterDNA, 
   updateItemInProject,
@@ -68,83 +79,6 @@ const safeCopyToClipboard = async (text: string) => {
   } catch (error) {
     console.error('Clipboard write failed:', error);
     return false;
-  }
-};
-
-// Fallbacks for graceful empty-state handling
-const itemFallback: ContentItem = {
-  no: 1,
-  tanggal: 'Rencana Hari Ini',
-  jenis: 'TOFU (Awareness)',
-  tujuan: 'Mengedukasi audiens tentang pentingnya optimasi digital funnel',
-  hookType: 'Problem-Agitation-Solution (PAS)',
-  headline: '3 Tanda Utama Konten Bisnis Anda Gagal Menghasilkan Penjualan!',
-  body: 'Banyak pemilik bisnis merasa frustrasi karena konten mereka ditonton ribuan orang tapi nihil pembelian. Masalahnya bukan pada kualitas video, melainkan absennya penataan corong penjualan (funnel) yang selaras.',
-  caption: 'Kenapa konten rame tapi sepi pembeli? 🤔 Jawabannya sederhana: Anda belum menata funnel TOFU-MOFU-BOFU! Yuk baca blueprint selengkapnya di bio. 🚀 #ALCOEngine #ContentFunnel',
-  format: 'Single Image / Carousel',
-  referensi: 'Blueprint ALCO v2',
-  visual: 'Visual ilustrasi grafik corong 3D yang bocor di bagian tengah dengan neon aksen merah.',
-  keterangan: 'Tampilkan teks headline berukuran besar (font minimal 64pt) dengan kontras yang kuat.',
-  cta: 'Link Bio'
-};
-
-const contextFallback: SharedContentContext = {
-  project_id: 'default_project',
-  project_name: 'ALCO Engine Default',
-  source: {
-    origin: 'manual_context',
-  },
-  system_flags: {
-    is_complete_for_planning: true,
-    missing_required_fields: [],
-  },
-  brand_context: {
-    brand_name: 'ALCO Engine',
-    category: 'Software & Productivity Tool',
-    brand_summary: 'Sistem terintegrasi untuk mendesain dan memetakan alur strategi konten berbasis corong pemasaran otomatis.',
-    brand_voice: 'Profesional, Berwibawa, Edukatif, Solutif namun tetap bersahabat'
-  },
-  audience_context: {
-    primary_audience: 'Creators, Course Sellers & Solopreneurs yang ingin melakukan skala bisnis secara digital.',
-    pain_points: [
-      'Membuat konten secara acak setiap hari tanpa strategi konversi terukur',
-      'Kehabisan waktu merencanakan konten bulanan',
-      'Kecemasan karena traffic melimpah namun tingkat konversi penjualan rendah'
-    ],
-    desires: [
-      'Membuat sistem kalender konten otomatis berbasis corong strategis',
-      'Memangkas waktu penyusunan brief konten hingga 80%',
-      'Membangun alur penjualan otomatis dari konten media sosial'
-    ],
-    objections: [
-      'Khawatir hasil copywriting terkesan kaku dan generik layaknya robot',
-      'Takut sistem terlalu kompleks untuk pemula',
-      'Meragukan fleksibilitas penyesuaian industri spesifik'
-    ]
-  },
-  strategy_context: {
-    positioning: 'Pusat otomatisasi pemetaan strategi konten komprehensif pertama yang mengutamakan funnel strategis.',
-    usp: [
-      'Strategy Blueprint intake yang intuitif',
-      'Automated content calendar terintegrasi TOFU-MOFU-BOFU',
-      'Production Studio instan untuk berbagai variasi aset'
-    ],
-    main_offer: 'Free Strategy Intake & Automated Content Blueprint',
-    offer_benefits: [
-      'Blueprint strategi bisnis & konten senilai Rp 1.500.000 secara gratis',
-      'Visualisasi kalender visual konten digital langsung siap eksekusi'
-    ],
-    core_message: 'Hentikan memproduksi konten acak. Saatnya bangun mesin konten otomatis yang mendatangkan penjualan berkelanjutan.',
-    copy_direction: [
-      'Gunakan data statistik rujukan kuat',
-      'Sederhanakan terminologi pemasaran teknis agar ramah pemula',
-      'Tekankan penghematan waktu rill'
-    ],
-    content_pillars: [
-      'Edukasi Funneling & Pemetaan Pembeli',
-      'Sistemasi & Manajemen Alur Kerja Kreator',
-      'Formula Copywriting Konversi Tinggi'
-    ]
   }
 };
 
@@ -305,28 +239,33 @@ const createShortOverlay = (text: string, maxWords = 8): string => {
   return words.slice(0, maxWords).join(' ');
 };
 
-const getFallbackOverlayByRole = (stage: FunnelStage, role: string): string => {
+const getFallbackOverlayByRole = (stage: FunnelStage, role: string, headline?: string): string => {
+  if (headline && headline.trim()) {
+    const words = headline.trim().replace(/[\r\n]+/g, ' ').split(/\s+/);
+    if (words.length <= 8) return headline.trim();
+    return words.slice(0, 8).join(' ');
+  }
   const r = (role || '').toLowerCase();
   if (stage === 'MOFU') {
-    if (r.includes('hook') || r.includes('insight')) return 'Leads ramai, hasil sepi?';
-    if (r.includes('problem') || r.includes('breakdown')) return 'Masalahnya bukan rajin posting';
-    if (r.includes('framework') || r.includes('solusi')) return 'Cek ulang funnel kontenmu';
-    if (r.includes('cta') || r.includes('checklist')) return 'Simpan checklist ini';
-    return 'Cek framework ini';
+    if (r.includes('hook') || r.includes('insight')) return 'Wawasan Penting & Sudut Pandang Baru';
+    if (r.includes('problem') || r.includes('breakdown')) return 'Akar Masalah yang Perlu Ditinjau';
+    if (r.includes('framework') || r.includes('solusi')) return 'Struktur Langkah & Solusi Praktis';
+    if (r.includes('cta') || r.includes('checklist')) return 'Simpan Panduan Lengkap Ini';
+    return 'Simak Panduan Terstruktur Ini';
   }
   if (stage === 'BOFU') {
-    if (r.includes('hook') || r.includes('proof')) return 'Ingin konversi konten naik?';
-    if (r.includes('context') || r.includes('problem')) return 'Solusi instan tanpa kerumitan';
-    if (r.includes('offer') || r.includes('demo') || r.includes('solusi')) return 'Lihat demo solusinya';
-    if (r.includes('cta') || r.includes('decision')) return 'Daftar sekarang';
-    return 'Lihat demo sekarang';
+    if (r.includes('hook') || r.includes('proof')) return 'Solusi Teruji & Bukti Nyata';
+    if (r.includes('context') || r.includes('problem')) return 'Hasil Optimal dengan Pendekatan Tepat';
+    if (r.includes('offer') || r.includes('demo') || r.includes('solusi')) return 'Kelebihan & Manfaat Utama Solusi';
+    if (r.includes('cta') || r.includes('decision')) return 'Dapatkan Akses Lengkap Sekarang';
+    return 'Pelajari Penawaran Terbaik Ini';
   }
   // TOFU
-  if (r.includes('hook') || r.includes('relatable')) return 'Pernah merasa bikin konten sia-sia?';
-  if (r.includes('problem') || r.includes('awareness')) return 'Bukan kurang rajin, tapi tanpa alur';
-  if (r.includes('insight') || r.includes('light')) return 'Satu kebiasaan kecil ubah hasil';
-  if (r.includes('cta') || r.includes('curiosity')) return 'Simpan ide ini';
-  return 'Simpan ide ini';
+  if (r.includes('hook') || r.includes('relatable')) return 'Pernah Mengalami Hal Serupa?';
+  if (r.includes('problem') || r.includes('awareness')) return 'Tantangan Utama yang Sering Dihadapi';
+  if (r.includes('insight') || r.includes('light')) return 'Sudut Pandang Baru yang Membuka Wawasan';
+  if (r.includes('cta') || r.includes('curiosity')) return 'Simpan & Ikuti Ulasan Selanjutnya';
+  return 'Simpan Catatan Bermanfaat Ini';
 };
 
 const limitWords = (str: string, maxWords = 10): string => {
@@ -336,7 +275,7 @@ const limitWords = (str: string, maxWords = 10): string => {
   return words.slice(0, maxWords).join(' ');
 };
 
-const getOverlayText = (scriptText: string | undefined, stage: FunnelStage, role: string): string => {
+const getOverlayText = (scriptText: string | undefined, stage: FunnelStage, role: string, headline?: string): string => {
   if (scriptText && scriptText.trim()) {
     const cleaned = scriptText.trim().replace(/^[-*•\d.]+\s*/, '');
     const words = cleaned.split(/\s+/);
@@ -347,7 +286,7 @@ const getOverlayText = (scriptText: string | undefined, stage: FunnelStage, role
       return limitWords(cleaned, 10);
     }
   }
-  return getFallbackOverlayByRole(stage, role);
+  return getFallbackOverlayByRole(stage, role, headline);
 };
 
 interface GoogleFlowSceneItem {
@@ -385,7 +324,7 @@ const getGoogleFlowVideoPack = (
   customDialogues?: { scene1?: string; scene2?: string; scene3?: string }
 ): GoogleFlowSceneItem[] => {
   const stage = normalizeFunnelStage(stageInput);
-  const brandName = activeContext?.brand_context?.brand_name || 'ALCO Engine';
+  const brandName = activeContext?.brand_context?.brand_name || '';
   const creator = customCreator?.trim() || 
     characterDNA?.prompt_assets?.dna_summary_prompt ||
     characterDNA?.identity?.display_name ||
@@ -763,7 +702,7 @@ const buildJson2VideoPayload = (
 ) => {
   const funnelStage = normalizeFunnelStage(activeItem.jenis);
   const funnelRules = getFunnelRules(activeItem.jenis);
-  const brandName = activeContext.brand_context?.brand_name || 'ALCO Content Engine';
+  const brandName = activeContext.brand_context?.brand_name || '';
   const videoModeLabel = getVideoModeLabel(videoModeInput);
 
   const rawScenes = getJson2VideoScenePlan(funnelStage, activeVideo, {
@@ -1061,6 +1000,9 @@ const tryParseJSON = (text: string) => {
 
 const getItemKey = (item?: ContentItem | null) => {
   if (!item) return '';
+  if (item.content_item_id) {
+    return item.content_item_id.replace(/[^a-zA-Z0-9_]/g, '_');
+  }
   const no = item.no !== undefined && item.no !== null ? String(item.no) : '0';
   const tanggal = item.tanggal || '';
   const headline = item.headline || '';
@@ -1131,42 +1073,51 @@ const buildShortImageOverlay = (headline: string, funnelStage: string = 'TOFU'):
 };
 
 const buildDefaultCaptionForImage = (headline: string, funnelStage: string, angleId: string, shortOverlay: string): string => {
-  const lowerH = (headline || '').toLowerCase();
-  if (lowerH.includes('copy ads manual') && lowerH.includes('membunuh bisnismu')) {
-    if (angleId === 'A') {
-      return "Menulis copy ads manual satu per satu sering memakan waktu berjam-jam dan hasilnya belum tentu konsisten. Saat bisnis mulai berkembang, proses manual ini perlahan menguras energi yang seharusnya dipakai untuk scale up. Simak bagaimana sistem alur pesan membantu kamu membuat materi iklan yang terarah dan konsisten.";
-    }
-    if (angleId === 'B') {
-      return "Pernah merasa begini? Menghabiskan seharian hanya untuk merangkai satu copy iklan, tapi performanya tidak sesuai harapan. Masalahnya bukan di kreativitasmu, tapi ketiadaan framework pesan yang teruji.";
-    }
-    return "Satu kesalahan fatal dalam scaling iklan adalah memaksakan penulisan manual tanpa formula terstruktur. Pelajari bagaimana sistem alur narasi memudahkan pembuatan variasi ad copy berkualitas tinggi.";
-  }
+  const cleanHeadline = (headline || '').trim();
 
   if (funnelStage === 'TOFU') {
     if (angleId === 'A') {
-      return `Banyak kreator dan pemilik bisnis terjebak pada proses manual yang melelahkan saat memproduksi konten. ${headline ? `Topik seputar "${headline}"` : 'Masalah ini'} sering kali berakar dari belum adanya alur pesan yang jelas. Simak bagaimana menyederhanakan proses penulisan agar pesan tersampaikan dengan efektif.`;
+      return cleanHeadline
+        ? `Banyak yang menghadapi tantangan seputar "${cleanHeadline}". Sering kali hal ini terjadi karena belum menemukan pendekatan yang tepat. Simak ulasan berikut untuk menemukan sudut pandang baru yang lebih praktis.`
+        : 'Menghadapi tantangan tanpa pemahaman yang tepat sering kali membuat proses terasa melelahkan. Simak ulasan berikut untuk menemukan pendekatan baru yang lebih praktis.';
     }
     if (angleId === 'B') {
-      return "Pernah merasa begini? Sudah luangkan waktu menyusun draf kalimat, tapi saat dibaca ulang rasanya kurang nendang. Biasanya masalahnya bukan pada pemilihan kata yang rumit, melainkan struktur pesan yang belum menargetkan rasa penasaran audiens.";
+      return cleanHeadline
+        ? `Terkait "${cleanHeadline}", sering kali kita merasa sudah berusaha maksimal tapi hasilnya belum sesuai harapan. Masalahnya bukan pada niat, melainkan langkah awal yang perlu disesuaikan.`
+        : 'Sering kali kita merasa sudah berusaha maksimal tapi hasilnya belum sesuai harapan. Masalahnya bukan pada niat, melainkan langkah awal yang perlu disesuaikan.';
     }
-    return "Satu kebiasaan kecil yang sering dilewatkan adalah menguji kejelasan hook sebelum mempublikasikan postingan. Luangkan waktu 30 detik untuk membaca dari sudut pandang audiens awam.";
+    return cleanHeadline
+      ? `Satu wawasan penting mengenai "${cleanHeadline}" adalah mengevaluasi kejelasan tujuan sebelum mengambil tindakan. Luangkan waktu sejenak untuk meninjau kembali pendekatan yang digunakan.`
+      : 'Satu wawasan penting adalah mengevaluasi kejelasan tujuan sebelum mengambil tindakan. Luangkan waktu sejenak untuk meninjau kembali pendekatan yang digunakan.';
   } else if (funnelStage === 'MOFU') {
     if (angleId === 'A') {
-      return "Konsistensi tanpa sistem yang rapi hanya akan berujung pada burnout. Saat kamu memiliki framework alur konten yang terstruktur, setiap ide bisa diubah menjadi materi edukasi yang bernilai tinggi.";
+      return cleanHeadline
+        ? `Terkait "${cleanHeadline}", memahami alur dan metode yang terstruktur membantu mengatasi persoalan secara lebih menyeluruh dan berkelanjutan.`
+        : 'Memahami alur dan metode yang terstruktur membantu mengatasi persoalan secara lebih menyeluruh dan berkelanjutan.';
     }
     if (angleId === 'B') {
-      return "Memposting setiap hari tanpa narasi yang jelas seperti berbicara tanpa arah. Framework konten membantu menghubungkan masalah audiens dengan solusi yang kamu tawarkan secara logis.";
+      return cleanHeadline
+        ? `Pendekatan yang tepat terhadap "${cleanHeadline}" menghubungkan kebutuhan utama dengan solusi yang terbukti secara logis.`
+        : 'Pendekatan yang tepat menghubungkan kebutuhan utama dengan solusi yang terbukti secara logis.';
     }
-    return "Berikut alur framework praktis yang bisa kamu terapkan: Tangkap perhatian dengan hook relevan, bedah masalah intinya, sajikan sudut pandang baru, dan tutup dengan langkah aksi konkret.";
+    return cleanHeadline
+      ? `Berikut poin penting yang perlu diperhatikan seputar "${cleanHeadline}": pahami inti masalah, telaah opsi solusi yang ada, dan ambil langkah terarah.`
+      : 'Berikut poin penting yang perlu diperhatikan: pahami inti masalah, telaah opsi solusi yang ada, dan ambil langkah terarah.';
   } else {
     // BOFU
     if (angleId === 'A') {
-      return "Lebih dari ratusan kreator dan pemilik bisnis telah membuktikan efisiensi alur kerja konten terpadu. Dapatkan akses ke sistem lengkapnya dan mulai kembangkan aset bisnismu sekarang.";
+      return cleanHeadline
+        ? `Dapatkan solusi terpercaya untuk "${cleanHeadline}". Mulai langkah terbaikmu sekarang dan rasakan kemudahan serta manfaat nyatanya.`
+        : 'Dapatkan solusi terpercaya untuk kebutuhanmu. Mulai langkah terbaikmu sekarang dan rasakan kemudahan serta manfaat nyatanya.';
     }
     if (angleId === 'B') {
-      return "Lihat bagaimana sistem otomatisasi dan framework prompt terstruktur memangkas waktu produksi konten secara signifikan. Cek alur kerjanya dan terapkan langsung.";
+      return cleanHeadline
+        ? `Pelajari bagaimana solusi praktis untuk "${cleanHeadline}" dapat membantu mencapai hasil optimal secara efisien.`
+        : 'Pelajari bagaimana solusi praktis ini dapat membantu mencapai hasil optimal secara efisien.';
     }
-    return "Siap membawa produksi konten bisnismu ke level berikutnya? Akses seluruh modul, kalender strategi, dan template workflow siap pakai hari ini.";
+    return cleanHeadline
+      ? `Siap mengambil keputusan terbaik seputar "${cleanHeadline}"? Cek detail lengkapnya sekarang.`
+      : 'Siap mengambil keputusan terbaik untuk kebutuhanmu? Cek detail lengkapnya sekarang.';
   }
 };
 
@@ -2619,8 +2570,9 @@ const getInitialDraft = (
   currentItem?: ContentItem | null,
   currentContext?: SharedContentContext | null
 ) => {
-  const activeItem = currentItem || itemFallback;
-  const activeContext = currentContext || contextFallback;
+  if (!currentItem || !currentContext || !currentContext.brand_context?.brand_name?.trim()) return '';
+  const activeItem = currentItem;
+  const activeContext: SharedContentContext = currentContext;
 
   const funnelStage = normalizeFunnelStage(activeItem.jenis);
   const funnelRules = getFunnelRules(activeItem.jenis);
@@ -3371,13 +3323,13 @@ Image/Illustration Direction: Clean minimalist social media closing card.`,
           script: {
             hook: `Pernah merasa konten kamu sudah dibuat maksimal tapi hasilnya stagnan?`,
             masalah: `Banyak yang asal posting tanpa memperhatikan struktur ${funnelStage}.`,
-            solusi: `Dengan ${activeContext.brand_context?.brand_name || 'ALCO Engine'}, kamu bisa menyusun alur konten ${funnelStage} secara otomatis.`,
+            solusi: activeContext.brand_context?.brand_name ? `Dengan ${activeContext.brand_context.brand_name}, kamu bisa menyusun alur konten ${funnelStage} secara otomatis.` : `Dengan sistem terarah, kamu bisa menyusun alur konten ${funnelStage} secara otomatis.`,
             proof: `Banyak kreator menghemat waktu dan menghasilkan narasi yang lebih terarah.`,
             cta: voiceoverCta
           },
           videoPrompt: "A friendly creator looking at their laptop screen, showing surprise and happiness, warm aesthetic home office, soft background, vertical 9:16.",
           visualPlan: `0-5s: Talent close-up penasaran. 5-15s: Tampilkan rekaman layar dasbor alur konten ${funnelStage}. 15-25s: Penjelasan visual strategi. 25-30s: Tampilan CTA ${safeCta}.`,
-          captionForPost: buildFunnelAlignedVideoCaption(funnelStage, activeItem, { script: { hook: `Pernah merasa konten kamu sudah dibuat maksimal tapi hasilnya stagnan?`, solusi: `Dengan ${activeContext.brand_context?.brand_name || 'ALCO Engine'}, kamu bisa menyusun alur konten ${funnelStage} secara otomatis.`, cta: voiceoverCta } }, voiceoverCta),
+          captionForPost: buildFunnelAlignedVideoCaption(funnelStage, activeItem, { script: { hook: `Pernah merasa konten kamu sudah dibuat maksimal tapi hasilnya stagnan?`, solusi: activeContext.brand_context?.brand_name ? `Dengan ${activeContext.brand_context.brand_name}, kamu bisa menyusun alur konten ${funnelStage} secara otomatis.` : `Dengan sistem terarah, kamu bisa menyusun alur konten ${funnelStage} secara otomatis.`, cta: voiceoverCta } }, voiceoverCta),
           captionInstruction: "Paste teks ini di caption/keterangan postingan setelah aset dibuat."
         },
         {
@@ -3389,14 +3341,14 @@ Image/Illustration Direction: Clean minimalist social media closing card.`,
           voiceoverOutline: `Membuka loop -> Fakta mengejutkan -> Solusi ${funnelStage} -> CTA menggantung`,
           script: {
             hook: `Inilah alasan kenapa alur konten kamu belum efektif...`,
-            masalah: `Membuat konten tanpa penyesuaian tahap ${funnelStage} membuat audiens bingung.`,
-            solusi: `${activeContext.brand_context?.brand_name || 'ALCO Engine'} membantu merapikan alur ${funnelStage} secara instan.`,
+            masalah: `Membuat konten tanpa penyesisuan tahap ${funnelStage} membuat audiens bingung.`,
+            solusi: activeContext.brand_context?.brand_name ? `${activeContext.brand_context.brand_name} membantu merapikan alur ${funnelStage} secara instan.` : `Sistem ini membantu merapikan alur ${funnelStage} secara instan.`,
             proof: `Sistem ini membantu menjaga konsistensi narasi harianmu.`,
             cta: `${voiceoverCta}`
           },
           videoPrompt: "Satisfying looping motion graphic of abstract futuristic clockwork gears spinning seamlessly on a clean minimalist gray background, 3D render vertical 9:16.",
           visualPlan: "0-5s: Teks tebal kontras tinggi berkedip cepat di layar. 5-15s: Animasi transisi corong warna neon. 15-25s: Grafik panah menanjak cepat. 25-30s: Layar meredup cepat bersiap menyambung ke awal loop.",
-          captionForPost: buildFunnelAlignedVideoCaption(funnelStage, activeItem, { script: { hook: `Inilah alasan kenapa alur konten kamu belum efektif...`, solusi: `${activeContext.brand_context?.brand_name || 'ALCO Engine'} membantu merapikan alur ${funnelStage} secara instan.`, cta: voiceoverCta } }, voiceoverCta),
+          captionForPost: buildFunnelAlignedVideoCaption(funnelStage, activeItem, { script: { hook: `Inilah alasan kenapa alur konten kamu belum efektif...`, solusi: activeContext.brand_context?.brand_name ? `${activeContext.brand_context.brand_name} membantu merapikan alur ${funnelStage} secara instan.` : `Sistem ini membantu merapikan alur ${funnelStage} secara instan.`, cta: voiceoverCta } }, voiceoverCta),
           captionInstruction: "Paste teks ini di caption/keterangan postingan setelah aset dibuat."
         },
         {
@@ -3423,7 +3375,7 @@ Image/Illustration Direction: Clean minimalist social media closing card.`,
     }
 
     case 'ugc': {
-      const brandName = activeContext.brand_context?.brand_name || 'ALCO Engine';
+      const brandName = activeContext.brand_context?.brand_name || '';
       const creator = 'a 26-year-old Indonesian content creator wearing a casual beige shirt';
       const setting = 'in a modern minimalist room with natural ambient lighting';
 
@@ -3465,9 +3417,7 @@ export default function ProductionStudioPage() {
   const [characterDNA, setCharacterDNA] = useState<CharacterDNA | null>(null);
   const [savedCharacters, setSavedCharacters] = useState<CharacterDNA[]>([]);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
-  const [selectedProjectId, setSelectedProjectIdState] = useState<string | null>(null);
-  const [activeProjectIdState, setActiveProjectIdState] = useState<string | null>(null);
-  const [effectiveProjectId, setEffectiveProjectId] = useState<string>('default');
+  const [canonicalProjectId, setCanonicalProjectId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'review' | 'image' | 'carousel' | 'video'>('review');
   const [showCharacterModal, setShowCharacterModal] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -3550,10 +3500,27 @@ export default function ProductionStudioPage() {
       return;
     }
 
+    if (!sourceItem) {
+      setRenderError('Item konten tidak ditemukan.');
+      showToast('Item konten tidak ditemukan.');
+      return;
+    }
+
+    const prodCtxResult = buildProductionContext(canonicalProjectId, sharedContextSnapshot, sourceItem, characterDNA);
+    if (!prodCtxResult.isValid || !prodCtxResult.context) {
+      setRenderError(prodCtxResult.error || 'Konteks project tidak sinkron.');
+      showToast(prodCtxResult.error || 'Konteks project tidak sinkron.');
+      return;
+    }
+
     setIsRenderingVideo(true);
 
-    const item = sourceItem || itemFallback;
-    const context = sharedContextSnapshot || contextFallback;
+    const requestProjectId = canonicalProjectId;
+    const requestItemNo = sourceItem.no;
+    const requestItemId = sourceItem.content_item_id;
+
+    const item = sourceItem;
+    const context: SharedContentContext = sharedContextSnapshot;
     const payload = buildJson2VideoPayload(
       activeVideo,
       item,
@@ -3597,6 +3564,17 @@ export default function ProductionStudioPage() {
 
       const data = await res.json().catch(() => ({}));
 
+      // ASYNC GUARD: check if active project or item changed during render call
+      if (
+        getActiveProjectId() !== requestProjectId ||
+        !sourceItem ||
+        (requestItemId && sourceItem.content_item_id !== requestItemId) ||
+        sourceItem.no !== requestItemNo
+      ) {
+        console.warn('[Async Guard] Discarding stale video render response');
+        return;
+      }
+
       if (!res.ok) {
         const errMsg =
           data?.error ||
@@ -3619,6 +3597,14 @@ export default function ProductionStudioPage() {
       }
       setRenderJobData(data);
     } catch (err: any) {
+      if (
+        getActiveProjectId() !== requestProjectId ||
+        !sourceItem ||
+        (requestItemId && sourceItem.content_item_id !== requestItemId) ||
+        sourceItem.no !== requestItemNo
+      ) {
+        return;
+      }
       setRenderError(
         'Render langsung belum berhasil. Payload sudah dibuat, gunakan Copy Payload untuk render manual di dashboard JSON2Video.'
       );
@@ -3629,7 +3615,11 @@ export default function ProductionStudioPage() {
 
   const handleCheckRenderStatus = async (queryId?: string) => {
     const targetId = queryId || renderJobId;
-    if (!targetId || isCheckingStatus) return;
+    if (!targetId || isCheckingStatus || !canonicalProjectId) return;
+
+    const requestProjectId = canonicalProjectId;
+    const requestItemNo = sourceItem?.no;
+    const requestItemId = sourceItem?.content_item_id;
 
     setIsCheckingStatus(true);
     setRenderError(null);
@@ -3639,6 +3629,17 @@ export default function ProductionStudioPage() {
         headers: buildJson2VideoRequestHeaders(),
       });
       const data = await res.json().catch(() => ({}));
+
+      // ASYNC GUARD
+      if (
+        getActiveProjectId() !== requestProjectId ||
+        canonicalProjectId !== requestProjectId ||
+        !sourceItem ||
+        (requestItemId && sourceItem.content_item_id !== requestItemId) ||
+        sourceItem.no !== requestItemNo
+      ) {
+        return;
+      }
 
       if (!res.ok) {
         const errMsg =
@@ -3650,6 +3651,14 @@ export default function ProductionStudioPage() {
         setRenderJobData(data);
       }
     } catch (err: any) {
+      if (
+        getActiveProjectId() !== requestProjectId ||
+        !sourceItem ||
+        (requestItemId && sourceItem.content_item_id !== requestItemId) ||
+        sourceItem.no !== requestItemNo
+      ) {
+        return;
+      }
       setRenderError('Terjadi masalah koneksi saat memeriksa status render video.');
     } finally {
       setIsCheckingStatus(false);
@@ -3668,9 +3677,11 @@ export default function ProductionStudioPage() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    if (!promptText || !promptText.trim() || !!imageGeneratingKey) return;
-    const itemNo = sourceItem?.no || 1;
-    const key = `${itemNo}_${angleId}`;
+    if (!promptText || !promptText.trim() || !!imageGeneratingKey || !canonicalProjectId) return;
+    const requestProjectId = canonicalProjectId;
+    const requestItemNo = sourceItem?.no || 1;
+    const requestItemId = sourceItem?.content_item_id;
+    const key = `${requestItemNo}_${angleId}`;
 
     setImageGeneratingKey(key);
     setImageGenerateError(null);
@@ -3687,6 +3698,18 @@ export default function ProductionStudioPage() {
 
       const data = await res.json();
 
+      // ASYNC GUARD
+      if (
+        getActiveProjectId() !== requestProjectId ||
+        canonicalProjectId !== requestProjectId ||
+        !sourceItem ||
+        (requestItemId && sourceItem.content_item_id !== requestItemId) ||
+        sourceItem.no !== requestItemNo
+      ) {
+        console.warn('[Async Guard] Discarding stale generated image response');
+        return;
+      }
+
       if (!res.ok || !data.imageDataUrl) {
         const errMsg = data.error || data.message || "Gagal generate image. Coba lagi nanti.";
         setImageGenerateError(errMsg);
@@ -3701,6 +3724,14 @@ export default function ProductionStudioPage() {
         }));
       }
     } catch (err: any) {
+      if (
+        getActiveProjectId() !== requestProjectId ||
+        !sourceItem ||
+        (requestItemId && sourceItem.content_item_id !== requestItemId) ||
+        sourceItem.no !== requestItemNo
+      ) {
+        return;
+      }
       console.error('Client Image Generation Error:', err);
       setImageGenerateError("Gagal generate image. Coba lagi nanti.");
     } finally {
@@ -3752,8 +3783,21 @@ export default function ProductionStudioPage() {
       return;
     }
 
-    const item = sourceItem || itemFallback;
-    const context = sharedContextSnapshot || contextFallback;
+    if (!sourceItem) {
+      setRenderError('Item konten tidak ditemukan.');
+      showToast('Item konten tidak ditemukan.');
+      return;
+    }
+
+    const prodCtxResult = buildProductionContext(canonicalProjectId, sharedContextSnapshot, sourceItem, characterDNA);
+    if (!prodCtxResult.isValid || !prodCtxResult.context) {
+      setRenderError(prodCtxResult.error || 'Konteks project tidak sinkron.');
+      showToast(prodCtxResult.error || 'Konteks project tidak sinkron.');
+      return;
+    }
+
+    const item = sourceItem;
+    const context: SharedContentContext = sharedContextSnapshot;
     const payload = buildJson2VideoPayload(
       activeVideo,
       item,
@@ -3805,40 +3849,101 @@ export default function ProductionStudioPage() {
     setJson2VideoPayload(null);
     setSourceItem(null);
     setSharedContextSnapshot(null);
+    setRenderJobId(null);
+    setRenderJobData(null);
 
     try {
-      const storedItem = localStorage.getItem('alco_selected_item');
-      const storedContext = localStorage.getItem('alco_shared_context');
-      const storedSelectedProjId = localStorage.getItem('alco_selected_project_id');
-      const currentActiveProjId = getActiveProjectId();
+      let paramProjId: string | null = null;
+      let paramContentItemId: string | null = null;
+      let paramItemNo: number | null = null;
+      let tabParam: string | null = null;
 
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        paramProjId = urlParams.get('projectId');
+        paramContentItemId = urlParams.get('contentItemId');
+        const noStr = urlParams.get('itemNo');
+        if (noStr) {
+          const parsedNo = parseInt(noStr, 10);
+          if (!isNaN(parsedNo)) paramItemNo = parsedNo;
+        }
+        tabParam = urlParams.get('tab');
+      }
+
+      if (tabParam === 'image' || tabParam === 'carousel' || tabParam === 'video' || tabParam === 'review') {
+        setActiveTab(tabParam);
+      }
+
+      const activeProjId = getActiveProjectId();
+
+      // Canonical Project ID Resolution:
+      // Prefer explicit URL parameter from calendar routing; fallback to global active project
+      // Strictly filter out 'default', 'default_project', and empty values
+      let resolvedCanonicalId: string | null = null;
+      if (paramProjId && paramProjId.trim() && paramProjId !== 'default' && paramProjId !== 'default_project') {
+        resolvedCanonicalId = paramProjId.trim();
+        // Keep active project in sync with canonical ID
+        setActiveProjectId(resolvedCanonicalId);
+      } else if (activeProjId && activeProjId.trim() && activeProjId !== 'default' && activeProjId !== 'default_project') {
+        resolvedCanonicalId = activeProjId.trim();
+      }
+
+      if (!resolvedCanonicalId) {
+        setCanonicalProjectId(null);
+        setSharedContextSnapshot(null);
+        setSourceItem(null);
+        setIsLoaded(true);
+        return;
+      }
+
+      setCanonicalProjectId(resolvedCanonicalId);
+
+      // Load project-scoped shared context
+      const parsedContext = loadProjectSharedContext(resolvedCanonicalId);
+      setSharedContextSnapshot(parsedContext);
+
+      // Load project calendar items
+      const calendarItems = loadProjectCalendarItems(resolvedCanonicalId);
+
+      // Find target item strictly belonging to canonical project
       let parsedItem: ContentItem | null = null;
-      let parsedContext: SharedContentContext | null = null;
 
-      if (storedItem) {
-        parsedItem = JSON.parse(storedItem);
+      // 1. Try finding by contentItemId
+      if (paramContentItemId && calendarItems.length > 0) {
+        parsedItem = calendarItems.find((it: any) => it.content_item_id === paramContentItemId) || null;
+      }
+
+      // 2. Try finding by itemNo
+      if (!parsedItem && paramItemNo !== null && calendarItems.length > 0) {
+        parsedItem = calendarItems.find((it: any) => it.no === paramItemNo) || null;
+      }
+
+      // 3. Try finding by project's saved selected item
+      if (!parsedItem) {
+        parsedItem = loadProjectSelectedItem(resolvedCanonicalId);
+      }
+
+      // 4. If still not found and we have calendar items, pick the first
+      if (!parsedItem && calendarItems.length > 0) {
+        parsedItem = calendarItems[0];
+      }
+
+      // Ensure item has project identity attached
+      if (parsedItem) {
+        parsedItem = {
+          ...parsedItem,
+          projectId: resolvedCanonicalId,
+          project_id: resolvedCanonicalId,
+        };
         setSourceItem(parsedItem);
+        saveProjectSelectedItem(resolvedCanonicalId, parsedItem);
+      } else {
+        setSourceItem(null);
       }
-      if (storedContext) {
-        parsedContext = JSON.parse(storedContext);
-        setSharedContextSnapshot(parsedContext);
-      }
 
-      const itemProjectId = parsedItem?.projectId || (parsedItem as any)?.project_id;
-      const contextProjectId = parsedContext?.project_id;
-
-      const resolvedSelectedProjId = storedSelectedProjId || itemProjectId || contextProjectId || null;
-      setSelectedProjectIdState(resolvedSelectedProjId);
-      setActiveProjectIdState(currentActiveProjId);
-
-      // Primary project ID for loading and saving studio output
-      // Do not fallback to default if selected item / context has a projectId
-      const projId = resolvedSelectedProjId || currentActiveProjId || 'default';
-      setEffectiveProjectId(projId);
-
-      const charList = getProjectSavedCharacters(projId) as CharacterDNA[];
+      const charList = getProjectSavedCharacters(resolvedCanonicalId) as CharacterDNA[];
       setSavedCharacters(charList);
-      const activeCharId = getProjectActiveCharacterId(projId);
+      const activeCharId = getProjectActiveCharacterId(resolvedCanonicalId);
       setSelectedCharacterId(activeCharId);
 
       if (activeCharId && charList.length > 0) {
@@ -3846,11 +3951,11 @@ export default function ProductionStudioPage() {
         if (found) {
           setCharacterDNA(found);
         } else {
-          const storedDNA = getProjectCharacterDNA(projId);
+          const storedDNA = getProjectCharacterDNA(resolvedCanonicalId);
           if (storedDNA) setCharacterDNA(storedDNA);
         }
       } else {
-        const storedDNA = getProjectCharacterDNA(projId);
+        const storedDNA = getProjectCharacterDNA(resolvedCanonicalId);
         if (storedDNA) {
           setCharacterDNA(storedDNA);
           if (storedDNA.character_id) {
@@ -3865,18 +3970,18 @@ export default function ProductionStudioPage() {
       if (parsedItem) {
         const itemKey = getItemKey(parsedItem);
         
-        const storedImage = loadProjectData(projId, `studio_image_${itemKey}`);
-        const storedCarousel = loadProjectData(projId, `studio_carousel_${itemKey}`);
-        const storedVideo = loadProjectData(projId, `studio_video_${itemKey}`);
-        const storedUgc = loadProjectData(projId, `studio_ugc_${itemKey}`);
-        const storedReview = loadProjectData(projId, `studio_review_${itemKey}`);
-        const storedRevision = loadProjectData(projId, `studio_revision_${itemKey}`);
+        const storedImage = loadProjectData(resolvedCanonicalId, `studio_image_${itemKey}`);
+        const storedCarousel = loadProjectData(resolvedCanonicalId, `studio_carousel_${itemKey}`);
+        const storedVideo = loadProjectData(resolvedCanonicalId, `studio_video_${itemKey}`);
+        const storedUgc = loadProjectData(resolvedCanonicalId, `studio_ugc_${itemKey}`);
+        const storedReview = loadProjectData(resolvedCanonicalId, `studio_review_${itemKey}`);
+        const storedRevision = loadProjectData(resolvedCanonicalId, `studio_revision_${itemKey}`);
 
         if (storedImage && !isErrorContent(storedImage)) {
           setImageOutput(storedImage);
         } else {
           if (storedImage && isErrorContent(storedImage)) {
-            removeProjectData(projId, `studio_image_${itemKey}`);
+            removeProjectData(resolvedCanonicalId, `studio_image_${itemKey}`);
           }
           setImageOutput(getInitialDraft('image', parsedItem, parsedContext));
         }
@@ -3885,7 +3990,7 @@ export default function ProductionStudioPage() {
           setCarouselOutput(storedCarousel);
         } else {
           if (storedCarousel && isErrorContent(storedCarousel)) {
-            removeProjectData(projId, `studio_carousel_${itemKey}`);
+            removeProjectData(resolvedCanonicalId, `studio_carousel_${itemKey}`);
           }
           setCarouselOutput(getInitialDraft('carousel', parsedItem, parsedContext));
         }
@@ -3894,7 +3999,7 @@ export default function ProductionStudioPage() {
           setVideoOutput(storedVideo);
         } else {
           if (storedVideo && isErrorContent(storedVideo)) {
-            removeProjectData(projId, `studio_video_${itemKey}`);
+            removeProjectData(resolvedCanonicalId, `studio_video_${itemKey}`);
           }
           setVideoOutput(getInitialDraft('video', parsedItem, parsedContext));
         }
@@ -3903,7 +4008,7 @@ export default function ProductionStudioPage() {
           setUgcOutput(storedUgc);
         } else {
           if (storedUgc && isErrorContent(storedUgc)) {
-            removeProjectData(projId, `studio_ugc_${itemKey}`);
+            removeProjectData(resolvedCanonicalId, `studio_ugc_${itemKey}`);
           }
           setUgcOutput(getInitialDraft('ugc', parsedItem, parsedContext));
         }
@@ -3912,7 +4017,7 @@ export default function ProductionStudioPage() {
           setReviewOutput(storedReview);
         } else {
           if (storedReview && isErrorContent(storedReview)) {
-            removeProjectData(projId, `studio_review_${itemKey}`);
+            removeProjectData(resolvedCanonicalId, `studio_review_${itemKey}`);
           }
           setReviewOutput(getInitialDraft('review', parsedItem, parsedContext));
         }
@@ -3930,47 +4035,47 @@ export default function ProductionStudioPage() {
     }
   }, []);
 
-  // Save setters with local storage persistence using effectiveProjectId
+  // Save setters with local storage persistence using canonicalProjectId
   const saveImageOutput = (val: string) => {
     setImageOutput(val);
-    if (sourceItem) {
+    if (sourceItem && canonicalProjectId) {
       const itemKey = getItemKey(sourceItem);
-      saveProjectData(effectiveProjectId, `studio_image_${itemKey}`, val);
+      saveProjectData(canonicalProjectId, `studio_image_${itemKey}`, val);
     }
   };
   const saveCarouselOutput = (val: string) => {
     setCarouselOutput(val);
-    if (sourceItem) {
+    if (sourceItem && canonicalProjectId) {
       const itemKey = getItemKey(sourceItem);
-      saveProjectData(effectiveProjectId, `studio_carousel_${itemKey}`, val);
+      saveProjectData(canonicalProjectId, `studio_carousel_${itemKey}`, val);
     }
   };
   const saveVideoOutput = (val: string) => {
     setVideoOutput(val);
-    if (sourceItem) {
+    if (sourceItem && canonicalProjectId) {
       const itemKey = getItemKey(sourceItem);
-      saveProjectData(effectiveProjectId, `studio_video_${itemKey}`, val);
+      saveProjectData(canonicalProjectId, `studio_video_${itemKey}`, val);
     }
   };
   const saveUgcOutput = (val: string) => {
     setUgcOutput(val);
-    if (sourceItem) {
+    if (sourceItem && canonicalProjectId) {
       const itemKey = getItemKey(sourceItem);
-      saveProjectData(effectiveProjectId, `studio_ugc_${itemKey}`, val);
+      saveProjectData(canonicalProjectId, `studio_ugc_${itemKey}`, val);
     }
   };
   const saveReviewOutput = (val: string) => {
     setReviewOutput(val);
-    if (sourceItem) {
+    if (sourceItem && canonicalProjectId) {
       const itemKey = getItemKey(sourceItem);
-      saveProjectData(effectiveProjectId, `studio_review_${itemKey}`, val);
+      saveProjectData(canonicalProjectId, `studio_review_${itemKey}`, val);
     }
   };
   const saveRevisionNotes = (val: string) => {
     setRevisionNotes(val);
-    if (sourceItem) {
+    if (sourceItem && canonicalProjectId) {
       const itemKey = getItemKey(sourceItem);
-      saveProjectData(effectiveProjectId, `studio_revision_${itemKey}`, val);
+      saveProjectData(canonicalProjectId, `studio_revision_${itemKey}`, val);
     }
   };
 
@@ -3980,7 +4085,9 @@ export default function ProductionStudioPage() {
 
   const handleSelectCharacter = (charId: string | null) => {
     setSelectedCharacterId(charId);
-    saveProjectActiveCharacterId(effectiveProjectId, charId);
+    if (canonicalProjectId) {
+      saveProjectActiveCharacterId(canonicalProjectId, charId);
+    }
     if (!charId) {
       setCharacterDNA(null);
       showToast('Karakter dimatikan (No Character)');
@@ -3998,8 +4105,8 @@ export default function ProductionStudioPage() {
   };
 
   const handleUpdateProgress = (newProgress: Partial<ProductionProgress>) => {
-    const current = sourceItem || itemFallback;
-    if (!current) return;
+    const current = sourceItem;
+    if (!current || !canonicalProjectId) return;
     const updated: ContentItem = {
       ...current,
       productionProgress: {
@@ -4015,17 +4122,8 @@ export default function ProductionStudioPage() {
       },
     };
     setSourceItem(updated);
-    try {
-      localStorage.setItem('alco_selected_item', JSON.stringify(updated));
-      localStorage.setItem('alco_selected_content_item', JSON.stringify(updated));
-    } catch (e) {
-      console.error('Failed to sync item to localStorage', e);
-    }
-    const pid = effectiveProjectId || activeProjectIdState || getActiveProjectId() || '';
-    if (pid) {
-      saveProjectData(pid, 'selectedContentItem', updated);
-      updateItemInProject(pid, updated);
-    }
+    saveProjectSelectedItem(canonicalProjectId, updated);
+    updateItemInProject(canonicalProjectId, updated);
   };
 
   const handleCopyText = (
@@ -4072,8 +4170,25 @@ export default function ProductionStudioPage() {
       let promptTitle = '';
       let formatDirection = '';
 
-      const activeItem = sourceItem || itemFallback;
-      const activeContext = sharedContextSnapshot || contextFallback;
+      if (!sourceItem) {
+        showToast('Pilih item konten terlebih dahulu.');
+        return;
+      }
+
+      const prodCtxResult = buildProductionContext(canonicalProjectId, sharedContextSnapshot, sourceItem, characterDNA);
+      if (!prodCtxResult.isValid || !prodCtxResult.context) {
+        setGenerationError(prodCtxResult.error || 'Konteks project tidak sinkron.');
+        showToast(prodCtxResult.error || 'Konteks project tidak sinkron.');
+        return;
+      }
+      const productionContext = prodCtxResult.context;
+
+      const requestProjectId = canonicalProjectId;
+      const requestItemNo = sourceItem.no;
+      const requestItemId = sourceItem.content_item_id;
+
+      const activeItem = sourceItem;
+      const activeContext: SharedContentContext = sharedContextSnapshot;
       const funnelStage = normalizeFunnelStage(activeItem.jenis);
       const funnelRules = getFunnelRules(activeItem.jenis);
       const funnelPromptBlock = buildFunnelPromptBlock(activeItem.jenis);
@@ -4145,7 +4260,7 @@ STRUKTUR JSON CANONICAL WAJIB:
         "funnelStage": "${funnelStage}",
         "tujuanKonten": "${funnelRules.goal}",
         "ideUtama": "${activeItem.headline || 'Topik Konten'} (TETAP UTUH TANPA TERPOTONG)",
-        "audienceContext": "${funnelRules.audienceState} - ${activeContext.audience_context?.primary_audience || 'Target Audiens'}",
+        "audienceContext": "${funnelRules.audienceState} - ${activeContext.audience_context?.primary_audience || ''}",
         "angle": "[Nama angle visual]",
         "emosiUtama": "[Emosi spesifik sesuai corong ${funnelStage}]",
         "pesanVisual": "[Pesan yang tersampaikan lewat adegan visual]"
@@ -4161,7 +4276,7 @@ STRUKTUR JSON CANONICAL WAJIB:
       "captionForPost": "[Tulis caption Instagram yang menjawab hook image sesuai funnel]",
       "captionInstruction": "Paste teks ini di caption/keterangan postingan setelah gambar dibuat.",
       "messageAlignmentCheck": { "isAligned": true, "issue": "", "fixedTextOverlay": "[Tulis hook pendek utuh 6-10 kata, tanpa ellipsis]", "reason": "[Penjelasan keselarasan corong ${funnelStage}]" },
-      "strategyBrief": { "funnelStage": "${funnelStage}", "tujuanKonten": "${funnelRules.goal}", "ideUtama": "${activeItem.headline || 'Topik Konten'}", "audienceContext": "${funnelRules.audienceState} - ${activeContext.audience_context?.primary_audience || 'Target Audiens'}", "angle": "[Nama angle visual B]", "emosiUtama": "[Emosi spesifik]", "pesanVisual": "[Pesan visual]" },
+      "strategyBrief": { "funnelStage": "${funnelStage}", "tujuanKonten": "${funnelRules.goal}", "ideUtama": "${activeItem.headline || 'Topik Konten'}", "audienceContext": "${funnelRules.audienceState} - ${activeContext.audience_context?.primary_audience || ''}", "angle": "[Nama angle visual B]", "emosiUtama": "[Emosi spesifik]", "pesanVisual": "[Pesan visual]" },
       "finalPrompt": "Buatkan saya image untuk konten Instagram (format 4:5 vertical editorial):\\n\\nFunnel Stage: ${funnelStage}\\nVisual Objective: [Tujuan visual konkret]\\nSubject: [Deskripsi subjek]\\nAction: [Aktivitas fisik konkret]\\nExpression: [Ekspresi wajah mikro]\\nEnvironment: [Ruangan/latar]\\nComposition: [Subjek di kanan tengah, ruang negatif lapang di kiri atas]\\nLighting: [Cahaya alami lembut]\\nCamera: [50mm lens photography]\\nVisual Style: [Clean editorial Instagram photography]\\nTypography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.\\nText Overlay: \\\"[hook pendek utuh tanpa ellipsis]\\\"\\nNegative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliche, overdesigned graphic."
     },
     {
@@ -4173,7 +4288,7 @@ STRUKTUR JSON CANONICAL WAJIB:
       "captionForPost": "[Tulis caption Instagram yang menjawab hook image sesuai funnel]",
       "captionInstruction": "Paste teks ini di caption/keterangan postingan setelah gambar dibuat.",
       "messageAlignmentCheck": { "isAligned": true, "issue": "", "fixedTextOverlay": "[Tulis hook pendek utuh 6-10 kata, tanpa ellipsis]", "reason": "[Penjelasan keselarasan corong ${funnelStage}]" },
-      "strategyBrief": { "funnelStage": "${funnelStage}", "tujuanKonten": "${funnelRules.goal}", "ideUtama": "${activeItem.headline || 'Topik Konten'}", "audienceContext": "${funnelRules.audienceState} - ${activeContext.audience_context?.primary_audience || 'Target Audiens'}", "angle": "[Nama angle visual C]", "emosiUtama": "[Emosi spesifik]", "pesanVisual": "[Pesan visual]" },
+      "strategyBrief": { "funnelStage": "${funnelStage}", "tujuanKonten": "${funnelRules.goal}", "ideUtama": "${activeItem.headline || 'Topik Konten'}", "audienceContext": "${funnelRules.audienceState} - ${activeContext.audience_context?.primary_audience || ''}", "angle": "[Nama angle visual C]", "emosiUtama": "[Emosi spesifik]", "pesanVisual": "[Pesan visual]" },
       "finalPrompt": "Buatkan saya image untuk konten Instagram (format 4:5 vertical editorial):\\n\\nFunnel Stage: ${funnelStage}\\nVisual Objective: [Tujuan visual konkret]\\nSubject: [Deskripsi subjek]\\nAction: [Aktivitas fisik konkret]\\nExpression: [Ekspresi wajah mikro]\\nEnvironment: [Ruangan/latar]\\nComposition: [Subjek di kanan tengah, ruang negatif lapang di kiri atas]\\nLighting: [Cahaya alami lembut]\\nCamera: [50mm lens photography]\\nVisual Style: [Clean editorial Instagram photography]\\nTypography: Headline besar 3-5 baris di kiri atas, editorial typography, high contrast, satu frasa penting boleh diberi subtle highlight, tidak ada teks kecil lain.\\nText Overlay: \\\"[hook pendek utuh tanpa ellipsis]\\\"\\nNegative Prompt: hard selling ads, cluttered poster, too much text, generic stock photo, unreadable text, distorted face, extra fingers, corporate cliche, overdesigned graphic."
     }
   ]
@@ -4565,36 +4680,16 @@ Pastikan evaluasi memeriksa kepatuhan aturan funnel ${funnelStage}:
         ? `\n\n### CATATAN REVISI KHUSUS DARI USER (WAJIB DIIKUTI):\n- ${revisionNotes.trim()}`
         : '';
 
-      const brandVis = activeContext.brand_visual_context;
-      const visualIdentityBlock = brandVis ? `
-### BRAND VISUAL IDENTITY & STYLE RULES:
-- Visual Style: ${brandVis.visual_style || '-'}
-- Color Palette: ${Array.isArray(brandVis.color_palette) ? brandVis.color_palette.join(', ') : (brandVis.color_palette || '-')}
-- Typography Style: ${brandVis.typography_style || '-'}
-- Image Style Rules: ${Array.isArray(brandVis.image_style_rules) ? brandVis.image_style_rules.join('; ') : (brandVis.image_style_rules || '-')}
-- Design Mood: ${brandVis.design_mood || '-'}` : '';
+      const formattedContext = formatProductionContextForPrompt(productionContext, { includeCharacter: true });
 
       const systemPrompt = `Buatkan ${promptTitle} (Bahasa Indonesia, profesional).
+
+${ANTI_DRIFT_RULES}
 
 ### FUNNEL STRATEGY RULES CONTRACT:
 ${funnelPromptBlock}
 
-### ITEM:
-No: #${activeItem.no} | Funnel: ${activeItem.jenis} (${funnelStage}) | Objective: ${activeItem.tujuan} | Hook: ${activeItem.hookType} | Format: ${activeItem.format}
-Headline: ${activeItem.headline}
-Body: ${activeItem.body}
-Caption: ${activeItem.caption}
-Visual: ${activeItem.visual}
-CTA: ${activeItem.cta}
-Keterangan: ${activeItem.keterangan}
-
-### BRAND:
-Name: ${activeContext.brand_context?.brand_name}
-Summary: ${activeContext.brand_context?.brand_summary}
-Voice: ${activeContext.brand_context?.brand_voice}
-Audience: ${activeContext.audience_context?.primary_audience}
-USP: ${activeContext.strategy_context?.usp?.join(', ')}
-Offer: ${activeContext.strategy_context?.main_offer}${visualIdentityBlock}
+${formattedContext}
 
 ### OUTPUT FORMAT:
 ${formatDirection}${revisionDirective}`;
@@ -4636,6 +4731,19 @@ ${formatDirection}${revisionDirective}`;
         }
 
         const data = await response.json();
+
+        // ASYNC GUARD: check if user switched project or item during generation
+        if (
+          getActiveProjectId() !== requestProjectId ||
+          canonicalProjectId !== requestProjectId ||
+          !sourceItem ||
+          (requestItemId && sourceItem.content_item_id !== requestItemId) ||
+          sourceItem.no !== requestItemNo
+        ) {
+          console.warn('[Async Guard] Discarding stale production AI generation response');
+          return;
+        }
+
         const generatedText = data.text || '';
         
         if (generatedText) {
@@ -4706,11 +4814,59 @@ ${formatDirection}${revisionDirective}`;
     }
   };
 
-  // Get current active content based on state or defaults
-  const activeItem = sourceItem || itemFallback;
-  const activeContext = sharedContextSnapshot || contextFallback;
+  // Strictly typed active content item and shared context for studio hooks and panels
+  const activeItem: ContentItem = useMemo(() => {
+    return sourceItem || {
+      no: 1,
+      tanggal: new Date().toISOString().split('T')[0],
+      jenis: 'TOFU',
+      tujuan: 'Awareness',
+      hookType: 'Question',
+      headline: 'Konten Edukasi',
+      body: '',
+      caption: '',
+      format: 'Single',
+      referensi: '',
+      visual: '',
+      keterangan: '',
+      projectId: canonicalProjectId || '',
+      project_id: canonicalProjectId || '',
+      content_item_id: canonicalProjectId ? `${canonicalProjectId}_temp_1` : 'temp_1',
+    };
+  }, [sourceItem, canonicalProjectId]);
+
+  const activeContext: SharedContentContext = useMemo(() => {
+    return sharedContextSnapshot || {
+      project_id: canonicalProjectId || '',
+      project_name: '',
+      source: { origin: 'manual_context' },
+      system_flags: { is_complete_for_planning: false, missing_required_fields: ['brand_context', 'strategy_context'] },
+      brand_context: {
+        brand_name: '',
+        category: '',
+        brand_summary: '',
+        brand_voice: '',
+      },
+      audience_context: {
+        primary_audience: '',
+        pain_points: [],
+        desires: [],
+        objections: [],
+      },
+      strategy_context: {
+        positioning: '',
+        usp: [],
+        main_offer: '',
+        offer_benefits: [],
+        core_message: '',
+        copy_direction: [],
+        content_pillars: [],
+      },
+    };
+  }, [sharedContextSnapshot, canonicalProjectId]);
 
   const currentOutputText = useMemo(() => {
+    if (!activeItem) return '';
     if (activeTab === 'image') return imageOutput;
     if (activeTab === 'carousel') return carouselOutput;
     if (activeTab === 'video') return videoOutput;
@@ -4727,6 +4883,7 @@ ${formatDirection}${revisionDirective}`;
 
   // Memoized parsed image angles package
   const imageAnglesPackage = useMemo<ImageAnglesPackage | null>(() => {
+    if (!activeItem) return null;
     const textToParse = imageOutput || getInitialDraft('image', activeItem, activeContext);
     const normalizedJson = validateAndNormalizeImageAngles(textToParse, activeItem, activeContext);
     if (!normalizedJson) {
@@ -4849,10 +5006,10 @@ ${formatDirection}${revisionDirective}`;
     const checks = [
       { id: 'source', label: 'Source Item Tersedia', status: !!sourceItem },
       { id: 'context', label: 'Strategy Context Tersedia', status: !!sharedContextSnapshot },
-      { id: 'headline', label: 'Headline Tersedia', status: !!activeItem.headline },
-      { id: 'objective', label: 'Objective / Tujuan Tersedia', status: !!activeItem.tujuan },
-      { id: 'cta', label: 'Call to Action (CTA) Tersedia', status: !!activeItem.cta },
-      { id: 'visual', label: 'Visual Direction Tersedia', status: !!activeItem.visual }
+      { id: 'headline', label: 'Headline Tersedia', status: !!activeItem?.headline },
+      { id: 'objective', label: 'Objective / Tujuan Tersedia', status: !!activeItem?.tujuan },
+      { id: 'cta', label: 'Call to Action (CTA) Tersedia', status: !!activeItem?.cta },
+      { id: 'visual', label: 'Visual Direction Tersedia', status: !!activeItem?.visual }
     ];
     const passedCount = checks.filter(c => c.status).length;
     const percentage = Math.round((passedCount / checks.length) * 100);
@@ -4933,9 +5090,10 @@ ${formatDirection}${revisionDirective}`;
               <AlertCircle size={32} />
             </div>
             <div className="space-y-2">
-              <h3 className="text-sm font-bold text-[#1f2933]">Belum Ada Item Kalender yang Dipilih</h3>
+              <h3 className="text-sm font-bold text-[#1f2933]">Data Konten Project Tidak Ditemukan</h3>
               <p className="text-xs text-stone-600 leading-relaxed">
-                Silakan kembali ke Kalender Utama dan pilih salah satu item konten dengan mengklik tombol <span className="text-primary font-semibold">Buka Production Studio</span> pada panel detail item.
+                Item konten untuk project <span className="font-semibold text-stone-800 font-mono">[{canonicalProjectId || 'Belum Dipilih'}]</span> tidak ditemukan atau belum dipilih.
+                Silakan kembali ke Kalender Utama dan klik <span className="text-primary font-semibold">Buka Production Studio</span> pada item kalender aktif.
               </p>
             </div>
             <button
@@ -4955,7 +5113,7 @@ ${formatDirection}${revisionDirective}`;
     <ContentEngineShell
       title="ALCO Production Studio"
       subtitle="Workspace produksi aset dari kalender Content Engine"
-      eyebrow={activeContext.brand_context?.brand_name || 'Studio'}
+      eyebrow={activeContext?.brand_context?.brand_name || 'Studio'}
       actions={(
         <>
           <GeminiApiKeyControl onToast={showToast} variant="compact" />
@@ -4993,27 +5151,16 @@ ${formatDirection}${revisionDirective}`;
         )}
       </AnimatePresence>
 
-      {/* Multi-Project Warning Banner */}
-      {selectedProjectId && activeProjectIdState && selectedProjectId !== activeProjectIdState && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 md:px-8 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-amber-800 font-medium">
-            <AlertTriangle size={15} className="shrink-0 text-amber-600" />
-            <span>Item ini berasal dari project berbeda.</span>
-            <span className="text-xs text-stone-500">
-              (Project Item: <strong className="text-stone-800">{selectedProjectId}</strong> vs Active Project: <strong className="text-stone-800">{activeProjectIdState}</strong>)
-            </span>
+      {/* Project Status Info Strip */}
+      {canonicalProjectId && (
+        <div className="bg-stone-50 border-b border-stone-200 px-4 md:px-8 py-2 flex items-center justify-between gap-3 text-xs text-stone-600">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Project ID:</span>
+            <span className="font-mono text-stone-800 font-semibold bg-stone-200/70 px-2 py-0.5 rounded">{canonicalProjectId}</span>
+            {sharedContextSnapshot?.brand_context?.brand_name && (
+              <span className="text-stone-500">({sharedContextSnapshot.brand_context.brand_name})</span>
+            )}
           </div>
-          <button
-            onClick={() => {
-              setActiveProjectId(selectedProjectId);
-              setActiveProjectIdState(selectedProjectId);
-              setEffectiveProjectId(selectedProjectId);
-              showToast(`Project aktif dialihkan ke: ${selectedProjectId}`);
-            }}
-            className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs rounded-lg transition shadow-sm flex items-center gap-1.5"
-          >
-            Gunakan Project Ini
-          </button>
         </div>
       )}
 
@@ -5214,7 +5361,7 @@ ${formatDirection}${revisionDirective}`;
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-0.5">
                   <div className="text-[11px] font-semibold text-stone-500">Nama Brand</div>
-                  <p className="text-xs text-[#1f2933] font-bold">{activeContext.brand_context?.brand_name || 'ALCO Engine'}</p>
+                  <p className="text-xs text-[#1f2933] font-bold">{activeContext.brand_context?.brand_name || '-'}</p>
                 </div>
                 <div className="space-y-0.5">
                   <div className="text-[11px] font-semibold text-stone-500">Suara Brand</div>
@@ -5548,16 +5695,18 @@ ${formatDirection}${revisionDirective}`;
               {/* Modal Body: Complete CharacterDNASection with full functionality */}
               <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
                 <CharacterDNASection 
-                  projectId={effectiveProjectId}
+                  projectId={canonicalProjectId || ''}
                   activeCharacterId={selectedCharacterId}
                   onSelectCharacter={handleSelectCharacter}
                   onDNAUpdate={(dna) => {
                     setCharacterDNA(dna);
-                    const refreshed = getProjectSavedCharacters(effectiveProjectId);
-                    setSavedCharacters(refreshed);
-                    if (dna?.character_id) {
-                      setSelectedCharacterId(dna.character_id);
-                      saveProjectActiveCharacterId(effectiveProjectId, dna.character_id);
+                    if (canonicalProjectId) {
+                      const refreshed = getProjectSavedCharacters(canonicalProjectId);
+                      setSavedCharacters(refreshed);
+                      if (dna?.character_id) {
+                        setSelectedCharacterId(dna.character_id);
+                        saveProjectActiveCharacterId(canonicalProjectId, dna.character_id);
+                      }
                     }
                     showToast('DNA Karakter berhasil disimpan & diperbarui!');
                   }} 

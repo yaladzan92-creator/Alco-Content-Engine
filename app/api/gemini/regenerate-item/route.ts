@@ -30,9 +30,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing content item to revise" }, { status: 400 });
     }
 
-    const brandName = sharedContentContext?.brand_context?.brand_name || "ALCO Client";
-    const mainOffer = sharedContentContext?.strategy_context?.main_offer || "Product/Service";
-    const coreMessage = sharedContentContext?.strategy_context?.core_message || coreTopic || "General Campaign";
+    if (!sharedContentContext || !sharedContentContext.brand_context?.brand_name?.trim()) {
+      return NextResponse.json(
+        { error: "Shared Content Context tidak valid atau tidak memiliki data Brand. Tidak dapat meregenerasi konten." },
+        { status: 400 }
+      );
+    }
+
+    const itemProjectId = item.project_id || item.projectId;
+    if (itemProjectId && sharedContentContext.project_id && itemProjectId !== sharedContentContext.project_id) {
+      return NextResponse.json(
+        { error: `Mismatch Project Context: Item project (${itemProjectId}) berbeda dengan context (${sharedContentContext.project_id}).` },
+        { status: 400 }
+      );
+    }
+
+    const brandName = sharedContentContext.brand_context.brand_name;
+    const mainOffer = sharedContentContext.strategy_context?.main_offer || "";
+    const coreMessage = sharedContentContext.strategy_context?.core_message || coreTopic || "";
     const itemStage = item.jenis || "TOFU";
 
     const prompt = `Rewrite and selectively improve the following content calendar item based on the user's specific revision instruction.
@@ -108,6 +123,9 @@ ${buildFunnelPromptBlock(itemStage)}
       item: {
         ...item,
         ...parsed,
+        project_id: item.project_id || item.projectId,
+        projectId: item.project_id || item.projectId,
+        content_item_id: item.content_item_id,
         cta: sanitizedCta,
         isManualEdited: false // updated via AI revision
       }

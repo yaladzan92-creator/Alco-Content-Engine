@@ -1,6 +1,26 @@
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const Module = require('module');
+
+function configureModulePaths(appDir) {
+  const candidates = [];
+  if (appDir) {
+    candidates.push(path.join(appDir, 'node_modules'));
+  }
+  if (process.resourcesPath) {
+    candidates.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules'));
+    candidates.push(path.join(process.resourcesPath, 'app', 'node_modules'));
+  }
+  candidates.push(path.resolve(__dirname, '..', 'node_modules'));
+  candidates.push(path.resolve(__dirname, 'node_modules'));
+
+  for (const dir of candidates) {
+    if (fs.existsSync(dir) && !Module.globalPaths.includes(dir)) {
+      Module.globalPaths.push(dir);
+    }
+  }
+}
 
 function log(msg) {
   const timestamp = new Date().toISOString();
@@ -61,6 +81,9 @@ async function startServer(options = {}) {
     errorLog(errorMsg);
     throw new Error(errorMsg);
   }
+
+  // Ensure node_modules from app directory and unpacked resources are in globalPaths
+  configureModulePaths(appDir);
 
   log(`Loading Next.js engine from ${appDir}...`);
   const next = require('next');
