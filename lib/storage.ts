@@ -1,4 +1,5 @@
 import { SharedContentContext, buildSharedContentContext } from './content-contract';
+import { FunnelStrategy, buildFunnelStrategyFromContext } from './funnel-strategy';
 
 export interface ProjectMeta {
   project_id: string;
@@ -315,14 +316,66 @@ export const getDefaultCalendarSettings = (
   blueprint?: any | null,
   projectName?: string
 ): CalendarSettings => {
+  let context: SharedContentContext | null = null;
+  if (blueprint) {
+    if (blueprint.brand_context || blueprint.audience_context || blueprint.strategy_context) {
+      context = blueprint as SharedContentContext;
+    } else if (blueprint.brand_identity || blueprint.project_name) {
+      context = buildSharedContentContext(blueprint);
+    }
+  }
+
   const brandName =
+    context?.brand_context?.brand_name ||
     blueprint?.brand_identity?.brand_name ||
     blueprint?.brand_context?.brand_name ||
     blueprint?.project_name ||
     projectName;
 
-  const coreTopic = brandName ? `${brandName} Campaign` : 'Content Campaign';
+  const coreTopic =
+    context?.strategy_context?.core_message ||
+    context?.strategy_context?.main_offer ||
+    (brandName ? `${brandName} Campaign` : 'Content Campaign');
+
   const todayStr = new Date().toISOString().split('T')[0];
+
+  if (context) {
+    const funnelStrategy = buildFunnelStrategyFromContext(context, { totalPosts: 14 });
+    const dist = funnelStrategy.distribution;
+
+    const hook1 = funnelStrategy.tofu.hook_direction.split(',')[0] || 'Problem Call-Out';
+    const hook2 = funnelStrategy.mofu.hook_direction.split(',')[0] || 'Framework Breakdown';
+    const hook3 = funnelStrategy.bofu.hook_direction.split(',')[0] || 'Outcome Demonstration';
+
+    return {
+      coreTopic,
+      startDate: todayStr,
+      skipDays: [],
+      gender: context.audience_context?.primary_audience?.toLowerCase().includes('wanita')
+        ? 'Wanita'
+        : context.audience_context?.primary_audience?.toLowerCase().includes('pria')
+        ? 'Pria'
+        : 'Both',
+      ageRange: [20, 45],
+      formats: ['Single', 'Carousel', 'Reels'],
+      carouselSlides: 5,
+      reelsDuration: '30s',
+      ratio: { tofu: dist.tofu, mofu: dist.mofu, bofu: dist.bofu },
+      formatRatio: { Single: 30, Carousel: 40, Reels: 30 },
+      selectedVoices: ['The Efficiency Expert'],
+      hookMix: [
+        { type: hook1.slice(0, 30), percentage: 40 },
+        { type: hook2.slice(0, 30), percentage: 35 },
+        { type: hook3.slice(0, 30), percentage: 25 },
+      ],
+      selectedFormula: context.strategy_context?.positioning
+        ? `Framework: ${context.strategy_context.positioning.slice(0, 40)}`
+        : 'Problem-Solution Architecture',
+      referenceType: 'Logika AI',
+      selectedCTAs: context.strategy_context?.main_offer ? ['Amankan Penawaran', 'Pelajari Framework'] : ['Simpan Postingan', 'Pelajari Detail'],
+      isFastMode: false,
+    };
+  }
 
   return {
     coreTopic,
@@ -333,17 +386,17 @@ export const getDefaultCalendarSettings = (
     formats: ['Single', 'Carousel', 'Reels'],
     carouselSlides: 5,
     reelsDuration: '30s',
-    ratio: { tofu: 8, mofu: 6, bofu: 4 },
+    ratio: { tofu: 6, mofu: 5, bofu: 3 },
     formatRatio: { Single: 30, Carousel: 40, Reels: 30 },
     selectedVoices: ['The Efficiency Expert'],
     hookMix: [
-      { type: 'Call-Out', percentage: 40 },
-      { type: 'Curiosity Gap', percentage: 35 },
-      { type: 'Social Proof', percentage: 25 },
+      { type: 'Problem Awareness', percentage: 40 },
+      { type: 'Framework Breakdown', percentage: 35 },
+      { type: 'Proof & Action', percentage: 25 },
     ],
-    selectedFormula: 'Awareness & Soft Selling',
+    selectedFormula: 'Problem-Solution Architecture',
     referenceType: 'Logika AI',
-    selectedCTAs: ['Link Bio'],
+    selectedCTAs: ['Simpan Postingan', 'Pelajari Detail'],
     isFastMode: false,
   };
 };
@@ -356,6 +409,35 @@ export const getProjectCalendarSettings = (projectId: string): CalendarSettings 
 
 export const saveProjectCalendarSettings = (projectId: string, settings: CalendarSettings) => {
   saveProjectData(projectId, 'calendarSettings', settings);
+};
+
+export const loadProjectFunnelStrategy = (projectId: string): FunnelStrategy | null => {
+  if (!projectId || projectId === 'default' || projectId === 'default_project') return null;
+  const stored = loadProjectData(projectId, 'funnelStrategy', null);
+  if (stored && stored.project_id === projectId) {
+    return stored;
+  }
+  // Auto-derive from project shared context if not yet explicitly saved
+  const shared = loadProjectSharedContext(projectId);
+  if (shared) {
+    const derived = buildFunnelStrategyFromContext(shared);
+    saveProjectFunnelStrategy(projectId, derived);
+    return derived;
+  }
+  return null;
+};
+
+export const saveProjectFunnelStrategy = (projectId: string, strategy: FunnelStrategy): void => {
+  if (!projectId || !strategy || projectId === 'default' || projectId === 'default_project') return;
+  const normalized: FunnelStrategy = {
+    ...strategy,
+    project_id: projectId,
+    provenance: {
+      ...strategy.provenance,
+      source_project_id: projectId,
+    },
+  };
+  saveProjectData(projectId, 'funnelStrategy', normalized);
 };
 
 export const loadProjectSharedContext = (projectId: string): SharedContentContext | null => {

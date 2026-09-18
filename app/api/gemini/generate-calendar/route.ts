@@ -9,6 +9,13 @@ import {
   SharedContentContext
 } from "@/lib/content-contract";
 import { buildFunnelPromptBlock, sanitizeCtaForFunnel } from "@/lib/funnel-rules";
+import {
+  FunnelStrategy,
+  buildFunnelStrategyFromContext,
+  validateFunnelStrategyProjectIsolation,
+  buildFunnelStrategyPromptBlock,
+  validateItemAgainstFunnelStrategy,
+} from "@/lib/funnel-strategy";
 import { resolveGeminiApiKey, missingGeminiApiKeyMessage } from "@/lib/gemini-api-key";
 
 export const dynamic = 'force-dynamic';
@@ -98,6 +105,28 @@ export async function POST(req: NextRequest) {
     const ratioTotal = (ratio.tofu || 0) + (ratio.mofu || 0) + (ratio.bofu || 0);
     const totalPosts = ratioTotal > 0 ? ratioTotal : horizonToCount[normalizedHorizon];
 
+    // Establish authoritative FunnelStrategy for the active project
+    let activeFunnelStrategy: FunnelStrategy;
+    if (bodyData.funnelStrategy) {
+      const isolationCheck = validateFunnelStrategyProjectIsolation(bodyData.funnelStrategy, resolvedProjectId);
+      if (!isolationCheck.isValid) {
+        return NextResponse.json(
+          {
+            error: isolationCheck.error || "Project isolation violation in FunnelStrategy.",
+            isBlocked: true,
+          },
+          { status: 400 }
+        );
+      }
+      activeFunnelStrategy = bodyData.funnelStrategy;
+    } else {
+      activeFunnelStrategy = buildFunnelStrategyFromContext(context, {
+        totalPosts,
+        campaignGoal: coreTopic,
+        userOverrides: ratio ? { tofu: ratio.tofu, mofu: ratio.mofu, bofu: ratio.bofu } : undefined,
+      });
+    }
+
     const visualCtx = context.brand_visual_context;
     const visualContextBlock = visualCtx ? `
 ### BRAND VISUAL STYLE & GUIDELINES (GLOBAL VISUAL RULES):
@@ -110,11 +139,11 @@ export async function POST(req: NextRequest) {
 
     const hookMixText = Array.isArray(hookMix) && hookMix.length > 0
       ? hookMix.map((h: any) => `${h.type || h} (${h.percentage || 0}%)`).join(', ')
-      : 'Call-Out (40%), Curiosity Gap (35%), Social Proof (25%)';
+      : `${activeFunnelStrategy.tofu.hook_direction} (40%), ${activeFunnelStrategy.mofu.hook_direction} (35%), ${activeFunnelStrategy.bofu.hook_direction} (25%)`;
 
     const prompt = `Act as an Elite Brand Content Director for ALCO Content Engine.
 
-Your task is to synthesize a high-converting, strategy-first Content Calendar Matrix based on the provided Shared Content Context and parameters.
+Your task is to synthesize a high-converting, strategy-first Content Calendar Matrix based on the provided Shared Content Context, Authoritative Funnel Strategy, and parameters.
 
 ### STRATEGY BLUEPRINT & SHARED CONTENT CONTEXT:
 - Brand Name: ${context.brand_context.brand_name}
@@ -130,27 +159,25 @@ Your task is to synthesize a high-converting, strategy-first Content Calendar Ma
 - Content Pillars: ${context.strategy_context.content_pillars.join('; ')}
 - Copy Direction: ${context.strategy_context.copy_direction.join('; ')}${visualContextBlock}
 
+### AUTHORITATIVE FUNNEL STRATEGY (ACTIVE PROJECT BACKBONE):
+${buildFunnelStrategyPromptBlock(activeFunnelStrategy)}
+
 ### CAMPAIGN EXECUTION PARAMETERS:
 - Core Topic / Focus: ${coreTopic}
 - Start Date: ${startDate}
 - Skip Days of Week: ${skipDays.join(', ') || 'None'}
 - Target Channels: ${channels.join(', ')}
-- Requested Funnel Allocation: ${ratio.tofu} TOFU (Top of Funnel - Awareness), ${ratio.mofu} MOFU (Middle of Funnel - Consideration), ${ratio.bofu} BOFU (Bottom of Funnel - Conversion)
+- Target Funnel Allocation: ${activeFunnelStrategy.distribution.tofu} TOFU, ${activeFunnelStrategy.distribution.mofu} MOFU, ${activeFunnelStrategy.distribution.bofu} BOFU
 - Allowed Formats: ${formats.join(', ')} (Carousel slides: ${carouselSlides}, Reels duration: ${reelsDuration})
 - Primary Formula / Angle: ${selectedFormula}
 - Primary CTAs Allowed: ${selectedCTAs.join(', ')}
 - Hook Mix Strategy: ${hookMixText}
 - Reference Logic: ${referenceType}
 
-### FUNNEL RULES CONTRACT (MANDATORY COMPLIANCE):
-${buildFunnelPromptBlock('TOFU')}
-${buildFunnelPromptBlock('MOFU')}
-${buildFunnelPromptBlock('BOFU')}
-
 ### MANDATORY GUIDELINES:
 1. Generate EXACTLY ${totalPosts} post items in sequential order (1 to ${totalPosts}).
 2. Calculate dates strictly starting from "${startDate}", skipping excluded days (${skipDays.join(', ') || 'none'}). Format: "YYYY-MM-DD".
-3. Maintain the requested funnel ratio: ~${ratio.tofu} TOFU, ~${ratio.mofu} MOFU, ~${ratio.bofu} BOFU items.
+3. Maintain the authoritative funnel allocation: exactly ${activeFunnelStrategy.distribution.tofu} TOFU, ${activeFunnelStrategy.distribution.mofu} MOFU, and ${activeFunnelStrategy.distribution.bofu} BOFU items.
    - TOFU (Awareness): Focus on audience pain points, myths, relational hooks, and broad problem recognition. Soft or zero sales pressure. CTA MUST be soft (e.g., 'Simpan ide ini', 'Cek contoh lanjutannya'). Absolutely NO sales or conversion CTAs ('klik link bio', 'daftar sekarang', 'mumpung gratis', 'beli sekarang').
    - MOFU (Consideration): Focus on positioning, core message, USP, framework/how-to, handling objections, and building trust. CTA MUST be soft action (e.g., 'Cek framework ini', 'Simpan checklist ini', 'Audit alur kontenmu'). Absolutely NO sales/hard closing ('klik link bio', 'daftar sekarang', 'mumpung gratis', 'beli sekarang').
    - BOFU (Conversion): Focus directly on main offer, product benefits, social proof, urgency, and direct CTA ('Lihat demo', 'Daftar sekarang', 'Ambil penawaran', 'Konsultasi sekarang').
@@ -270,30 +297,35 @@ Return ONLY the JSON matching the specified schema.`;
     const parsed = JSON.parse(response.text || '{"items":[]}');
     const sanitizedItems = (parsed.items || []).map((item: any, idx: number) => {
       const itemNo = item.no !== undefined && item.no !== null ? item.no : (idx + 1);
+      const validation = validateItemAgainstFunnelStrategy(item, activeFunnelStrategy);
+      const finalCta = validation.repairedCta || sanitizeCtaForFunnel(item.cta, item.jenis);
       return {
         ...item,
         no: itemNo,
         project_id: resolvedProjectId,
         projectId: resolvedProjectId,
         content_item_id: item.content_item_id || `${resolvedProjectId}_item_${itemNo}_${Date.now()}_${idx + 1}`,
-        cta: sanitizeCtaForFunnel(item.cta, item.jenis),
+        cta: finalCta,
       };
     });
     const sanitizedGrowthItems = (parsed.growthItems || []).map((item: any, idx: number) => {
       const itemNo = item.no !== undefined && item.no !== null ? item.no : (idx + 1);
+      const validation = validateItemAgainstFunnelStrategy(item, activeFunnelStrategy);
+      const finalCta = validation.repairedCta || sanitizeCtaForFunnel(item.cta, item.jenis);
       return {
         ...item,
         no: itemNo,
         project_id: resolvedProjectId,
         projectId: resolvedProjectId,
         content_item_id: item.content_item_id || `${resolvedProjectId}_growth_${itemNo}_${Date.now()}_${idx + 1}`,
-        cta: sanitizeCtaForFunnel(item.cta, item.jenis),
+        cta: finalCta,
       };
     });
 
     return NextResponse.json({
       items: sanitizedItems,
       growthItems: sanitizedGrowthItems,
+      funnelStrategy: activeFunnelStrategy,
       contextSummary: {
         brandName: context.brand_context.brand_name,
         primaryAudience: context.audience_context.primary_audience,

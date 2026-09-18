@@ -46,6 +46,7 @@ import { extractJSON } from '@/lib/geminiUtils';
 import { saveProjectData, getActiveProjectId, saveProjectSelectedItem } from '@/lib/storage';
 import { getProductionStatus, getProductionStatusBadge, buildSharedContentContext } from '@/lib/content-contract';
 import { buildProductionContext, formatProductionContextForPrompt, ANTI_DRIFT_RULES } from '@/lib/production-context';
+import { buildFunnelStrategyFromContext } from '@/lib/funnel-strategy';
 import { ContentItem, ConfigDataProps } from './calendar/types';
 import { CalendarDay } from './calendar/CalendarDay';
 import { CalendarConfigWizard } from './calendar/CalendarConfigWizard';
@@ -308,32 +309,72 @@ Keterangan: ${editingItem.keterangan}`;
     // Derive recommendations strictly from authoritative Strategy Context / Blueprint
     const shared = configData?.sharedContentContext;
     if (shared) {
+      const funnelStrategy = buildFunnelStrategyFromContext(shared, { totalPosts: 14 });
+      const audienceStr = shared.audience_context?.primary_audience || '';
+      const lowerAudience = audienceStr.toLowerCase();
+
       if (step === 0) {
         const topic = shared.strategy_context?.core_message || shared.strategy_context?.main_offer || shared.brand_context?.brand_name;
         if (topic) setRecommendations((prev) => ({ ...prev, [step]: { coreTopic: topic } }));
       } else if (step === 2) {
+        const detectedGender = lowerAudience.includes('wanita') || lowerAudience.includes('ibu') || lowerAudience.includes('perempuan')
+          ? 'Wanita'
+          : lowerAudience.includes('pria') || lowerAudience.includes('bapak') || lowerAudience.includes('laki-laki')
+          ? 'Pria'
+          : 'Both';
+
+        // Extract age range numbers if present in audience description (e.g. "25-40 tahun", "usia 20 - 35")
+        const ageMatch = audienceStr.match(/(\d{2})\s*[-–—]\s*(\d{2})/);
+        const minAge = ageMatch ? parseInt(ageMatch[1], 10) : configData.ageRange[0];
+        const maxAge = ageMatch ? parseInt(ageMatch[2], 10) : configData.ageRange[1];
+
         setRecommendations((prev) => ({
           ...prev,
           [step]: {
-            gender: "Both",
-            minAge: 20,
-            maxAge: 50,
-            note: shared.audience_context?.primary_audience || ''
-          }
+            gender: detectedGender,
+            minAge,
+            maxAge,
+            note: audienceStr ? `Fakta Audiens: "${audienceStr}"` : 'Tentukan demografi target audiens spesifik.',
+          },
         }));
       } else if (step === 3) {
-        setRecommendations((prev) => ({ ...prev, [step]: { tofu: 6, mofu: 5, bofu: 3 } }));
-      } else if (step === 5) {
+        const dist = funnelStrategy.distribution;
         setRecommendations((prev) => ({
           ...prev,
           [step]: {
-            hook1: "Call-Out",
-            hook2: "Curiosity Gap",
-            hook3: "Social Proof"
-          }
+            tofu: dist.tofu,
+            mofu: dist.mofu,
+            bofu: dist.bofu,
+            note: dist.reasoning,
+          },
+        }));
+      } else if (step === 5) {
+        const h1 = funnelStrategy.tofu.hook_direction.split(',')[0].trim().slice(0, 35) || 'Problem Call-Out';
+        const h2 = funnelStrategy.mofu.hook_direction.split(',')[0].trim().slice(0, 35) || 'Framework Breakdown';
+        const h3 = funnelStrategy.bofu.hook_direction.split(',')[0].trim().slice(0, 35) || 'Outcome Demonstration';
+        setRecommendations((prev) => ({
+          ...prev,
+          [step]: {
+            hook1: h1,
+            hook2: h2,
+            hook3: h3,
+            note: 'Arah hook diselaraskan dengan tahapan awareness audiens aktif.',
+          },
         }));
       } else if (step === 6) {
-        setRecommendations((prev) => ({ ...prev, [step]: { selectedFormula: "Awareness & Soft Selling" } }));
+        const formula = shared.strategy_context?.positioning
+          ? `Framework: ${shared.strategy_context.positioning.slice(0, 38)}`
+          : shared.strategy_context?.core_message
+          ? `Angle: ${shared.strategy_context.core_message.slice(0, 38)}`
+          : 'Problem-Solution Value Architecture';
+
+        setRecommendations((prev) => ({
+          ...prev,
+          [step]: {
+            selectedFormula: formula,
+            note: 'Formula diturunkan langsung dari positioning strategi proyek.',
+          },
+        }));
       }
       return;
     }

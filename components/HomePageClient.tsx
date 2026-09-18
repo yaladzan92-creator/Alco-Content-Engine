@@ -20,11 +20,14 @@ import {
   getDefaultCalendarSettings,
   getProjectCalendarSettings,
   saveProjectCalendarSettings,
+  saveProjectFunnelStrategy,
+  loadProjectFunnelStrategy,
   validateProjectContext,
   ensureContentItemIdentity,
   clearGlobalTransientState,
   saveProjectSelectedItem
 } from '@/lib/storage';
+import { buildFunnelStrategyFromContext } from '@/lib/funnel-strategy';
 import { ActiveStrategyBadge } from '@/components/ActiveStrategyBadge';
 import { GeminiApiKeyControl } from '@/components/GeminiApiKeyControl';
 import { GeminiApiKeyOnboardingCard } from '@/components/GeminiApiKeyOnboardingCard';
@@ -519,6 +522,12 @@ export default function HomePageClient() {
     activeGenerationRef.current = { requestId, projectId: requestProjectId };
 
     setIsLoading(true);
+    const activeFunnel = sharedContext ? buildFunnelStrategyFromContext(sharedContext, {
+      totalPosts: (ratio.tofu || 0) + (ratio.mofu || 0) + (ratio.bofu || 0) || 14,
+      campaignGoal: coreTopic,
+      userOverrides: ratio ? { tofu: ratio.tofu, mofu: ratio.mofu, bofu: ratio.bofu } : undefined,
+    }) : undefined;
+
     showToast('Generasi strategi konten sedang berjalan via Gemini AI...');
     try {
       const response = await fetch('/api/gemini/generate-calendar', {
@@ -543,6 +552,7 @@ export default function HomePageClient() {
           isFastMode,
           strategyBlueprint,
           sharedContentContext: sharedContext,
+          funnelStrategy: activeFunnel,
         }),
       });
 
@@ -567,6 +577,10 @@ export default function HomePageClient() {
       ) {
         console.warn('Discarding stale calendar generation response for inactive project:', requestProjectId);
         return;
+      }
+
+      if (data.funnelStrategy) {
+        saveProjectFunnelStrategy(requestProjectId, data.funnelStrategy);
       }
 
       if (data.items && data.items.length > 0) {

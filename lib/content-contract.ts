@@ -2,6 +2,15 @@ export type FunnelStage = 'TOFU' | 'MOFU' | 'BOFU';
 export type SupportedChannel = 'instagram' | 'facebook';
 export type PlanningHorizon = '7_days' | '14_days' | '30_days';
 
+export type {
+  FunnelStageType,
+  FunnelStageStrategy,
+  FunnelDistributionStrategy,
+  FunnelStrategyProvenance,
+  FunnelStrategy,
+  CalendarPlanningContext,
+} from './funnel-strategy';
+
 export interface StrategyBlueprint {
   blueprint_type?: string;
   project_id?: string;
@@ -122,6 +131,7 @@ export interface GenerateCalendarRequest {
   channels?: SupportedChannel[];
   strategyBlueprint?: StrategyBlueprint;
   sharedContentContext?: SharedContentContext;
+  funnelStrategy?: import('./funnel-strategy').FunnelStrategy;
 }
 
 export interface ProductionProgress {

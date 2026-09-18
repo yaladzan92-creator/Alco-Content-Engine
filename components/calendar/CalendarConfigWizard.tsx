@@ -24,6 +24,7 @@ import {
   LayoutGrid
 } from 'lucide-react';
 import { ConfigDataProps } from './types';
+import { buildFunnelStrategyFromContext } from '@/lib/funnel-strategy';
 
 const InputField = ({
   label,
@@ -66,6 +67,14 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
   isLoading,
 }) => {
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+
+  const activeSharedContext = configData.sharedContentContext;
+  const projectFunnelStrategy = React.useMemo(() => {
+    if (!activeSharedContext) return null;
+    return buildFunnelStrategyFromContext(activeSharedContext, {
+      totalPosts: (configData.ratio?.tofu || 0) + (configData.ratio?.mofu || 0) + (configData.ratio?.bofu || 0) || 14,
+    });
+  }, [activeSharedContext, configData.ratio?.tofu, configData.ratio?.mofu, configData.ratio?.bofu]);
 
   if (!isOpen) return null;
 
@@ -320,16 +329,27 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
               </div>
             </div>
 
-            {/* 5. Blok Rekomendasi ALCO */}
+            {/* 5. Blok Rasional & Rekomendasi Funnel Strategy */}
             <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 sm:p-4.5 text-xs text-stone-700 space-y-2">
-              <div className="flex items-center gap-1.5 font-bold text-primary">
-                <Sparkles size={14} />
-                <span>Rekomendasi ALCO Content Engine</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-bold text-primary">
+                  <Sparkles size={14} />
+                  <span>
+                    {projectFunnelStrategy
+                      ? `Rasional Corong Konten: ${activeSharedContext?.brand_context?.brand_name || 'Proyek Aktif'}`
+                      : 'Rasional Corong Konten (Funnel Authority)'}
+                  </span>
+                </div>
+                {projectFunnelStrategy && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                    Fakta Strategi Proyek
+                  </span>
+                )}
               </div>
               <p className="text-stone-600 leading-relaxed text-[11px] sm:text-xs">
-                Formula ini dirancang khusus untuk membangun <strong>trust dan otoritas</strong> di Instagram & Facebook. 
-                Porsi <strong>TOFU (Awareness)</strong> terbesar menarik perhatian audiens baru, <strong>MOFU (Pertimbangan)</strong> meyakinkan bahwa Anda ahli di bidang ini, 
-                dan <strong>BOFU (Konversi)</strong> mengarahkan mereka secara natural ke tautan profil tanpa terasa memaksa (*soft-selling*).
+                {projectFunnelStrategy
+                  ? projectFunnelStrategy.distribution.reasoning
+                  : 'Distribusi corong (TOFU/MOFU/BOFU) disusun secara proporsional sesuai sasaran awareness, positioning, dan penawaran aktif proyek.'}
               </p>
             </div>
 
