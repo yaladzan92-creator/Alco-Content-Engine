@@ -303,6 +303,7 @@ export interface CalendarSettings {
   carouselSlides: number;
   reelsDuration: string;
   ratio: { tofu: number; mofu: number; bofu: number };
+  hasUserFunnelOverride?: boolean;
   formatRatio: Record<string, number>;
   selectedVoices: string[];
   hookMix: { type: string; percentage?: number }[];
@@ -361,6 +362,7 @@ export const getDefaultCalendarSettings = (
       carouselSlides: 5,
       reelsDuration: '30s',
       ratio: { tofu: dist.tofu, mofu: dist.mofu, bofu: dist.bofu },
+      hasUserFunnelOverride: false,
       formatRatio: { Single: 30, Carousel: 40, Reels: 30 },
       selectedVoices: ['The Efficiency Expert'],
       hookMix: [
@@ -387,6 +389,7 @@ export const getDefaultCalendarSettings = (
     carouselSlides: 5,
     reelsDuration: '30s',
     ratio: { tofu: 6, mofu: 5, bofu: 3 },
+    hasUserFunnelOverride: false,
     formatRatio: { Single: 30, Carousel: 40, Reels: 30 },
     selectedVoices: ['The Efficiency Expert'],
     hookMix: [

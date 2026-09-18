@@ -46,12 +46,14 @@ export async function POST(req: NextRequest) {
       skipDays = [],
       gender = "Both",
       ageRange = [18, 45],
-      ratio = { tofu: 8, mofu: 6, bofu: 4 },
+      ratio,
+      hasUserFunnelOverride = false,
+      userOverrides,
       formats = ["Single", "Carousel", "Reels"],
       carouselSlides = 5,
       reelsDuration = "30s",
       selectedVoices = ["Empathetic & Authoritative"],
-      selectedFormula = "Awareness & Soft Selling",
+      selectedFormula,
       selectedCTAs = ["Link Bio", "DM Us"],
       hookMix = [],
       referenceType = "ALCO Engine Logic",
@@ -59,6 +61,7 @@ export async function POST(req: NextRequest) {
       channels = ["instagram", "facebook"],
       strategyBlueprint,
       sharedContentContext: providedContext,
+      funnelStrategy: providedFunnelStrategy,
     } = bodyData;
 
     // Build or refine Shared Content Context - Strictly require valid Blueprint or Context
@@ -102,13 +105,20 @@ export async function POST(req: NextRequest) {
     }
 
     const normalizedHorizon = inferPlanningHorizon(planningHorizon);
-    const ratioTotal = (ratio.tofu || 0) + (ratio.mofu || 0) + (ratio.bofu || 0);
+    const explicitOverrides = (hasUserFunnelOverride || userOverrides)
+      ? (userOverrides || ratio)
+      : undefined;
+
+    const ratioTotal = explicitOverrides
+      ? ((explicitOverrides.tofu || 0) + (explicitOverrides.mofu || 0) + (explicitOverrides.bofu || 0))
+      : (ratio ? ((ratio.tofu || 0) + (ratio.mofu || 0) + (ratio.bofu || 0)) : 0);
+
     const totalPosts = ratioTotal > 0 ? ratioTotal : horizonToCount[normalizedHorizon];
 
     // Establish authoritative FunnelStrategy for the active project
     let activeFunnelStrategy: FunnelStrategy;
-    if (bodyData.funnelStrategy) {
-      const isolationCheck = validateFunnelStrategyProjectIsolation(bodyData.funnelStrategy, resolvedProjectId);
+    if (providedFunnelStrategy) {
+      const isolationCheck = validateFunnelStrategyProjectIsolation(providedFunnelStrategy, resolvedProjectId);
       if (!isolationCheck.isValid) {
         return NextResponse.json(
           {
@@ -118,14 +128,22 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
-      activeFunnelStrategy = bodyData.funnelStrategy;
+      activeFunnelStrategy = providedFunnelStrategy;
     } else {
       activeFunnelStrategy = buildFunnelStrategyFromContext(context, {
         totalPosts,
         campaignGoal: coreTopic,
-        userOverrides: ratio ? { tofu: ratio.tofu, mofu: ratio.mofu, bofu: ratio.bofu } : undefined,
+        userOverrides: explicitOverrides ? {
+          tofu: explicitOverrides.tofu,
+          mofu: explicitOverrides.mofu,
+          bofu: explicitOverrides.bofu,
+        } : undefined,
       });
     }
+
+    const resolvedFormula = selectedFormula || (context.strategy_context?.positioning
+      ? `Framework: ${context.strategy_context.positioning.slice(0, 40)}`
+      : 'Problem-Solution Value Architecture');
 
     const visualCtx = context.brand_visual_context;
     const visualContextBlock = visualCtx ? `
@@ -169,7 +187,7 @@ ${buildFunnelStrategyPromptBlock(activeFunnelStrategy)}
 - Target Channels: ${channels.join(', ')}
 - Target Funnel Allocation: ${activeFunnelStrategy.distribution.tofu} TOFU, ${activeFunnelStrategy.distribution.mofu} MOFU, ${activeFunnelStrategy.distribution.bofu} BOFU
 - Allowed Formats: ${formats.join(', ')} (Carousel slides: ${carouselSlides}, Reels duration: ${reelsDuration})
-- Primary Formula / Angle: ${selectedFormula}
+- Primary Formula / Angle: ${resolvedFormula}
 - Primary CTAs Allowed: ${selectedCTAs.join(', ')}
 - Hook Mix Strategy: ${hookMixText}
 - Reference Logic: ${referenceType}

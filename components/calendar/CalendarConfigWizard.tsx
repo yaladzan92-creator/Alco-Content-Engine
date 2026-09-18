@@ -314,12 +314,15 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                         min="0"
                         max="30"
                         value={configData.ratio[key as keyof typeof configData.ratio]}
-                        onChange={(e) =>
+                        onChange={(e) => {
                           configData.setRatio({
                             ...configData.ratio,
                             [key]: Math.max(0, parseInt(e.target.value) || 0),
-                          })
-                        }
+                          });
+                          if (configData.setHasUserFunnelOverride) {
+                            configData.setHasUserFunnelOverride(true);
+                          }
+                        }}
                         className="w-full bg-white border border-[#e7e0d4] rounded-lg py-1.5 text-center text-xs font-bold text-stone-900 focus:outline-none focus:border-primary"
                       />
                       <span className="text-[11px] text-stone-500 font-medium">post</span>

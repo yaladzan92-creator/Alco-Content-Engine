@@ -55,6 +55,24 @@ assert(
   'Test D: Formula universal Awareness & Soft Selling berhasil dihapus dari rekomendasi CalendarView'
 );
 
+// Test D2: API generate-calendar tidak memiliki implicit 8/6/4 authority
+assert(
+  !routeContent.includes('{ tofu: 8, mofu: 6, bofu: 4 }'),
+  'Test D2: Hardcoded ratio 8/6/4 berhasil dihapus dari generate-calendar/route.ts'
+);
+assert(
+  routeContent.includes('hasUserFunnelOverride') && routeContent.includes('userOverrides'),
+  'Test D3: generate-calendar/route.ts membedakan derived strategy vs explicit user override'
+);
+
+// Test D4: HomePageClient tidak selalu mengirim userOverrides tanpa interaksi user
+const homePageContent = fs.readFileSync(path.join(projectRoot, 'components', 'HomePageClient.tsx'), 'utf8');
+assert(
+  homePageContent.includes('hasUserFunnelOverride') &&
+  homePageContent.includes('hasUserFunnelOverride ? { tofu: ratio.tofu, mofu: ratio.mofu, bofu: ratio.bofu } : undefined'),
+  'Test D4: HomePageClient hanya mengirim userOverrides jika user melakukan manual override'
+);
+
 // -------------------------------------------------------------
 // SECTION 12: TEST CROSS-NICHE (3 Projects: SaaS, Food, Education)
 // -------------------------------------------------------------
@@ -242,6 +260,31 @@ assert(
   stratB.provenance.source_project_id === 'proj_food_002' &&
   stratC.provenance.source_project_id === 'proj_edu_003',
   'Test K: Provenance strictly records source project identity for every FunnelStrategy'
+);
+
+// Test L: Untouched project flow menghasilkan source: derived_from_strategy dan is_customized: false
+assert(
+  stratA.distribution.source === 'derived_from_strategy' &&
+  stratA.provenance.is_customized === false,
+  'Test L1: Untouched project A menghasilkan source derived_from_strategy dan is_customized: false'
+);
+assert(
+  stratB.distribution.source === 'derived_from_strategy' &&
+  stratB.provenance.is_customized === false,
+  'Test L2: Untouched project B menghasilkan source derived_from_strategy dan is_customized: false'
+);
+
+// Test M: Manual override menghasilkan source: user_override dan is_customized: true
+const overriddenStratA = buildFunnelStrategyFromContext(projectAContext, {
+  userOverrides: { tofu: 7, mofu: 5, bofu: 2 },
+});
+assert(
+  overriddenStratA.distribution.source === 'user_override' &&
+  overriddenStratA.provenance.is_customized === true &&
+  overriddenStratA.distribution.tofu === 7 &&
+  overriddenStratA.distribution.mofu === 5 &&
+  overriddenStratA.distribution.bofu === 2,
+  'Test M: Explicit user override menghasilkan source user_override dan is_customized: true dengan angka ratio yang tepat'
 );
 
 // -------------------------------------------------------------

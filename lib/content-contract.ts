@@ -118,6 +118,8 @@ export interface GenerateCalendarRequest {
   gender?: string;
   ageRange?: [number, number];
   ratio?: { tofu?: number; mofu?: number; bofu?: number };
+  hasUserFunnelOverride?: boolean;
+  userOverrides?: { tofu?: number; mofu?: number; bofu?: number };
   formats?: string[];
   carouselSlides?: number;
   reelsDuration?: string;

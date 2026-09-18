@@ -98,6 +98,7 @@ export default function HomePageClient() {
   const [carouselSlides, setCarouselSlides] = useState<number>(DEFAULT_CALENDAR_SETTINGS.carouselSlides);
   const [reelsDuration, setReelsDuration] = useState<string>(DEFAULT_CALENDAR_SETTINGS.reelsDuration);
   const [ratio, setRatio] = useState(DEFAULT_CALENDAR_SETTINGS.ratio);
+  const [hasUserFunnelOverride, setHasUserFunnelOverride] = useState(false);
   const [formatRatio, setFormatRatio] = useState<Record<string, number>>(DEFAULT_CALENDAR_SETTINGS.formatRatio);
   const [selectedVoices, setSelectedVoices] = useState<string[]>(DEFAULT_CALENDAR_SETTINGS.selectedVoices);
   const [hookMix, setHookMix] = useState<{ type: string; percentage?: number }[]>(DEFAULT_CALENDAR_SETTINGS.hookMix);
@@ -128,6 +129,7 @@ export default function HomePageClient() {
     setCarouselSlides(typeof s.carouselSlides === 'number' ? s.carouselSlides : fallbackDefaults.carouselSlides);
     setReelsDuration(s.reelsDuration || fallbackDefaults.reelsDuration);
     setRatio(s.ratio || fallbackDefaults.ratio);
+    setHasUserFunnelOverride(Boolean(s.hasUserFunnelOverride));
     setFormatRatio(s.formatRatio || fallbackDefaults.formatRatio);
     setSelectedVoices(Array.isArray(s.selectedVoices) && s.selectedVoices.length > 0 ? s.selectedVoices : fallbackDefaults.selectedVoices);
     setHookMix(Array.isArray(s.hookMix) && s.hookMix.length > 0 ? s.hookMix : fallbackDefaults.hookMix);
@@ -149,6 +151,7 @@ export default function HomePageClient() {
       carouselSlides,
       reelsDuration,
       ratio,
+      hasUserFunnelOverride,
       formatRatio,
       selectedVoices,
       hookMix,
@@ -327,6 +330,7 @@ export default function HomePageClient() {
       carouselSlides,
       reelsDuration,
       ratio,
+      hasUserFunnelOverride,
       formatRatio,
       selectedVoices,
       hookMix,
@@ -350,6 +354,7 @@ export default function HomePageClient() {
     carouselSlides,
     reelsDuration,
     ratio,
+    hasUserFunnelOverride,
     formatRatio,
     selectedVoices,
     hookMix,
@@ -522,10 +527,11 @@ export default function HomePageClient() {
     activeGenerationRef.current = { requestId, projectId: requestProjectId };
 
     setIsLoading(true);
+    const calculatedTotalPosts = (ratio.tofu || 0) + (ratio.mofu || 0) + (ratio.bofu || 0) || 14;
     const activeFunnel = sharedContext ? buildFunnelStrategyFromContext(sharedContext, {
-      totalPosts: (ratio.tofu || 0) + (ratio.mofu || 0) + (ratio.bofu || 0) || 14,
+      totalPosts: calculatedTotalPosts,
       campaignGoal: coreTopic,
-      userOverrides: ratio ? { tofu: ratio.tofu, mofu: ratio.mofu, bofu: ratio.bofu } : undefined,
+      userOverrides: hasUserFunnelOverride ? { tofu: ratio.tofu, mofu: ratio.mofu, bofu: ratio.bofu } : undefined,
     }) : undefined;
 
     showToast('Generasi strategi konten sedang berjalan via Gemini AI...');
@@ -540,7 +546,9 @@ export default function HomePageClient() {
           skipDays,
           gender,
           ageRange,
-          ratio,
+          ratio: hasUserFunnelOverride ? ratio : undefined,
+          hasUserFunnelOverride,
+          userOverrides: hasUserFunnelOverride ? { tofu: ratio.tofu, mofu: ratio.mofu, bofu: ratio.bofu } : undefined,
           formats,
           carouselSlides,
           reelsDuration,
@@ -1134,6 +1142,7 @@ export default function HomePageClient() {
                 carouselSlides, setCarouselSlides,
                 reelsDuration, setReelsDuration,
                 ratio, setRatio,
+                hasUserFunnelOverride, setHasUserFunnelOverride,
                 formatRatio, setFormatRatio,
                 selectedVoices, setSelectedVoices, toggleVoice,
                 hookMix, setHookMix, updateHookMix,

@@ -394,6 +394,7 @@ Keterangan: ${editingItem.keterangan}`;
       if (field === 'maxAge') configData.setAgeRange([configData.ageRange[0], text]);
     } else if (step === 3) {
       configData.setRatio({ ...configData.ratio, [field]: text });
+      configData.setHasUserFunnelOverride?.(true);
     } else if (step === 5) {
       const index = field === 'hook1' ? 0 : field === 'hook2' ? 1 : 2;
       configData.updateHookMix(index, 'type', text);
@@ -410,6 +411,7 @@ Keterangan: ${editingItem.keterangan}`;
       configData.setAgeRange([data.minAge, data.maxAge]);
     } else if (step === 3) {
       configData.setRatio({ tofu: data.tofu, mofu: data.mofu, bofu: data.bofu });
+      configData.setHasUserFunnelOverride?.(false);
     } else if (step === 5) {
       if (data.hook1) configData.updateHookMix(0, 'type', data.hook1);
       if (data.hook2) configData.updateHookMix(1, 'type', data.hook2);

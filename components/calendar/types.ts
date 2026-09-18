@@ -44,6 +44,8 @@ export interface ConfigDataProps {
   setReelsDuration: (val: string) => void;
   ratio: { tofu: number; mofu: number; bofu: number };
   setRatio: (val: { tofu: number; mofu: number; bofu: number } | ((prev: { tofu: number; mofu: number; bofu: number }) => { tofu: number; mofu: number; bofu: number })) => void;
+  hasUserFunnelOverride?: boolean;
+  setHasUserFunnelOverride?: (val: boolean) => void;
   formatRatio: Record<string, number>;
   setFormatRatio: (val: Record<string, number> | ((prev: Record<string, number>) => Record<string, number>)) => void;
   selectedVoices: string[];
