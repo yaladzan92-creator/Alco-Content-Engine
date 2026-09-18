@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       reelsDuration = "30s",
       selectedVoices = ["Empathetic & Authoritative"],
       selectedFormula,
-      selectedCTAs = ["Link Bio", "DM Us"],
+      selectedCTAs,
       hookMix = [],
       referenceType = "ALCO Engine Logic",
       planningHorizon,
@@ -187,8 +187,7 @@ ${buildFunnelStrategyPromptBlock(activeFunnelStrategy)}
 - Target Channels: ${channels.join(', ')}
 - Target Funnel Allocation: ${activeFunnelStrategy.distribution.tofu} TOFU, ${activeFunnelStrategy.distribution.mofu} MOFU, ${activeFunnelStrategy.distribution.bofu} BOFU
 - Allowed Formats: ${formats.join(', ')} (Carousel slides: ${carouselSlides}, Reels duration: ${reelsDuration})
-- Primary Formula / Angle: ${resolvedFormula}
-- Primary CTAs Allowed: ${selectedCTAs.join(', ')}
+- Primary Formula / Angle: ${resolvedFormula}${Array.isArray(selectedCTAs) && selectedCTAs.length > 0 ? `\n- Primary CTAs Allowed: ${selectedCTAs.join(', ')}` : ''}
 - Hook Mix Strategy: ${hookMixText}
 - Reference Logic: ${referenceType}
 

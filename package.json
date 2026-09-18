@@ -13,7 +13,8 @@
     "verify": "npm run typecheck && npm run lint",
     "verify:build": "npm run typecheck && npm run lint && cross-env NODE_ENV=production next build",
     "verify:stability": "node scripts/validate-stability.mjs",
-    "verify:full": "npm run verify:stability && npm run typecheck && npm run lint && cross-env NODE_ENV=production next build",
+    "verify:funnel": "node scripts/test-funnel-authority.mjs",
+    "verify:full": "npm run verify:stability && npm run verify:funnel && npm run typecheck && npm run lint && cross-env NODE_ENV=production next build",
     "desktop:build": "cross-env NODE_ENV=production next build && electron-builder --config electron-builder.json --win nsis"
   },
   "dependencies": {
