@@ -1,13 +1,10 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
-import { sanitizeCtaForFunnel } from "@/lib/funnel-rules";
+import { sanitizeCtaForFunnel, parseStrictFunnelStage, lockRegeneratedFunnelStage, FunnelStage } from "@/lib/funnel-rules";
 import {
   buildFunnelStrategyFromContext,
   buildFunnelStrategyPromptBlock,
-  validateFunnelStrategyProjectIsolation,
   validateItemAgainstFunnelStrategy,
-  normalizeFunnelStage,
-  FunnelStrategy,
 } from "@/lib/funnel-strategy";
 import { resolveGeminiApiKey, missingGeminiApiKeyMessage } from "@/lib/gemini-api-key";
 
@@ -55,9 +52,11 @@ export async function POST(req: NextRequest) {
 
     const resolvedProjectId = itemProjectId || sharedContentContext.project_id;
 
-    // Reject if item's original funnel stage is invalid
-    const stageType = parseStrictFunnelStage(item.jenis);
-    if (!stageType) {
+    // Reject if item's original funnel stage is invalid, and lock stage strictly
+    let stageType: FunnelStage;
+    try {
+      stageType = lockRegeneratedFunnelStage(item.jenis);
+    } catch (e: any) {
       return NextResponse.json(
         { error: `Item #${item.no || ''} memiliki funnel stage invalid: "${item.jenis}". Regenerasi dibatalkan.` },
         { status: 400 }
@@ -65,7 +64,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Establish authoritative FunnelStrategy for this project strictly on the server
-    const explicitOverrides = (hasUserFunnelOverride || userOverrides) ? (userOverrides || ratio) : undefined;
+    const explicitOverrides = hasUserFunnelOverride
+      ? (userOverrides || ratio)
+      : undefined;
     const activeFunnelStrategy = buildFunnelStrategyFromContext(sharedContentContext, {
       campaignGoal: coreTopic || sharedContentContext.strategy_context?.core_message,
       userOverrides: explicitOverrides ? {

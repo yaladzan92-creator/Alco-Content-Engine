@@ -43,6 +43,14 @@ export function parseStrictFunnelStage(value?: any): FunnelStage | null {
   return null;
 }
 
+export function lockRegeneratedFunnelStage(originalStageInput: any, _generatedStageInput?: any): FunnelStage {
+  const originalStage = parseStrictFunnelStage(originalStageInput);
+  if (!originalStage) {
+    throw new Error(`Cannot lock funnel stage: original item stage "${originalStageInput}" is invalid.`);
+  }
+  return originalStage;
+}
+
 export function normalizeFunnelStage(value?: string): FunnelStage {
   const parsed = parseStrictFunnelStage(value);
   if (parsed) return parsed;

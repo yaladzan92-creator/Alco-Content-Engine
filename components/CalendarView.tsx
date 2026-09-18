@@ -422,7 +422,7 @@ Keterangan: ${editingItem.keterangan}`;
   };
 
   const rawOutputData = useMemo(() => {
-    const data = growthItems.length > 0 ? growthItems : items;
+    const data = items.length > 0 ? items : growthItems;
     if (!data || data.length === 0) return { markdown: '', tab: '' };
 
     const headers = [

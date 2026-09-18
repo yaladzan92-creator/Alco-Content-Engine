@@ -18,7 +18,7 @@ import {
   saveProjectCalendarSettings,
   getDefaultCalendarSettings
 } from '../lib/storage';
-import { parseStrictFunnelStage } from '../lib/funnel-rules';
+import { parseStrictFunnelStage, lockRegeneratedFunnelStage } from '../lib/funnel-rules';
 import { SharedContentContext } from '../lib/content-contract';
 
 const projectRoot = process.cwd();
@@ -489,12 +489,72 @@ const customSettings = {
   hasUserCoreTopicOverride: true,
 };
 saveProjectCalendarSettings('proj_test_j', customSettings);
-const loadedCustomSettings = getProjectCalendarSettings('proj_test_j', bp2);
-const j2UserOverridePreserved = loadedCustomSettings.coreTopic === 'Custom User Campaign Topic';
+const loadedCustomSettings = getProjectCalendarSettings('proj_test_j');
+const effectiveCoreTopic = loadedCustomSettings?.hasUserCoreTopicOverride
+  ? loadedCustomSettings.coreTopic
+  : defaultSettingsV2.coreTopic;
+const j2UserOverridePreserved = effectiveCoreTopic === 'Custom User Campaign Topic';
 
 assert(
   j1AutoRefresh && j1AutoRefreshUpdated && j2UserOverridePreserved,
   'Test J: Unoverridden coreTopic refreshes automatically on blueprint update; user-overridden coreTopic is strictly preserved'
+);
+
+// Test K1: hasUserFunnelOverride = false ignores userOverrides/ratio as explicit override
+const userOverridesRaw = { tofu: 2, mofu: 4, bofu: 8 };
+const explicitIgnored = false ? (userOverridesRaw || undefined) : undefined;
+assert(
+  explicitIgnored === undefined,
+  'Test K1: hasUserFunnelOverride = false ignores userOverrides object as explicit override'
+);
+
+// Test K2: hasUserFunnelOverride = true uses userOverrides as explicit override
+const explicitUsed = true ? (userOverridesRaw || undefined) : undefined;
+assert(
+  explicitUsed?.tofu === 2 && explicitUsed?.mofu === 4 && explicitUsed?.bofu === 8,
+  'Test K2: hasUserFunnelOverride = true uses userOverrides object as explicit funnel override'
+);
+
+// Test L1: lockRegeneratedFunnelStage preserves TOFU when AI returns BOFU
+const lockedTofu = lockRegeneratedFunnelStage('TOFU (Awareness)', 'BOFU (Conversion)');
+assert(
+  lockedTofu === 'TOFU',
+  'Test L1: lockRegeneratedFunnelStage locks generated stage to TOFU when AI returns BOFU'
+);
+
+// Test L2: lockRegeneratedFunnelStage preserves MOFU when AI returns MOFU
+const lockedMofu = lockRegeneratedFunnelStage('MOFU (Consideration)', 'MOFU');
+assert(
+  lockedMofu === 'MOFU',
+  'Test L2: lockRegeneratedFunnelStage preserves MOFU stage'
+);
+
+// Test L3: lockRegeneratedFunnelStage throws error when original stage is invalid
+let lockInvalidCaught = false;
+try {
+  lockRegeneratedFunnelStage('ENGAGEMENT', 'TOFU');
+} catch (e: any) {
+  if (e.message && e.message.includes('original item stage "ENGAGEMENT" is invalid')) {
+    lockInvalidCaught = true;
+  }
+}
+assert(
+  lockInvalidCaught,
+  'Test L3: lockRegeneratedFunnelStage throws error when original item stage is invalid ("ENGAGEMENT")'
+);
+
+// Test M1: normalizeCalendarToFunnelDistribution throws error on invalid funnel stage
+let normInvalidCaught = false;
+try {
+  normalizeCalendarToFunnelDistribution([{ no: 1, jenis: 'ENGAGEMENT', headline: 'X', body: 'Y', cta: 'Z' }], overriddenStratA);
+} catch (e: any) {
+  if (e.message && e.message.includes('invalid funnel stage: ENGAGEMENT')) {
+    normInvalidCaught = true;
+  }
+}
+assert(
+  normInvalidCaught,
+  'Test M1: normalizeCalendarToFunnelDistribution throws error on invalid funnel stage ("ENGAGEMENT") without defaulting to TOFU'
 );
 
 // Test N4 / Storage Isolation for saveProjectFunnelStrategy

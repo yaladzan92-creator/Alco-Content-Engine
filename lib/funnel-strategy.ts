@@ -518,7 +518,12 @@ export function normalizeCalendarToFunnelDistribution(
 
   return rawItems.map((raw, idx) => {
     const itemNo = idx + 1;
-    const stageType = parseStrictFunnelStage(raw.jenis) || normalizeFunnelStage(raw.jenis);
+    const stageType = parseStrictFunnelStage(raw.jenis);
+    if (!stageType) {
+      throw new Error(
+        `Cannot normalize calendar item with invalid funnel stage: ${raw.jenis}`
+      );
+    }
 
     // Format funnel stage display text
     const displayStage =

@@ -133,7 +133,6 @@ export interface GenerateCalendarRequest {
   channels?: SupportedChannel[];
   strategyBlueprint?: StrategyBlueprint;
   sharedContentContext?: SharedContentContext;
-  funnelStrategy?: import('./funnel-strategy').FunnelStrategy;
 }
 
 export interface ProductionProgress {

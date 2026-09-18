@@ -113,8 +113,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Single source of authority for total posts and funnel strategy
-    const isFunnelOverridden = Boolean(hasUserFunnelOverride || userOverrides);
-    const explicitOverrides = isFunnelOverridden
+    const explicitOverrides = hasUserFunnelOverride
       ? (userOverrides || ratio)
       : undefined;
 
