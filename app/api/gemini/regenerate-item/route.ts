@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const { item, instruction, coreTopic, sharedContentContext, funnelStrategy: providedFunnelStrategy } = await req.json();
+    const { item, instruction, coreTopic, sharedContentContext, userOverrides, ratio, hasUserFunnelOverride } = await req.json();
 
     if (!item) {
       return NextResponse.json({ error: "Missing content item to revise" }, { status: 400 });
@@ -55,27 +55,29 @@ export async function POST(req: NextRequest) {
 
     const resolvedProjectId = itemProjectId || sharedContentContext.project_id;
 
-    // Establish authoritative FunnelStrategy for this project
-    let activeFunnelStrategy: FunnelStrategy;
-    if (providedFunnelStrategy) {
-      const isolationCheck = validateFunnelStrategyProjectIsolation(providedFunnelStrategy, resolvedProjectId);
-      if (!isolationCheck.isValid) {
-        return NextResponse.json(
-          { error: isolationCheck.error || "Project isolation violation in FunnelStrategy." },
-          { status: 400 }
-        );
-      }
-      activeFunnelStrategy = providedFunnelStrategy;
-    } else {
-      activeFunnelStrategy = buildFunnelStrategyFromContext(sharedContentContext, {
-        campaignGoal: coreTopic || sharedContentContext.strategy_context?.core_message,
-      });
+    // Reject if item's original funnel stage is invalid
+    const stageType = parseStrictFunnelStage(item.jenis);
+    if (!stageType) {
+      return NextResponse.json(
+        { error: `Item #${item.no || ''} memiliki funnel stage invalid: "${item.jenis}". Regenerasi dibatalkan.` },
+        { status: 400 }
+      );
     }
+
+    // Establish authoritative FunnelStrategy for this project strictly on the server
+    const explicitOverrides = (hasUserFunnelOverride || userOverrides) ? (userOverrides || ratio) : undefined;
+    const activeFunnelStrategy = buildFunnelStrategyFromContext(sharedContentContext, {
+      campaignGoal: coreTopic || sharedContentContext.strategy_context?.core_message,
+      userOverrides: explicitOverrides ? {
+        tofu: explicitOverrides.tofu,
+        mofu: explicitOverrides.mofu,
+        bofu: explicitOverrides.bofu,
+      } : undefined,
+    });
 
     const brandName = sharedContentContext.brand_context.brand_name;
     const mainOffer = sharedContentContext.strategy_context?.main_offer || "";
     const coreMessage = sharedContentContext.strategy_context?.core_message || coreTopic || "";
-    const stageType = normalizeFunnelStage(item.jenis);
     const stageStrategy = activeFunnelStrategy[stageType.toLowerCase() as 'tofu' | 'mofu' | 'bofu'];
 
     const prompt = `Rewrite and selectively improve the following content calendar item based on the user's specific revision instruction.
@@ -104,7 +106,7 @@ ${buildFunnelStrategyPromptBlock(activeFunnelStrategy)}
 ### CURRENT ITEM DETAILS:
 - Item No: #${item.no}
 - Scheduled Date: ${item.tanggal}
-- Funnel Stage: ${item.jenis}
+- Funnel Stage: ${item.jenis} (LOCKED TO ${stageType})
 - Current Strategic Objective: ${item.tujuan || "Not set"}
 - Current Hook Type: ${item.hookType || "Not set"}
 - Current Headline: ${item.headline}
@@ -119,14 +121,14 @@ ${buildFunnelStrategyPromptBlock(activeFunnelStrategy)}
 "${instruction}"
 
 ### REVISION RULES:
-1. Preserve date ("tanggal"), format ("format"), and funnel stage ("jenis") UNLESS the user explicitly requests to change them. Do NOT change a MOFU or TOFU item into BOFU style unless requested.
-2. Ensure the revised headline, body, caption, CTA, and visual direction strictly adhere to the project's authoritative funnel stage directives above.
-   - TOFU: Focus on pain points, relatable hooks. Absolutely NO sales/closing CTAs.
-   - MOFU: Focus on positioning, framework, overcoming objections. Absolutely NO sales/hard closing CTAs.
-   - BOFU: Focus directly on offer conversion, proof, and closing.
-3. Ensure the revised headline, body, caption, and visual direction directly fulfill the user's revision instruction.
+1. The funnel stage is LOCKED to ${stageType}. You MUST NOT change the funnel stage even if the user asks for a stage change. If the user's revision instruction conflicts with the locked funnel stage, adapt the requested revision while preserving the original stage objective.
+2. Ensure the revised headline, body, caption, CTA, and visual direction strictly adhere to the project's authoritative funnel stage directives above:
+   - TOFU (Awareness): Focus on pain points, relatable hooks, broad problem recognition. Soft/zero sales pressure. Absolutely NO sales or conversion CTAs ('klik link bio', 'daftar sekarang', 'mumpung gratis', 'beli sekarang').
+   - MOFU (Consideration): Focus on positioning, framework, overcoming objections, building trust. Absolutely NO sales/hard closing CTAs.
+   - BOFU (Conversion): Focus directly on offer conversion, proof, urgency, and closing CTAs.
+3. Ensure the revised headline, body, caption, and visual direction directly fulfill the user's revision instruction within the constraints of the locked ${stageType} stage.
 4. Keep the content in natural, engaging Bahasa Indonesia aligned with the brand voice.
-5. Update "keterangan" to explain why this revised version fulfills both the funnel stage objective and the user's instruction.
+5. Update "keterangan" to explain why this revised version fulfills both the locked ${stageType} funnel stage objective and the user's instruction.
 6. Do NOT output generic placeholder text. Produce ready-to-use marketing copy.`;
 
     const response = await ai.models.generateContent({

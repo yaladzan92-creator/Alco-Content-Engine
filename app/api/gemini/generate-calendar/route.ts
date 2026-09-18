@@ -12,9 +12,9 @@ import { buildFunnelPromptBlock, sanitizeCtaForFunnel } from "@/lib/funnel-rules
 import {
   FunnelStrategy,
   buildFunnelStrategyFromContext,
-  validateFunnelStrategyProjectIsolation,
   buildFunnelStrategyPromptBlock,
   validateItemAgainstFunnelStrategy,
+  validateCalendarAgainstFunnelStrategy,
   normalizeCalendarToFunnelDistribution,
 } from "@/lib/funnel-strategy";
 import { resolveGeminiApiKey, missingGeminiApiKeyMessage } from "@/lib/gemini-api-key";
@@ -70,7 +70,6 @@ export async function POST(req: NextRequest) {
       channels = ["instagram", "facebook"],
       strategyBlueprint,
       sharedContentContext: providedContext,
-      funnelStrategy: providedFunnelStrategy,
     } = bodyData;
 
     // Build or refine Shared Content Context - Strictly require valid Blueprint or Context
@@ -126,31 +125,16 @@ export async function POST(req: NextRequest) {
     const requestedTotalPosts = bodyData.totalPosts || (ratio ? ((ratio.tofu || 0) + (ratio.mofu || 0) + (ratio.bofu || 0)) : 0) || 14;
     const baseTotalPosts = explicitOverrideTotal > 0 ? explicitOverrideTotal : requestedTotalPosts;
 
-    // Establish authoritative FunnelStrategy for the active project
-    let activeFunnelStrategy: FunnelStrategy;
-    if (providedFunnelStrategy) {
-      const isolationCheck = validateFunnelStrategyProjectIsolation(providedFunnelStrategy, resolvedProjectId);
-      if (!isolationCheck.isValid) {
-        return NextResponse.json(
-          {
-            error: isolationCheck.error || "Project isolation violation in FunnelStrategy.",
-            isBlocked: true,
-          },
-          { status: 400 }
-        );
-      }
-      activeFunnelStrategy = providedFunnelStrategy;
-    } else {
-      activeFunnelStrategy = buildFunnelStrategyFromContext(context, {
-        totalPosts: baseTotalPosts,
-        campaignGoal: coreTopic,
-        userOverrides: explicitOverrides ? {
-          tofu: explicitOverrides.tofu,
-          mofu: explicitOverrides.mofu,
-          bofu: explicitOverrides.bofu,
-        } : undefined,
-      });
-    }
+    // Establish authoritative FunnelStrategy for the active project strictly on the server
+    const activeFunnelStrategy = buildFunnelStrategyFromContext(context, {
+      totalPosts: baseTotalPosts,
+      campaignGoal: coreTopic,
+      userOverrides: explicitOverrides ? {
+        tofu: explicitOverrides.tofu,
+        mofu: explicitOverrides.mofu,
+        bofu: explicitOverrides.bofu,
+      } : undefined,
+    });
 
     // Synchronize totalPosts with the authoritative FunnelStrategy
     const totalPosts = activeFunnelStrategy.distribution.total_posts;
@@ -159,8 +143,10 @@ export async function POST(req: NextRequest) {
     const resolvedFormula = (hasUserFormulaOverride && selectedFormula)
       ? selectedFormula
       : (context.strategy_context?.positioning
-          ? `Framework: ${context.strategy_context.positioning.slice(0, 40)}`
-          : 'Problem-Solution Value Architecture');
+          ? `Framework: ${context.strategy_context.positioning.slice(0, 50)}`
+          : (context.strategy_context?.core_message
+              ? `Core Message: ${context.strategy_context.core_message.slice(0, 50)}`
+              : ''));
 
     const visualCtx = context.brand_visual_context;
     const visualContextBlock = visualCtx ? `
@@ -174,11 +160,13 @@ export async function POST(req: NextRequest) {
 
     const hookMixText = (hasUserHookOverride && Array.isArray(hookMix) && hookMix.length > 0)
       ? hookMix.map((h: any) => `${h.type || h} (${h.percentage || 0}%)`).join(', ')
-      : `${activeFunnelStrategy.tofu.hook_direction} (40%), ${activeFunnelStrategy.mofu.hook_direction} (35%), ${activeFunnelStrategy.bofu.hook_direction} (25%)`;
+      : `TOFU: ${activeFunnelStrategy.tofu.hook_direction} | MOFU: ${activeFunnelStrategy.mofu.hook_direction} | BOFU: ${activeFunnelStrategy.bofu.hook_direction}`;
 
     const ctaConstraintLine = (hasUserCtaOverride && Array.isArray(selectedCTAs) && selectedCTAs.length > 0)
       ? `\n- Primary CTAs Allowed (Explicit User Preference): ${selectedCTAs.join(', ')}`
       : '';
+
+    const formulaConstraintLine = resolvedFormula ? `\n- Primary Formula / Angle: ${resolvedFormula}` : '';
 
     const prompt = `Act as an Elite Brand Content Director for ALCO Content Engine.
 
@@ -207,9 +195,8 @@ ${buildFunnelStrategyPromptBlock(activeFunnelStrategy)}
 - Skip Days of Week: ${skipDays.join(', ') || 'None'}
 - Target Channels: ${channels.join(', ')}
 - Target Funnel Allocation: ${activeFunnelStrategy.distribution.tofu} TOFU, ${activeFunnelStrategy.distribution.mofu} MOFU, ${activeFunnelStrategy.distribution.bofu} BOFU (Total: ${totalPosts} posts)
-- Allowed Formats: ${formats.join(', ')} (Carousel slides: ${carouselSlides}, Reels duration: ${reelsDuration})
-- Primary Formula / Angle: ${resolvedFormula}${ctaConstraintLine}
-- Hook Mix Strategy: ${hookMixText}
+- Allowed Formats: ${formats.join(', ')} (Carousel slides: ${carouselSlides}, Reels duration: ${reelsDuration})${formulaConstraintLine}${ctaConstraintLine}
+- Hook Strategy: ${hookMixText}
 - Reference Logic: ${referenceType}
 
 ### MANDATORY GUIDELINES:
@@ -339,6 +326,25 @@ Return ONLY the JSON matching the specified schema.`;
           error: "AI tidak menghasilkan item kalender yang valid. Silakan coba kembali.",
         },
         { status: 500 }
+      );
+    }
+
+    // Gate: Validate generated items strictly against authoritative FunnelStrategy
+    const validation = validateCalendarAgainstFunnelStrategy(
+      parsed.items,
+      activeFunnelStrategy
+    );
+
+    if (!validation.isValid) {
+      return NextResponse.json(
+        {
+          isBlocked: true,
+          error: "Generated calendar does not match authoritative FunnelStrategy.",
+          validationErrors: validation.errors,
+          generatedDistribution: validation.distribution,
+          expectedDistribution: activeFunnelStrategy.distribution,
+        },
+        { status: 422 }
       );
     }
 

@@ -515,19 +515,10 @@ export function normalizeCalendarToFunnelDistribution(
   if (!Array.isArray(rawItems) || rawItems.length === 0) return [];
 
   const targetProjectId = projectId || funnelStrategy.project_id || 'default_project';
-  const targetTofu = funnelStrategy.distribution.tofu;
-  const targetMofu = funnelStrategy.distribution.mofu;
-  const targetBofu = funnelStrategy.distribution.bofu;
-
-  // Build target stage array in structured sequence from strategy distribution
-  const targetStages: FunnelStageType[] = [];
-  for (let i = 0; i < targetTofu; i++) targetStages.push('TOFU');
-  for (let i = 0; i < targetMofu; i++) targetStages.push('MOFU');
-  for (let i = 0; i < targetBofu; i++) targetStages.push('BOFU');
 
   return rawItems.map((raw, idx) => {
     const itemNo = idx + 1;
-    const stageType = targetStages[idx] || parseStrictFunnelStage(raw.jenis) || normalizeFunnelStage(raw.jenis);
+    const stageType = parseStrictFunnelStage(raw.jenis) || normalizeFunnelStage(raw.jenis);
 
     // Format funnel stage display text
     const displayStage =

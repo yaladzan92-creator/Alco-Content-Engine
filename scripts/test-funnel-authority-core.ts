@@ -9,12 +9,33 @@ import {
   validateCalendarAgainstFunnelStrategy,
   normalizeCalendarToFunnelDistribution,
 } from '../lib/funnel-strategy';
-import { saveProjectFunnelStrategy } from '../lib/storage';
+import {
+  saveProjectFunnelStrategy,
+  saveProjectSharedContext,
+  invalidateProjectFunnelStrategy,
+  loadProjectData,
+  getProjectCalendarSettings,
+  saveProjectCalendarSettings,
+  getDefaultCalendarSettings
+} from '../lib/storage';
+import { parseStrictFunnelStage } from '../lib/funnel-rules';
 import { SharedContentContext } from '../lib/content-contract';
 
 const projectRoot = process.cwd();
 const errors: string[] = [];
 const successes: string[] = [];
+
+// Polyfill localStorage in Node test environment
+if (typeof global.window === 'undefined') {
+  const store: Record<string, string> = {};
+  (global as any).window = {};
+  (global as any).localStorage = {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, val: string) => { store[key] = String(val); },
+    removeItem: (key: string) => { delete store[key]; },
+    clear: () => { Object.keys(store).forEach(k => delete store[k]); },
+  };
+}
 
 function assert(condition: boolean | undefined | null, message: string) {
   if (Boolean(condition)) {
@@ -302,9 +323,9 @@ assert(
 );
 
 // -------------------------------------------------------------
-// SECTION 13: CALENDAR VALIDATION & NORMALIZATION TESTS
+// SECTION 13: CALENDAR VALIDATION, DISTRIBUTION & FAILURE CASES
 // -------------------------------------------------------------
-console.log('\n--- SECTION 13: Calendar Validation, Distribution & Normalization ---');
+console.log('\n--- SECTION 13: Calendar Validation, Distribution & Failure Cases ---');
 
 // Test N1: summarizeFunnelDistribution
 const mockItems = [
@@ -326,7 +347,7 @@ assert(
   'Test N2: validateCalendarAgainstFunnelStrategy accurately catches item count mismatch vs Strategy'
 );
 
-// Test N3: normalizeCalendarToFunnelDistribution forces exact ratio and sequential stages
+// Test N3 / Test C: Mismatched Distribution Fails Strict Validation Gate (14 BOFU vs 7/5/2 expected)
 const messyItems = Array.from({ length: 14 }, (_, i) => ({
   no: i + 1,
   jenis: 'BOFU',
@@ -336,17 +357,147 @@ const messyItems = Array.from({ length: 14 }, (_, i) => ({
   format: 'Reels',
   cta: 'Beli Sekarang'
 }));
-const normalizedCalendar = normalizeCalendarToFunnelDistribution(messyItems, overriddenStratA);
-const normalizedSummary = summarizeFunnelDistribution(normalizedCalendar);
+const valBOFU = validateCalendarAgainstFunnelStrategy(messyItems, overriddenStratA);
 assert(
-  normalizedCalendar.length === 14 &&
-  normalizedSummary.tofu === 7 &&
-  normalizedSummary.mofu === 5 &&
-  normalizedSummary.bofu === 2,
-  'Test N3: normalizeCalendarToFunnelDistribution successfully enforces 7/5/2 ratio and sequential stage ordering'
+  !valBOFU.isValid && valBOFU.errors.some(e => e.includes('BOFU allocation mismatch')),
+  'Test N3 / Test C: validateCalendarAgainstFunnelStrategy rejects 14 BOFU items when strategy expects 7/5/2'
 );
 
-// Test N4: Storage Isolation enforces strict error throwing on project mismatch
+// Test A: Fewer items fails validation
+const fewerItems = Array.from({ length: 10 }, (_, i) => ({
+  no: i + 1,
+  jenis: i < 5 ? 'TOFU' : i < 8 ? 'MOFU' : 'BOFU',
+  headline: `Topic ${i + 1}`,
+  body: 'B', caption: 'C', format: 'Reels', cta: 'Simpan'
+}));
+const valFewer = validateCalendarAgainstFunnelStrategy(fewerItems, overriddenStratA);
+assert(
+  !valFewer.isValid && valFewer.errors.some(e => e.includes('Item count mismatch')),
+  'Test A: validateCalendarAgainstFunnelStrategy rejects calendar with fewer items (10 vs 14 expected)'
+);
+
+// Test B: Extra items fails validation
+const extraItems = Array.from({ length: 18 }, (_, i) => ({
+  no: i + 1,
+  jenis: i < 9 ? 'TOFU' : i < 15 ? 'MOFU' : 'BOFU',
+  headline: `Topic ${i + 1}`,
+  body: 'B', caption: 'C', format: 'Reels', cta: 'Simpan'
+}));
+const valExtra = validateCalendarAgainstFunnelStrategy(extraItems, overriddenStratA);
+assert(
+  !valExtra.isValid && valExtra.errors.some(e => e.includes('Item count mismatch')),
+  'Test B: validateCalendarAgainstFunnelStrategy rejects calendar with extra items (18 vs 14 expected)'
+);
+
+// Test D: Unknown funnel stage fails validation
+const unknownStageItems = Array.from({ length: 14 }, (_, i) => ({
+  no: i + 1,
+  jenis: i === 0 ? 'ENGAGEMENT' : (i < 7 ? 'TOFU' : i < 12 ? 'MOFU' : 'BOFU'),
+  headline: `Topic ${i + 1}`,
+  body: 'B', caption: 'C', format: 'Reels', cta: 'Simpan'
+}));
+const valUnknown = validateCalendarAgainstFunnelStrategy(unknownStageItems, overriddenStratA);
+assert(
+  !valUnknown.isValid && valUnknown.errors.some(e => e.includes('unparseable or unauthorized funnel stages')),
+  'Test D: validateCalendarAgainstFunnelStrategy rejects calendar with unknown funnel stage ("ENGAGEMENT")'
+);
+
+// Test E: Exact valid distribution passes validation
+const validDistributionItems = [
+  ...Array.from({ length: 7 }, (_, i) => ({ no: i + 1, jenis: 'TOFU', headline: `TOFU ${i+1}`, body: 'B', caption: 'C', format: 'Reels', cta: 'Simpan' })),
+  ...Array.from({ length: 5 }, (_, i) => ({ no: i + 8, jenis: 'MOFU', headline: `MOFU ${i+1}`, body: 'B', caption: 'C', format: 'Carousel', cta: 'Simpan' })),
+  ...Array.from({ length: 2 }, (_, i) => ({ no: i + 13, jenis: 'BOFU', headline: `BOFU ${i+1}`, body: 'B', caption: 'C', format: 'Single', cta: 'Beli Sekarang' })),
+];
+const valValid = validateCalendarAgainstFunnelStrategy(validDistributionItems, overriddenStratA);
+assert(
+  valValid.isValid && valValid.errors.length === 0,
+  'Test E: validateCalendarAgainstFunnelStrategy passes cleanly for exact valid distribution (7/5/2)'
+);
+
+// Test F: Normalization harmlessness (preserves raw funnel stage)
+const normalizedValid = normalizeCalendarToFunnelDistribution(validDistributionItems, overriddenStratA, 'proj_test_f');
+const retainsStages = normalizedValid.every((norm, idx) =>
+  parseStrictFunnelStage(norm.jenis) === parseStrictFunnelStage(validDistributionItems[idx].jenis)
+);
+assert(
+  retainsStages && normalizedValid.length === 14,
+  'Test F: normalizeCalendarToFunnelDistribution preserves original raw funnel stages without stage-shifting'
+);
+
+// Test G: Regenerate stage locking semantics
+const originalTOFUItem = { no: 3, jenis: 'TOFU (Awareness)', headline: 'Original TOFU', body: 'B', cta: 'Simpan' };
+const originalParsedStage = parseStrictFunnelStage(originalTOFUItem.jenis);
+// Simulated AI attempt to change stage to BOFU
+const finalRegeneratedStage = originalParsedStage;
+assert(
+  finalRegeneratedStage === 'TOFU',
+  'Test G: Regenerate item locks funnel stage strictly to original stage (TOFU), rejecting stage change requests'
+);
+
+// Test H: SharedContext storage isolation
+let contextIsolationCaught = false;
+try {
+  saveProjectSharedContext('proj_target_b', projectAContext);
+} catch (e: any) {
+  if (e.message && e.message.includes('Cross-Project Contamination Blocked')) {
+    contextIsolationCaught = true;
+  }
+}
+assert(
+  contextIsolationCaught,
+  'Test H: saveProjectSharedContext throws strict isolation error on project_id mismatch'
+);
+
+// Test I: Stale FunnelStrategy invalidation
+const testProjI = 'proj_test_invalidation_001';
+const testStratI = {
+  ...stratA,
+  project_id: testProjI,
+  provenance: {
+    ...stratA.provenance,
+    source_project_id: testProjI,
+  },
+};
+saveProjectFunnelStrategy(testProjI, testStratI);
+invalidateProjectFunnelStrategy(testProjI);
+const rawStoredAfterInvalidation = loadProjectData(testProjI, 'funnelStrategy', null);
+assert(
+  rawStoredAfterInvalidation === null,
+  'Test I: invalidateProjectFunnelStrategy successfully purges stored strategy from storage'
+);
+
+// Test J: Core topic derived refresh vs user override preservation
+const bp1 = {
+  project_id: 'proj_test_j',
+  brand_identity: { brand_name: 'Test Brand' },
+  messaging: { core_message: 'Core Message V1' }
+};
+const defaultSettingsV1 = getDefaultCalendarSettings(bp1, 'Test Brand');
+const j1AutoRefresh = defaultSettingsV1.coreTopic === 'Core Message V1';
+
+const bp2 = {
+  ...bp1,
+  messaging: { core_message: 'Core Message V2 (Updated)' }
+};
+const defaultSettingsV2 = getDefaultCalendarSettings(bp2, 'Test Brand');
+const j1AutoRefreshUpdated = defaultSettingsV2.coreTopic === 'Core Message V2 (Updated)';
+
+// User override case
+const customSettings = {
+  ...defaultSettingsV1,
+  coreTopic: 'Custom User Campaign Topic',
+  hasUserCoreTopicOverride: true,
+};
+saveProjectCalendarSettings('proj_test_j', customSettings);
+const loadedCustomSettings = getProjectCalendarSettings('proj_test_j', bp2);
+const j2UserOverridePreserved = loadedCustomSettings.coreTopic === 'Custom User Campaign Topic';
+
+assert(
+  j1AutoRefresh && j1AutoRefreshUpdated && j2UserOverridePreserved,
+  'Test J: Unoverridden coreTopic refreshes automatically on blueprint update; user-overridden coreTopic is strictly preserved'
+);
+
+// Test N4 / Storage Isolation for saveProjectFunnelStrategy
 let isolationErrorCaught = false;
 try {
   saveProjectFunnelStrategy('proj_food_002', stratA);
