@@ -52,6 +52,8 @@ export interface ConfigDataProps {
   setHasUserHookOverride?: (val: boolean) => void;
   hasUserFormulaOverride?: boolean;
   setHasUserFormulaOverride?: (val: boolean) => void;
+  hasUserCoreTopicOverride?: boolean;
+  setHasUserCoreTopicOverride?: (val: boolean) => void;
   formatRatio: Record<string, number>;
   setFormatRatio: (val: Record<string, number> | ((prev: Record<string, number>) => Record<string, number>)) => void;
   selectedVoices: string[];

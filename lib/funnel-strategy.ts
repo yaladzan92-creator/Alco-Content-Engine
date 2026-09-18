@@ -1,7 +1,7 @@
-import { FunnelStage, FUNNEL_CONTENT_RULES, normalizeFunnelStage, sanitizeCtaForFunnel } from './funnel-rules';
+import { FunnelStage, FUNNEL_CONTENT_RULES, normalizeFunnelStage, parseStrictFunnelStage, sanitizeCtaForFunnel } from './funnel-rules';
 import { SharedContentContext } from './content-contract';
 
-export { normalizeFunnelStage, sanitizeCtaForFunnel };
+export { normalizeFunnelStage, parseStrictFunnelStage, sanitizeCtaForFunnel };
 export type FunnelStageType = FunnelStage;
 
 export interface FunnelStageStrategy {
@@ -354,10 +354,20 @@ export function validateItemAgainstFunnelStrategy(
   item: { jenis: string; cta?: string; headline?: string; body?: string },
   funnelStrategy: FunnelStrategy
 ): { isValid: boolean; violations: string[]; repairedCta?: string } {
-  const stage = normalizeFunnelStage(item.jenis);
+  const strictStage = parseStrictFunnelStage(item.jenis);
   const violations: string[] = [];
   let repairedCta = item.cta;
 
+  if (!strictStage) {
+    violations.push(`Invalid funnel stage "${item.jenis || ''}". Expected TOFU, MOFU, or BOFU.`);
+    return {
+      isValid: false,
+      violations,
+      repairedCta,
+    };
+  }
+
+  const stage = strictStage;
   const stageStrategy = stage === 'TOFU' ? funnelStrategy.tofu : stage === 'MOFU' ? funnelStrategy.mofu : funnelStrategy.bofu;
   const lowerCta = (item.cta || '').toLowerCase();
 
@@ -397,24 +407,28 @@ export function summarizeFunnelDistribution(items: any[]): {
   tofu: number;
   mofu: number;
   bofu: number;
+  unknown: number;
   total: number;
 } {
   let tofu = 0;
   let mofu = 0;
   let bofu = 0;
+  let unknown = 0;
 
   for (const item of items || []) {
-    const stage = normalizeFunnelStage(item?.jenis);
+    const stage = parseStrictFunnelStage(item?.jenis);
     if (stage === 'TOFU') tofu++;
     else if (stage === 'MOFU') mofu++;
     else if (stage === 'BOFU') bofu++;
+    else unknown++;
   }
 
   return {
     tofu,
     mofu,
     bofu,
-    total: tofu + mofu + bofu,
+    unknown,
+    total: tofu + mofu + bofu + unknown,
   };
 }
 
@@ -427,7 +441,7 @@ export function validateCalendarAgainstFunnelStrategy(
 ): {
   isValid: boolean;
   errors: string[];
-  distribution: { tofu: number; mofu: number; bofu: number; total: number };
+  distribution: { tofu: number; mofu: number; bofu: number; unknown: number; total: number };
 } {
   const errors: string[] = [];
   const dist = summarizeFunnelDistribution(items);
@@ -441,6 +455,12 @@ export function validateCalendarAgainstFunnelStrategy(
   if (items.length !== expectedTotal) {
     errors.push(
       `Item count mismatch: generated ${items.length} items, but FunnelStrategy requires exactly ${expectedTotal} items.`
+    );
+  }
+
+  if (dist.unknown > 0) {
+    errors.push(
+      `Invalid funnel stages: found ${dist.unknown} item(s) with unparseable or unauthorized funnel stages.`
     );
   }
 
@@ -463,9 +483,15 @@ export function validateCalendarAgainstFunnelStrategy(
   }
 
   items.forEach((item, idx) => {
+    const itemNo = item?.no ?? idx + 1;
+    const strictStage = parseStrictFunnelStage(item?.jenis);
+    if (!strictStage) {
+      errors.push(`Item #${itemNo}: Invalid funnel stage "${item?.jenis || ''}". Expected TOFU, MOFU, or BOFU.`);
+      return;
+    }
     const itemValidation = validateItemAgainstFunnelStrategy(item, funnelStrategy);
     if (!itemValidation.isValid) {
-      errors.push(`Item #${item.no ?? idx + 1}: ${itemValidation.violations.join('; ')}`);
+      errors.push(`Item #${itemNo}: ${itemValidation.violations.join('; ')}`);
     }
   });
 
@@ -478,7 +504,8 @@ export function validateCalendarAgainstFunnelStrategy(
 
 /**
  * Normalizes generated calendar items to strictly align with the project's authoritative FunnelStrategy.
- * Guarantees correct item numbering, funnel stage sequence, CTA sanitization, and project isolation.
+ * Guarantees correct item numbering, content ID, harmless display formatting, CTA sanitization, and project isolation.
+ * NOTE: NEVER mutates funnel stages (TOFU->MOFU etc). Stage validity must be enforced by validateCalendarAgainstFunnelStrategy.
  */
 export function normalizeCalendarToFunnelDistribution(
   rawItems: any[],
@@ -492,18 +519,15 @@ export function normalizeCalendarToFunnelDistribution(
   const targetMofu = funnelStrategy.distribution.mofu;
   const targetBofu = funnelStrategy.distribution.bofu;
 
-  // Build target stage array in structured sequence
+  // Build target stage array in structured sequence from strategy distribution
   const targetStages: FunnelStageType[] = [];
   for (let i = 0; i < targetTofu; i++) targetStages.push('TOFU');
   for (let i = 0; i < targetMofu; i++) targetStages.push('MOFU');
   for (let i = 0; i < targetBofu; i++) targetStages.push('BOFU');
 
-  const resultItems: any[] = [];
-
-  for (let idx = 0; idx < rawItems.length; idx++) {
-    const raw = rawItems[idx];
+  return rawItems.map((raw, idx) => {
     const itemNo = idx + 1;
-    const stageType = targetStages[idx] || normalizeFunnelStage(raw.jenis);
+    const stageType = targetStages[idx] || parseStrictFunnelStage(raw.jenis) || normalizeFunnelStage(raw.jenis);
 
     // Format funnel stage display text
     const displayStage =
@@ -516,7 +540,7 @@ export function normalizeCalendarToFunnelDistribution(
     const itemValidation = validateItemAgainstFunnelStrategy({ ...raw, jenis: stageType }, funnelStrategy);
     const finalCta = itemValidation.repairedCta || sanitizeCtaForFunnel(raw.cta, stageType);
 
-    resultItems.push({
+    return {
       ...raw,
       no: itemNo,
       project_id: targetProjectId,
@@ -524,8 +548,6 @@ export function normalizeCalendarToFunnelDistribution(
       content_item_id: raw.content_item_id || `${targetProjectId}_item_${itemNo}_${Date.now()}_${idx + 1}`,
       jenis: displayStage,
       cta: finalCta,
-    });
-  }
-
-  return resultItems;
+    };
+  });
 }

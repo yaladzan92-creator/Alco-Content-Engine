@@ -33,10 +33,19 @@ export const FUNNEL_CONTENT_RULES = {
   }
 } as const;
 
-export function normalizeFunnelStage(value?: string): FunnelStage {
-  const raw = (value || '').toUpperCase();
-  if (raw.includes('BOFU')) return 'BOFU';
+export function parseStrictFunnelStage(value?: any): FunnelStage | null {
+  if (typeof value !== 'string') return null;
+  const raw = value.trim().toUpperCase();
+  if (!raw) return null;
+  if (raw.includes('TOFU')) return 'TOFU';
   if (raw.includes('MOFU')) return 'MOFU';
+  if (raw.includes('BOFU')) return 'BOFU';
+  return null;
+}
+
+export function normalizeFunnelStage(value?: string): FunnelStage {
+  const parsed = parseStrictFunnelStage(value);
+  if (parsed) return parsed;
   return 'TOFU';
 }
 

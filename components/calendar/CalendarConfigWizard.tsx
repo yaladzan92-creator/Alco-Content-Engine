@@ -176,7 +176,10 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                 <input
                   type="text"
                   value={configData.coreTopic || ''}
-                  onChange={(e) => configData.setCoreTopic(e.target.value)}
+                  onChange={(e) => {
+                    configData.setCoreTopic(e.target.value);
+                    configData.setHasUserCoreTopicOverride?.(true);
+                  }}
                   placeholder="Contoh: Edukasi Funnel & Solusi Produk Digital"
                   className="w-full bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-3.5 py-2.5 text-xs text-[#1f2933] placeholder:text-stone-400 focus:outline-none focus:border-primary transition-colors font-medium"
                 />

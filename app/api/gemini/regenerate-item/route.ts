@@ -159,15 +159,15 @@ ${buildFunnelStrategyPromptBlock(activeFunnelStrategy)}
     });
 
     const parsed = JSON.parse(response.text || '{}');
-    const finalStage = parsed.jenis || item.jenis || "TOFU";
     const rawCta = parsed.cta || item.cta || "";
-    const validation = validateItemAgainstFunnelStrategy({ ...item, ...parsed, jenis: finalStage, cta: rawCta }, activeFunnelStrategy);
-    const sanitizedCta = validation.repairedCta || sanitizeCtaForFunnel(rawCta, finalStage);
+    const validation = validateItemAgainstFunnelStrategy({ ...item, ...parsed, jenis: stageType, cta: rawCta }, activeFunnelStrategy);
+    const sanitizedCta = validation.repairedCta || sanitizeCtaForFunnel(rawCta, stageType);
 
     return NextResponse.json({
       item: {
         ...item,
         ...parsed,
+        jenis: item.jenis, // Stage is strictly locked to original item
         project_id: resolvedProjectId,
         projectId: resolvedProjectId,
         content_item_id: item.content_item_id,

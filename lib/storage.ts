@@ -307,6 +307,7 @@ export interface CalendarSettings {
   hasUserCtaOverride?: boolean;
   hasUserHookOverride?: boolean;
   hasUserFormulaOverride?: boolean;
+  hasUserCoreTopicOverride?: boolean;
   formatRatio: Record<string, number>;
   selectedVoices: string[];
   hookMix: { type: string; percentage?: number }[];
@@ -369,6 +370,7 @@ export const getDefaultCalendarSettings = (
       hasUserCtaOverride: false,
       hasUserHookOverride: false,
       hasUserFormulaOverride: false,
+      hasUserCoreTopicOverride: false,
       formatRatio: { Single: 30, Carousel: 40, Reels: 30 },
       selectedVoices: ['The Efficiency Expert'],
       hookMix: [
@@ -399,6 +401,7 @@ export const getDefaultCalendarSettings = (
     hasUserCtaOverride: false,
     hasUserHookOverride: false,
     hasUserFormulaOverride: false,
+    hasUserCoreTopicOverride: false,
     formatRatio: { Single: 30, Carousel: 40, Reels: 30 },
     selectedVoices: ['The Efficiency Expert'],
     hookMix: [
@@ -421,6 +424,11 @@ export const getProjectCalendarSettings = (projectId: string): CalendarSettings 
 
 export const saveProjectCalendarSettings = (projectId: string, settings: CalendarSettings) => {
   saveProjectData(projectId, 'calendarSettings', settings);
+};
+
+export const invalidateProjectFunnelStrategy = (projectId: string): void => {
+  if (!projectId || projectId === 'default' || projectId === 'default_project') return;
+  removeProjectData(projectId, 'funnelStrategy');
 };
 
 export const loadProjectFunnelStrategy = (projectId: string): FunnelStrategy | null => {
@@ -481,14 +489,21 @@ export const loadProjectSharedContext = (projectId: string): SharedContentContex
   }
 
   if (context && typeof context === 'object') {
-    // Normalization & legacy repair: if context was loaded from this project's storage
-    // but contains a stale/missing project_id, normalize it to canonical projectId
-    if (context.project_id !== projectId) {
+    // Strict Cross-Project Isolation:
+    // If context has a non-empty project_id that conflicts with requested projectId, REJECT immediately!
+    if (context.project_id && context.project_id !== projectId) {
+      console.error(
+        `Cross-project SharedContentContext mismatch: expected project "${projectId}", but found stored context belonging to "${context.project_id}". Rejected loading.`
+      );
+      return null;
+    }
+
+    // Repair only if project_id is completely missing/empty (legacy data)
+    if (!context.project_id) {
       context = {
         ...context,
         project_id: projectId,
       };
-      // Persist the repaired context back to this same project's storage namespace
       saveProjectData(projectId, 'context', context);
       saveProjectData(projectId, 'sharedContext', context);
     }
@@ -499,6 +514,14 @@ export const loadProjectSharedContext = (projectId: string): SharedContentContex
 
 export const saveProjectSharedContext = (projectId: string, context: any): void => {
   if (!projectId || !context || projectId === 'default' || projectId === 'default_project') return;
+
+  // Strict check: Block cross-project contamination
+  if (context.project_id && context.project_id !== projectId) {
+    throw new Error(
+      `Cross-Project Contamination Blocked: Cannot save SharedContentContext for project "${context.project_id}" into target project "${projectId}".`
+    );
+  }
+
   const normalized = {
     ...context,
     project_id: projectId,
