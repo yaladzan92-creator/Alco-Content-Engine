@@ -15,6 +15,7 @@ import {
   validateFunnelStrategyProjectIsolation,
   buildFunnelStrategyPromptBlock,
   validateItemAgainstFunnelStrategy,
+  normalizeCalendarToFunnelDistribution,
 } from "@/lib/funnel-strategy";
 import { resolveGeminiApiKey, missingGeminiApiKeyMessage } from "@/lib/gemini-api-key";
 

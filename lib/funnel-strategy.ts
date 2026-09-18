@@ -1,6 +1,7 @@
 import { FunnelStage, FUNNEL_CONTENT_RULES, normalizeFunnelStage, sanitizeCtaForFunnel } from './funnel-rules';
 import { SharedContentContext } from './content-contract';
 
+export { normalizeFunnelStage, sanitizeCtaForFunnel };
 export type FunnelStageType = FunnelStage;
 
 export interface FunnelStageStrategy {
