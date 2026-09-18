@@ -547,3 +547,103 @@ export function normalizeCalendarToFunnelDistribution(
     };
   });
 }
+
+export interface FunnelRatioInput {
+  tofu?: number;
+  mofu?: number;
+  bofu?: number;
+}
+
+export interface FunnelPlanningInputOptions {
+  hasUserFunnelOverride?: boolean;
+  userOverrides?: FunnelRatioInput;
+  ratio?: FunnelRatioInput;
+  totalPosts?: number;
+  defaultTotalPosts?: number;
+}
+
+export interface ResolvedFunnelPlanningInput {
+  explicitOverrides: { tofu: number; mofu: number; bofu: number } | undefined;
+  totalPosts: number;
+}
+
+/**
+ * Resolves production funnel planning input options cleanly.
+ * When hasUserFunnelOverride is false, ratio and userOverrides are completely ignored.
+ * When hasUserFunnelOverride is true, userOverrides or ratio is used as explicit override.
+ */
+export function resolveFunnelPlanningInput(
+  options: FunnelPlanningInputOptions
+): ResolvedFunnelPlanningInput {
+  const {
+    hasUserFunnelOverride = false,
+    userOverrides,
+    ratio,
+    totalPosts,
+    defaultTotalPosts = 14,
+  } = options;
+
+  if (hasUserFunnelOverride) {
+    const rawOverride = userOverrides || ratio;
+    if (
+      rawOverride &&
+      (typeof rawOverride.tofu === 'number' ||
+        typeof rawOverride.mofu === 'number' ||
+        typeof rawOverride.bofu === 'number')
+    ) {
+      const tofu = Math.max(0, rawOverride.tofu ?? 0);
+      const mofu = Math.max(0, rawOverride.mofu ?? 0);
+      const bofu = Math.max(0, rawOverride.bofu ?? 0);
+      const explicitTotal = tofu + mofu + bofu;
+      return {
+        explicitOverrides: { tofu, mofu, bofu },
+        totalPosts: explicitTotal > 0 ? explicitTotal : (totalPosts || defaultTotalPosts),
+      };
+    }
+  }
+
+  // When hasUserFunnelOverride is false, ratio/userOverrides are completely ignored.
+  return {
+    explicitOverrides: undefined,
+    totalPosts: totalPosts || defaultTotalPosts,
+  };
+}
+
+/**
+ * Validates strict project isolation during item regeneration.
+ * Requires requestProjectId to be present and non-empty.
+ * Rejects if itemProjectId or contextProjectId conflicts with requestProjectId.
+ */
+export function validateRegenerateProjectIdentity(
+  requestProjectId?: string,
+  itemProjectId?: string,
+  contextProjectId?: string
+): { isValid: boolean; error?: string } {
+  if (!requestProjectId || requestProjectId.trim() === '') {
+    return {
+      isValid: false,
+      error: 'Project isolation violation during item regeneration.',
+    };
+  }
+
+  const reqId = requestProjectId.trim();
+  const itemId = itemProjectId ? itemProjectId.trim() : '';
+  const ctxId = contextProjectId ? contextProjectId.trim() : '';
+
+  if (itemId && itemId !== reqId) {
+    return {
+      isValid: false,
+      error: 'Project isolation violation during item regeneration.',
+    };
+  }
+
+  if (ctxId && ctxId !== reqId) {
+    return {
+      isValid: false,
+      error: 'Project isolation violation during item regeneration.',
+    };
+  }
+
+  return { isValid: true };
+}
+

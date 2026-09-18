@@ -137,7 +137,6 @@ export const CalendarDay: React.FC<{
 }> = ({
   day,
   items,
-  growthItems = [],
   isCurrentMonth,
   onClick,
   onEdit,
@@ -151,12 +150,12 @@ export const CalendarDay: React.FC<{
 }) => {
   const { setNodeRef } = useSortable({ id: format(day, 'yyyy-MM-dd') });
 
-  const totalItems = items.length + growthItems.length;
+  const totalItems = items.length;
   const isToday = todayDate ? isSameDay(day, todayDate) : false;
 
   const handleSendToCalcer = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const allItems = [...items, ...growthItems];
+    const allItems = items;
     if (allItems.length === 0) return;
 
     const briefText = allItems
@@ -184,7 +183,7 @@ export const CalendarDay: React.FC<{
       ref={setNodeRef}
       onClick={() => {
         if (totalItems > 0) {
-          onEdit?.(items[0] || growthItems[0]);
+          onEdit?.(items[0]);
         } else {
           onClick?.();
         }
@@ -268,24 +267,6 @@ export const CalendarDay: React.FC<{
               <SortableContext items={items.map((i) => i.no)} strategy={verticalListSortingStrategy}>
                 {items.map((item) => (
                   <SortableItem key={item.no} item={item} onClick={() => onEdit?.(item)} />
-                ))}
-              </SortableContext>
-            </div>
-          )}
-
-          {growthItems.length > 0 && (
-            <div className="space-y-1 pt-1.5 border-t border-[#e7e0d4] dark:border-slate-800">
-              <SortableContext
-                items={growthItems.map((i) => i.no + '_growth')}
-                strategy={verticalListSortingStrategy}
-              >
-                {growthItems.map((item) => (
-                  <SortableItem
-                    key={item.no + '_growth'}
-                    item={item}
-                    onClick={() => onEdit?.(item)}
-                    isGrowth
-                  />
                 ))}
               </SortableContext>
             </div>

@@ -63,7 +63,6 @@ export default function HomePageClient() {
   const { hasCustomKey } = useGeminiApiKey();
 
   const [items, setItems] = useState<ContentItem[]>([]);
-  const [growthItems, setGrowthItems] = useState<ContentItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRegeneratingItem, setIsRegeneratingItem] = useState(false);
   const [isConfiguring, setIsConfiguring] = useState(false);
@@ -175,7 +174,6 @@ export default function HomePageClient() {
     };
     saveProjectCalendarSettings(pid, currentSettings);
     saveProjectData(pid, 'items', items);
-    saveProjectData(pid, 'growthItems', growthItems);
     saveProjectData(pid, 'history', history);
     saveProjectData(pid, 'revisions', revisions);
   };
@@ -195,7 +193,6 @@ export default function HomePageClient() {
 
     // 3. Immediately clear all states of old project and clear global transient bridge
     setItems([]);
-    setGrowthItems([]);
     setHistory([]);
     setRevisions({});
     setStrategyBlueprint(null);
@@ -231,7 +228,6 @@ export default function HomePageClient() {
       setStrategyBlueprint(savedBlueprint || null);
       setSharedContext(savedContext || null);
       setItems([]);
-      setGrowthItems([]);
       setHistory([]);
       setRevisions({});
       saveProjectSelectedItem(pid, null);
@@ -251,15 +247,10 @@ export default function HomePageClient() {
     const normalizedItems = (Array.isArray(rawItems) ? rawItems : []).map((item, idx) =>
       ensureContentItemIdentity(item, pid, idx)
     );
-    const rawGrowth = loadProjectData(pid, 'growthItems', []) as any[];
-    const normalizedGrowth = (Array.isArray(rawGrowth) ? rawGrowth : []).map((item, idx) =>
-      ensureContentItemIdentity(item, pid, idx)
-    );
 
     const savedHistory = loadProjectData(pid, 'history', []);
     const savedRevisions = loadProjectData(pid, 'revisions', {});
     setItems(normalizedItems);
-    setGrowthItems(normalizedGrowth);
     setHistory(savedHistory);
     setRevisions(savedRevisions);
 
@@ -323,10 +314,9 @@ export default function HomePageClient() {
       return;
     }
     saveProjectData(activeProjectId, 'items', items);
-    saveProjectData(activeProjectId, 'growthItems', growthItems);
     saveProjectData(activeProjectId, 'history', history);
     saveProjectData(activeProjectId, 'revisions', revisions);
-  }, [items, growthItems, history, revisions, activeProjectId, isProjectIncomplete]);
+  }, [items, history, revisions, activeProjectId, isProjectIncomplete]);
 
   // Auto-save calendar settings per project
   useEffect(() => {
@@ -416,7 +406,6 @@ export default function HomePageClient() {
 
       // 3. Reset calendar, items, and revision states completely
       setItems([]);
-      setGrowthItems([]);
       setHistory([]);
       setRevisions({});
       setIsConfiguring(false);
@@ -627,12 +616,7 @@ export default function HomePageClient() {
         const stampedItems = data.items.map((item: any, idx: number) =>
           ensureContentItemIdentity(item, requestProjectId, idx)
         );
-        const stampedGrowth = (data.growthItems || []).map((item: any, idx: number) =>
-          ensureContentItemIdentity(item, requestProjectId, idx)
-        );
-
         setItems(stampedItems);
-        setGrowthItems(stampedGrowth);
 
         const newHistoryEntry = {
           id: Date.now(),
@@ -640,14 +624,12 @@ export default function HomePageClient() {
           topic: coreTopic || sharedContext?.brand_context?.brand_name || 'Peluncuran Produk',
           itemCount: stampedItems.length,
           items: stampedItems,
-          growthItems: stampedGrowth,
         };
         const updatedHistory = [newHistoryEntry, ...history.slice(0, 9)];
         setHistory(updatedHistory);
 
         // Explicitly persist under requestProjectId
         saveProjectData(requestProjectId, 'items', stampedItems);
-        saveProjectData(requestProjectId, 'growthItems', stampedGrowth);
         saveProjectData(requestProjectId, 'history', updatedHistory);
         saveProjectSelectedItem(requestProjectId, stampedItems[0]);
 
@@ -846,7 +828,6 @@ export default function HomePageClient() {
 
   const handleReset = () => {
     setItems([]);
-    setGrowthItems([]);
     setIsConfiguring(true);
     setCurrentStep(0);
     showToast('Sistem di-reset ke awal.');
@@ -1132,7 +1113,6 @@ export default function HomePageClient() {
             </div>
             <CalendarView
               items={items}
-              growthItems={growthItems}
               onReschedule={handleReschedule}
               filterType={filterType}
               onFilterChange={setFilterType}
@@ -1164,7 +1144,6 @@ export default function HomePageClient() {
               onReset={handleReset}
               onLoadHistory={(entry) => {
                 if (entry.items) setItems(entry.items);
-                if (entry.growthItems) setGrowthItems(entry.growthItems);
                 showToast(`Memuat ${entry.items?.length || 0} post dari histori.`);
               }}
               onSendToCalcer={() => showToast('Brief disalin ke clipboard untuk Calcer AI!')}

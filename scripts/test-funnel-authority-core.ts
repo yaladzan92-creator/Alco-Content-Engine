@@ -8,6 +8,8 @@ import {
   summarizeFunnelDistribution,
   validateCalendarAgainstFunnelStrategy,
   normalizeCalendarToFunnelDistribution,
+  resolveFunnelPlanningInput,
+  validateRegenerateProjectIdentity,
 } from '../lib/funnel-strategy';
 import {
   saveProjectFunnelStrategy,
@@ -500,19 +502,79 @@ assert(
   'Test J: Unoverridden coreTopic refreshes automatically on blueprint update; user-overridden coreTopic is strictly preserved'
 );
 
-// Test K1: hasUserFunnelOverride = false ignores userOverrides/ratio as explicit override
-const userOverridesRaw = { tofu: 2, mofu: 4, bofu: 8 };
-const explicitIgnored = false ? (userOverridesRaw || undefined) : undefined;
+// Test K1: hasUserFunnelOverride = false ignores ratio and userOverrides via resolveFunnelPlanningInput
+const planK1 = resolveFunnelPlanningInput({
+  hasUserFunnelOverride: false,
+  totalPosts: 14,
+  ratio: { tofu: 2, mofu: 4, bofu: 8 },
+  userOverrides: { tofu: 2, mofu: 4, bofu: 8 },
+});
 assert(
-  explicitIgnored === undefined,
-  'Test K1: hasUserFunnelOverride = false ignores userOverrides object as explicit override'
+  planK1.explicitOverrides === undefined && planK1.totalPosts === 14,
+  'Test K1: resolveFunnelPlanningInput with hasUserFunnelOverride=false ignores overrides and resolves totalPosts=14'
 );
 
-// Test K2: hasUserFunnelOverride = true uses userOverrides as explicit override
-const explicitUsed = true ? (userOverridesRaw || undefined) : undefined;
+// Test K2: hasUserFunnelOverride = true uses ratio as explicit override
+const planK2 = resolveFunnelPlanningInput({
+  hasUserFunnelOverride: true,
+  ratio: { tofu: 7, mofu: 5, bofu: 2 },
+});
 assert(
-  explicitUsed?.tofu === 2 && explicitUsed?.mofu === 4 && explicitUsed?.bofu === 8,
-  'Test K2: hasUserFunnelOverride = true uses userOverrides object as explicit funnel override'
+  planK2.explicitOverrides?.tofu === 7 &&
+    planK2.explicitOverrides?.mofu === 5 &&
+    planK2.explicitOverrides?.bofu === 2 &&
+    planK2.totalPosts === 14,
+  'Test K2: resolveFunnelPlanningInput with hasUserFunnelOverride=true uses ratio (7/5/2) and calculates totalPosts=14'
+);
+
+// Test K3: hasUserFunnelOverride = true uses userOverrides as explicit override
+const planK3 = resolveFunnelPlanningInput({
+  hasUserFunnelOverride: true,
+  userOverrides: { tofu: 2, mofu: 4, bofu: 8 },
+});
+assert(
+  planK3.explicitOverrides?.tofu === 2 &&
+    planK3.explicitOverrides?.mofu === 4 &&
+    planK3.explicitOverrides?.bofu === 8 &&
+    planK3.totalPosts === 14,
+  'Test K3: resolveFunnelPlanningInput with hasUserFunnelOverride=true uses userOverrides (2/4/8) and calculates totalPosts=14'
+);
+
+// Test K4: hasUserFunnelOverride = false with no totalPosts uses single documented default totalPosts (14)
+const planK4 = resolveFunnelPlanningInput({
+  hasUserFunnelOverride: false,
+});
+assert(
+  planK4.explicitOverrides === undefined && planK4.totalPosts === 14,
+  'Test K4: resolveFunnelPlanningInput with no explicit totalPosts defaults cleanly to single documented default (14)'
+);
+
+// Test R1: validateRegenerateProjectIdentity PASS when request=A, item=A, context=A
+const regIsoPass = validateRegenerateProjectIdentity('proj_A', 'proj_A', 'proj_A');
+assert(
+  regIsoPass.isValid,
+  'Test R1: validateRegenerateProjectIdentity passes when request=A, item=A, context=A'
+);
+
+// Test R2: validateRegenerateProjectIdentity FAIL when request=B, item=A, context=A
+const regIsoFailReq = validateRegenerateProjectIdentity('proj_B', 'proj_A', 'proj_A');
+assert(
+  !regIsoFailReq.isValid && regIsoFailReq.error?.includes('Project isolation violation'),
+  'Test R2: validateRegenerateProjectIdentity fails when request=B, item=A, context=A'
+);
+
+// Test R3: validateRegenerateProjectIdentity FAIL when request=A, item=A, context=B
+const regIsoFailCtx = validateRegenerateProjectIdentity('proj_A', 'proj_A', 'proj_B');
+assert(
+  !regIsoFailCtx.isValid && regIsoFailCtx.error?.includes('Project isolation violation'),
+  'Test R3: validateRegenerateProjectIdentity fails when request=A, item=A, context=B'
+);
+
+// Test R4: validateRegenerateProjectIdentity FAIL when request=A, item=B, context=A
+const regIsoFailItem = validateRegenerateProjectIdentity('proj_A', 'proj_B', 'proj_A');
+assert(
+  !regIsoFailItem.isValid && regIsoFailItem.error?.includes('Project isolation violation'),
+  'Test R4: validateRegenerateProjectIdentity fails when request=A, item=B, context=A'
 );
 
 // Test L1: lockRegeneratedFunnelStage preserves TOFU when AI returns BOFU

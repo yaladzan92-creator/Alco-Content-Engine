@@ -16,6 +16,7 @@ import {
   validateItemAgainstFunnelStrategy,
   validateCalendarAgainstFunnelStrategy,
   normalizeCalendarToFunnelDistribution,
+  resolveFunnelPlanningInput,
 } from "@/lib/funnel-strategy";
 import { resolveGeminiApiKey, missingGeminiApiKeyMessage } from "@/lib/gemini-api-key";
 
@@ -112,27 +113,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Single source of authority for total posts and funnel strategy
-    const explicitOverrides = hasUserFunnelOverride
-      ? (userOverrides || ratio)
-      : undefined;
-
-    const explicitOverrideTotal = explicitOverrides
-      ? ((explicitOverrides.tofu || 0) + (explicitOverrides.mofu || 0) + (explicitOverrides.bofu || 0))
-      : 0;
-
-    const requestedTotalPosts = bodyData.totalPosts || (ratio ? ((ratio.tofu || 0) + (ratio.mofu || 0) + (ratio.bofu || 0)) : 0) || 14;
-    const baseTotalPosts = explicitOverrideTotal > 0 ? explicitOverrideTotal : requestedTotalPosts;
+    // Single source of authority for total posts and funnel strategy via production helper
+    const planningInput = resolveFunnelPlanningInput({
+      hasUserFunnelOverride,
+      userOverrides,
+      ratio,
+      totalPosts: bodyData.totalPosts,
+    });
 
     // Establish authoritative FunnelStrategy for the active project strictly on the server
     const activeFunnelStrategy = buildFunnelStrategyFromContext(context, {
-      totalPosts: baseTotalPosts,
+      totalPosts: planningInput.totalPosts,
       campaignGoal: coreTopic,
-      userOverrides: explicitOverrides ? {
-        tofu: explicitOverrides.tofu,
-        mofu: explicitOverrides.mofu,
-        bofu: explicitOverrides.bofu,
-      } : undefined,
+      userOverrides: planningInput.explicitOverrides,
     });
 
     // Synchronize totalPosts with the authoritative FunnelStrategy
@@ -286,31 +279,6 @@ Return ONLY the JSON matching the specified schema.`;
                 },
                 required: ["no", "tanggal", "jenis", "tujuan", "headline", "body", "caption", "format", "visual", "keterangan", "recommendedAssetTypes", "primaryAssetType", "assetTypeReason"]
               }
-            },
-            growthItems: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  no: { type: Type.INTEGER },
-                  tanggal: { type: Type.STRING },
-                  jenis: { type: Type.STRING },
-                  tujuan: { type: Type.STRING },
-                  hookType: { type: Type.STRING },
-                  headline: { type: Type.STRING },
-                  body: { type: Type.STRING },
-                  caption: { type: Type.STRING },
-                  format: { type: Type.STRING },
-                  recommendedAssetTypes: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  primaryAssetType: { type: Type.STRING },
-                  assetTypeReason: { type: Type.STRING },
-                  referensi: { type: Type.STRING },
-                  visual: { type: Type.STRING },
-                  keterangan: { type: Type.STRING },
-                  channel: { type: Type.STRING },
-                  cta: { type: Type.STRING },
-                }
-              }
             }
           },
           required: ["items"]
@@ -353,25 +321,8 @@ Return ONLY the JSON matching the specified schema.`;
       resolvedProjectId
     );
 
-    const sanitizedGrowthItems = Array.isArray(parsed.growthItems)
-      ? parsed.growthItems.map((item: any, idx: number) => {
-          const itemNo = item.no !== undefined && item.no !== null ? item.no : (idx + 1);
-          const validation = validateItemAgainstFunnelStrategy(item, activeFunnelStrategy);
-          const finalCta = validation.repairedCta || sanitizeCtaForFunnel(item.cta, item.jenis);
-          return {
-            ...item,
-            no: itemNo,
-            project_id: resolvedProjectId,
-            projectId: resolvedProjectId,
-            content_item_id: item.content_item_id || `${resolvedProjectId}_growth_${itemNo}_${Date.now()}_${idx + 1}`,
-            cta: finalCta,
-          };
-        })
-      : [];
-
     return NextResponse.json({
       items: sanitizedItems,
-      growthItems: sanitizedGrowthItems,
       funnelStrategy: activeFunnelStrategy,
       contextSummary: {
         brandName: context.brand_context.brand_name,

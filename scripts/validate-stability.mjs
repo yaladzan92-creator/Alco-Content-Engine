@@ -92,7 +92,8 @@ const nextEnvPath = path.join(projectRoot, 'next-env.d.ts');
 if (fs.existsSync(nextEnvPath)) {
   let nextEnvContent = fs.readFileSync(nextEnvPath, 'utf8');
   if (nextEnvContent.includes('.next/') || nextEnvContent.includes('.next-dev/')) {
-    nextEnvContent = nextEnvContent.replace(/\/\/\/<reference types="(?:\.next|\.next-dev)\/types\/[^\n]*\n?/g, '');
+    nextEnvContent = nextEnvContent.replace(/\/\/\/\s*<reference\s+(?:types|path)\s*=\s*["']\.\/(?:\.next|\.next-dev)\/types\/[^"']*["']\s*\/>\n?/g, '');
+    nextEnvContent = nextEnvContent.replace(/\/\/\/\s*<reference\s+(?:types|path)\s*=\s*["'](?:\.next|\.next-dev)\/types\/[^"']*["']\s*\/>\n?/g, '');
     fs.writeFileSync(nextEnvPath, nextEnvContent, 'utf8');
   }
   successes.push('next-env.d.ts telah dibersihkan otomatis dari reference ".next/" atau ".next-dev/".');

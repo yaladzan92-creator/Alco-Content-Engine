@@ -1,10 +1,11 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
-import { sanitizeCtaForFunnel, parseStrictFunnelStage, lockRegeneratedFunnelStage, FunnelStage } from "@/lib/funnel-rules";
+import { sanitizeCtaForFunnel, lockRegeneratedFunnelStage, FunnelStage } from "@/lib/funnel-rules";
 import {
   buildFunnelStrategyFromContext,
   buildFunnelStrategyPromptBlock,
   validateItemAgainstFunnelStrategy,
+  validateRegenerateProjectIdentity,
 } from "@/lib/funnel-strategy";
 import { resolveGeminiApiKey, missingGeminiApiKeyMessage } from "@/lib/gemini-api-key";
 
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const { item, instruction, coreTopic, sharedContentContext, userOverrides, ratio, hasUserFunnelOverride } = await req.json();
+    const { item, instruction, coreTopic, sharedContentContext, projectId, userOverrides, ratio, hasUserFunnelOverride } = await req.json();
 
     if (!item) {
       return NextResponse.json({ error: "Missing content item to revise" }, { status: 400 });
@@ -42,15 +43,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const itemProjectId = item.project_id || item.projectId || sharedContentContext.project_id;
-    if (itemProjectId && sharedContentContext.project_id && itemProjectId !== sharedContentContext.project_id) {
+    const itemProjectId = item.project_id || item.projectId;
+    const contextProjectId = sharedContentContext.project_id;
+    const requestProjectId = projectId || itemProjectId || contextProjectId;
+
+    const isolation = validateRegenerateProjectIdentity(requestProjectId, itemProjectId, contextProjectId);
+    if (!isolation.isValid) {
       return NextResponse.json(
-        { error: `Mismatch Project Context: Item project (${itemProjectId}) berbeda dengan context (${sharedContentContext.project_id}).` },
+        {
+          error: isolation.error || "Project isolation violation during item regeneration.",
+          isBlocked: true,
+        },
         { status: 400 }
       );
     }
 
-    const resolvedProjectId = itemProjectId || sharedContentContext.project_id;
+    const resolvedProjectId = requestProjectId;
 
     // Reject if item's original funnel stage is invalid, and lock stage strictly
     let stageType: FunnelStage;

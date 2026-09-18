@@ -87,7 +87,6 @@ const safeCopyToClipboard = async (text: string) => {
 
 export interface CalendarViewProps {
   items: ContentItem[];
-  growthItems?: ContentItem[];
   onReschedule: (itemId: number, newDate: string) => void;
   filterType: string;
   onFilterChange: (type: string) => void;
@@ -126,7 +125,6 @@ export interface CalendarViewProps {
 
 export default function CalendarView({
   items,
-  growthItems = [],
   onReschedule,
   filterType,
   onFilterChange,
@@ -422,7 +420,7 @@ Keterangan: ${editingItem.keterangan}`;
   };
 
   const rawOutputData = useMemo(() => {
-    const data = items.length > 0 ? items : growthItems;
+    const data = items;
     if (!data || data.length === 0) return { markdown: '', tab: '' };
 
     const headers = [
@@ -486,7 +484,7 @@ Keterangan: ${editingItem.keterangan}`;
     });
 
     return { markdown: md, tab };
-  }, [items, growthItems]);
+  }, [items]);
 
   useEffect(() => {
     if (isLoading) {
@@ -554,13 +552,6 @@ Keterangan: ${editingItem.keterangan}`;
     return items.filter((item) => (item.jenis || '').toUpperCase().includes(normFilter));
   }, [items, filterType]);
 
-  const filteredGrowthItems = useMemo(() => {
-    if (!growthItems) return [];
-    const normFilter = (filterType || '').toUpperCase();
-    if (normFilter === 'ALL' || normFilter === '') return growthItems;
-    return growthItems.filter((item) => (item.jenis || '').toUpperCase().includes(normFilter));
-  }, [growthItems, filterType]);
-
   const safeParseISO = (dateStr?: string): Date | null => {
     if (!dateStr) return null;
     try {
@@ -625,13 +616,6 @@ Keterangan: ${editingItem.keterangan}`;
             return false;
           }
         });
-        const dayGrowthItems = filteredGrowthItems.filter((item) => {
-          try {
-            return isSameDay(parseISO(item.tanggal), day);
-          } catch {
-            return false;
-          }
-        });
 
         const showStartPrompt =
           items.length === 0 &&
@@ -652,7 +636,6 @@ Keterangan: ${editingItem.keterangan}`;
 
         return (
           dayItems.length > 0 ||
-          dayGrowthItems.length > 0 ||
           showStartPrompt ||
           resumePrompt ||
           showConfigButton
@@ -669,7 +652,6 @@ Keterangan: ${editingItem.keterangan}`;
   }, [
     calendarDays,
     filteredItems,
-    filteredGrowthItems,
     items.length,
     todayDate,
     isConfiguring,
@@ -715,7 +697,7 @@ Keterangan: ${editingItem.keterangan}`;
     const itemsToDisplay = itemsInMonth.length > 0 ? itemsInMonth : filteredItems;
     const grouped: Record<
       string,
-      { date: Date; dateStr: string; items: ContentItem[]; growthItems: ContentItem[] }
+      { date: Date; dateStr: string; items: ContentItem[] }
     > = {};
 
     const sorted = [...itemsToDisplay].sort((a, b) => {
@@ -734,16 +716,11 @@ Keterangan: ${editingItem.keterangan}`;
             date: parseISO(dateKey),
             dateStr: dateKey,
             items: [],
-            growthItems: [],
           };
         } catch {}
       }
       if (grouped[dateKey]) {
-        if (item.isGrowth) {
-          grouped[dateKey].growthItems.push(item);
-        } else {
-          grouped[dateKey].items.push(item);
-        }
+        grouped[dateKey].items.push(item);
       }
     });
 
@@ -886,7 +863,7 @@ Keterangan: ${editingItem.keterangan}`;
           ) : (
             <div className="space-y-4">
               {mobileAgendaDates.map((group) => {
-                const allGroupItems = [...group.items, ...group.growthItems];
+                const allGroupItems = group.items;
                 const isGroupToday = todayDate ? isSameDay(group.date, todayDate) : false;
 
                 return (
@@ -1105,20 +1082,11 @@ Keterangan: ${editingItem.keterangan}`;
                             }
                           });
 
-                          const dayGrowthItems = filteredGrowthItems.filter((item) => {
-                            try {
-                              return isSameDay(parseISO(item.tanggal), day);
-                            } catch (e) {
-                              return false;
-                            }
-                          });
-
                           return (
                             <CalendarDay
                               key={dayStr}
                               day={day}
                               items={dayItems}
-                              growthItems={dayGrowthItems}
                               isCurrentMonth={isSameMonth(day, monthStart)}
                               todayDate={todayDate}
                               isCompact={week.isCompact}
