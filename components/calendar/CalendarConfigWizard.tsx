@@ -470,7 +470,10 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                           <div key={i} className="flex gap-2">
                             <select
                               value={configData.hookMix?.[i]?.type || 'Call-Out'}
-                              onChange={(e) => configData.updateHookMix(i, 'type', e.target.value)}
+                              onChange={(e) => {
+                                configData.updateHookMix(i, 'type', e.target.value);
+                                configData.setHasUserHookOverride?.(true);
+                              }}
                               className="flex-1 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl px-3 py-2 text-xs text-stone-900 focus:outline-none focus:border-primary"
                             >
                               {['Call-Out', 'Curiosity Gap', 'Social Proof', 'Negativity Bias', 'Authority', 'Relatability'].map((h) => (
@@ -480,7 +483,10 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                             <input
                               type="number"
                               value={configData.hookMix?.[i]?.percentage || 0}
-                              onChange={(e) => configData.updateHookMix(i, 'percentage', parseInt(e.target.value) || 0)}
+                              onChange={(e) => {
+                                configData.updateHookMix(i, 'percentage', parseInt(e.target.value) || 0);
+                                configData.setHasUserHookOverride?.(true);
+                              }}
                               className="w-20 bg-[#f6f3ee] border border-[#e7e0d4] rounded-xl text-center text-xs text-stone-900 focus:outline-none focus:border-primary"
                             />
                           </div>
@@ -522,7 +528,10 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                             <button
                               key={formula.id}
                               type="button"
-                              onClick={() => configData.setSelectedFormula(formula.title)}
+                              onClick={() => {
+                                configData.setSelectedFormula(formula.title);
+                                configData.setHasUserFormulaOverride?.(true);
+                              }}
                               className={`p-2.5 text-left border rounded-xl transition-all ${
                                 isSel ? 'border-primary bg-primary/10 font-bold' : 'border-[#e7e0d4] bg-[#f6f3ee] hover:border-stone-400'
                               }`}
@@ -543,7 +552,10 @@ export const CalendarConfigWizard: React.FC<CalendarConfigWizardProps> = ({
                               <button
                                 key={cta}
                                 type="button"
-                                onClick={() => configData.toggleCTA(cta)}
+                                onClick={() => {
+                                  configData.toggleCTA(cta);
+                                  configData.setHasUserCtaOverride?.(true);
+                                }}
                                 className={`px-3 py-1.5 rounded-lg text-xs border transition-all ${
                                   isSel ? 'bg-primary border-primary text-white font-bold' : 'bg-[#f6f3ee] border-[#e7e0d4] text-stone-700 hover:border-stone-400'
                                 }`}

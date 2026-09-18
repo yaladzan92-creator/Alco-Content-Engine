@@ -304,6 +304,9 @@ export interface CalendarSettings {
   reelsDuration: string;
   ratio: { tofu: number; mofu: number; bofu: number };
   hasUserFunnelOverride?: boolean;
+  hasUserCtaOverride?: boolean;
+  hasUserHookOverride?: boolean;
+  hasUserFormulaOverride?: boolean;
   formatRatio: Record<string, number>;
   selectedVoices: string[];
   hookMix: { type: string; percentage?: number }[];
@@ -363,6 +366,9 @@ export const getDefaultCalendarSettings = (
       reelsDuration: '30s',
       ratio: { tofu: dist.tofu, mofu: dist.mofu, bofu: dist.bofu },
       hasUserFunnelOverride: false,
+      hasUserCtaOverride: false,
+      hasUserHookOverride: false,
+      hasUserFormulaOverride: false,
       formatRatio: { Single: 30, Carousel: 40, Reels: 30 },
       selectedVoices: ['The Efficiency Expert'],
       hookMix: [
@@ -390,6 +396,9 @@ export const getDefaultCalendarSettings = (
     reelsDuration: '30s',
     ratio: { tofu: 6, mofu: 5, bofu: 3 },
     hasUserFunnelOverride: false,
+    hasUserCtaOverride: false,
+    hasUserHookOverride: false,
+    hasUserFormulaOverride: false,
     formatRatio: { Single: 30, Carousel: 40, Reels: 30 },
     selectedVoices: ['The Efficiency Expert'],
     hookMix: [
@@ -417,7 +426,13 @@ export const saveProjectCalendarSettings = (projectId: string, settings: Calenda
 export const loadProjectFunnelStrategy = (projectId: string): FunnelStrategy | null => {
   if (!projectId || projectId === 'default' || projectId === 'default_project') return null;
   const stored = loadProjectData(projectId, 'funnelStrategy', null);
-  if (stored && stored.project_id === projectId) {
+  if (stored) {
+    if (stored.project_id && stored.project_id !== projectId) {
+      console.error(
+        `Cross-project FunnelStrategy mismatch: expected project "${projectId}", but found stored strategy belonging to "${stored.project_id}". Rejected loading.`
+      );
+      return null;
+    }
     return stored;
   }
   // Auto-derive from project shared context if not yet explicitly saved
@@ -432,15 +447,21 @@ export const loadProjectFunnelStrategy = (projectId: string): FunnelStrategy | n
 
 export const saveProjectFunnelStrategy = (projectId: string, strategy: FunnelStrategy): void => {
   if (!projectId || !strategy || projectId === 'default' || projectId === 'default_project') return;
-  const normalized: FunnelStrategy = {
-    ...strategy,
-    project_id: projectId,
-    provenance: {
-      ...strategy.provenance,
-      source_project_id: projectId,
-    },
-  };
-  saveProjectData(projectId, 'funnelStrategy', normalized);
+
+  // Strict check: Block cross-project strategy leakage. DO NOT silently relabel!
+  if (strategy.project_id && strategy.project_id !== projectId) {
+    throw new Error(
+      `Cross-Project Contamination Blocked: Cannot save FunnelStrategy for project "${strategy.project_id}" into target project "${projectId}". Silent relabeling is forbidden.`
+    );
+  }
+
+  if (strategy.provenance?.source_project_id && strategy.provenance.source_project_id !== projectId) {
+    throw new Error(
+      `Cross-Project Contamination Blocked: FunnelStrategy provenance source project "${strategy.provenance.source_project_id}" does not match target project "${projectId}".`
+    );
+  }
+
+  saveProjectData(projectId, 'funnelStrategy', strategy);
 };
 
 export const loadProjectSharedContext = (projectId: string): SharedContentContext | null => {

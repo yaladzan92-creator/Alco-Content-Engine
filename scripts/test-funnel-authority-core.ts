@@ -5,7 +5,11 @@ import {
   validateFunnelStrategyProjectIsolation,
   validateItemAgainstFunnelStrategy,
   buildCalendarPlanningContext,
+  summarizeFunnelDistribution,
+  validateCalendarAgainstFunnelStrategy,
+  normalizeCalendarToFunnelDistribution,
 } from '../lib/funnel-strategy';
+import { saveProjectFunnelStrategy } from '../lib/storage';
 import { SharedContentContext } from '../lib/content-contract';
 
 const projectRoot = process.cwd();
@@ -295,6 +299,65 @@ assert(
   overriddenStratA.distribution.mofu === 5 &&
   overriddenStratA.distribution.bofu === 2,
   'Test M: Explicit user override menghasilkan source user_override dan is_customized: true dengan angka ratio yang tepat'
+);
+
+// -------------------------------------------------------------
+// SECTION 13: CALENDAR VALIDATION & NORMALIZATION TESTS
+// -------------------------------------------------------------
+console.log('\n--- SECTION 13: Calendar Validation, Distribution & Normalization ---');
+
+// Test N1: summarizeFunnelDistribution
+const mockItems = [
+  { no: 1, jenis: 'TOFU', headline: 'Topik 1', body: 'B', caption: 'C', format: 'Carousel', cta: 'Simpan' },
+  { no: 2, jenis: 'TOFU', headline: 'Topik 2', body: 'B', caption: 'C', format: 'Reels', cta: 'Simpan' },
+  { no: 3, jenis: 'MOFU', headline: 'Topik 3', body: 'B', caption: 'C', format: 'Single', cta: 'Komen' },
+  { no: 4, jenis: 'BOFU', headline: 'Topik 4', body: 'B', caption: 'C', format: 'Reels', cta: 'Free 14-Day Pilot' },
+];
+const summary = summarizeFunnelDistribution(mockItems);
+assert(
+  summary.tofu === 2 && summary.mofu === 1 && summary.bofu === 1 && summary.total === 4,
+  'Test N1: summarizeFunnelDistribution correctly counts TOFU/MOFU/BOFU/total'
+);
+
+// Test N2: validateCalendarAgainstFunnelStrategy detects count mismatch
+const calendarValidation = validateCalendarAgainstFunnelStrategy(mockItems, stratA);
+assert(
+  !calendarValidation.isValid && calendarValidation.errors.length > 0,
+  'Test N2: validateCalendarAgainstFunnelStrategy accurately catches item count mismatch vs Strategy'
+);
+
+// Test N3: normalizeCalendarToFunnelDistribution forces exact ratio and sequential stages
+const messyItems = Array.from({ length: 14 }, (_, i) => ({
+  no: i + 1,
+  jenis: 'BOFU',
+  headline: `Content Topic ${i + 1}`,
+  body: 'B',
+  caption: 'C',
+  format: 'Reels',
+  cta: 'Beli Sekarang'
+}));
+const normalizedCalendar = normalizeCalendarToFunnelDistribution(messyItems, overriddenStratA);
+const normalizedSummary = summarizeFunnelDistribution(normalizedCalendar);
+assert(
+  normalizedCalendar.length === 14 &&
+  normalizedSummary.tofu === 7 &&
+  normalizedSummary.mofu === 5 &&
+  normalizedSummary.bofu === 2,
+  'Test N3: normalizeCalendarToFunnelDistribution successfully enforces 7/5/2 ratio and sequential stage ordering'
+);
+
+// Test N4: Storage Isolation enforces strict error throwing on project mismatch
+let isolationErrorCaught = false;
+try {
+  saveProjectFunnelStrategy('proj_food_002', stratA);
+} catch (e: any) {
+  if (e.message && (e.message.includes('Cross-Project Contamination Blocked') || e.message.includes('Project Isolation Violation'))) {
+    isolationErrorCaught = true;
+  }
+}
+assert(
+  isolationErrorCaught,
+  'Test N4: saveProjectFunnelStrategy throws strict isolation error when project ID does not match strategy'
 );
 
 // -------------------------------------------------------------

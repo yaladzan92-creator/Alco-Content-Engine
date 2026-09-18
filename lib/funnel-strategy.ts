@@ -388,3 +388,143 @@ export function validateItemAgainstFunnelStrategy(
     repairedCta,
   };
 }
+
+/**
+ * Summarizes the distribution of TOFU, MOFU, and BOFU items in a calendar.
+ */
+export function summarizeFunnelDistribution(items: any[]): {
+  tofu: number;
+  mofu: number;
+  bofu: number;
+  total: number;
+} {
+  let tofu = 0;
+  let mofu = 0;
+  let bofu = 0;
+
+  for (const item of items || []) {
+    const stage = normalizeFunnelStage(item?.jenis);
+    if (stage === 'TOFU') tofu++;
+    else if (stage === 'MOFU') mofu++;
+    else if (stage === 'BOFU') bofu++;
+  }
+
+  return {
+    tofu,
+    mofu,
+    bofu,
+    total: tofu + mofu + bofu,
+  };
+}
+
+/**
+ * Strictly validates calendar items against the project's authoritative FunnelStrategy.
+ */
+export function validateCalendarAgainstFunnelStrategy(
+  items: any[],
+  funnelStrategy: FunnelStrategy
+): {
+  isValid: boolean;
+  errors: string[];
+  distribution: { tofu: number; mofu: number; bofu: number; total: number };
+} {
+  const errors: string[] = [];
+  const dist = summarizeFunnelDistribution(items);
+
+  if (!items || items.length === 0) {
+    errors.push('Calendar does not contain any content items.');
+    return { isValid: false, errors, distribution: dist };
+  }
+
+  const expectedTotal = funnelStrategy.distribution.total_posts;
+  if (items.length !== expectedTotal) {
+    errors.push(
+      `Item count mismatch: generated ${items.length} items, but FunnelStrategy requires exactly ${expectedTotal} items.`
+    );
+  }
+
+  if (dist.tofu !== funnelStrategy.distribution.tofu) {
+    errors.push(
+      `TOFU allocation mismatch: generated ${dist.tofu} TOFU items, expected ${funnelStrategy.distribution.tofu}.`
+    );
+  }
+
+  if (dist.mofu !== funnelStrategy.distribution.mofu) {
+    errors.push(
+      `MOFU allocation mismatch: generated ${dist.mofu} MOFU items, expected ${funnelStrategy.distribution.mofu}.`
+    );
+  }
+
+  if (dist.bofu !== funnelStrategy.distribution.bofu) {
+    errors.push(
+      `BOFU allocation mismatch: generated ${dist.bofu} BOFU items, expected ${funnelStrategy.distribution.bofu}.`
+    );
+  }
+
+  items.forEach((item, idx) => {
+    const itemValidation = validateItemAgainstFunnelStrategy(item, funnelStrategy);
+    if (!itemValidation.isValid) {
+      errors.push(`Item #${item.no ?? idx + 1}: ${itemValidation.violations.join('; ')}`);
+    }
+  });
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    distribution: dist,
+  };
+}
+
+/**
+ * Normalizes generated calendar items to strictly align with the project's authoritative FunnelStrategy.
+ * Guarantees correct item numbering, funnel stage sequence, CTA sanitization, and project isolation.
+ */
+export function normalizeCalendarToFunnelDistribution(
+  rawItems: any[],
+  funnelStrategy: FunnelStrategy,
+  projectId?: string
+): any[] {
+  if (!Array.isArray(rawItems) || rawItems.length === 0) return [];
+
+  const targetProjectId = projectId || funnelStrategy.project_id || 'default_project';
+  const targetTofu = funnelStrategy.distribution.tofu;
+  const targetMofu = funnelStrategy.distribution.mofu;
+  const targetBofu = funnelStrategy.distribution.bofu;
+
+  // Build target stage array in structured sequence
+  const targetStages: FunnelStageType[] = [];
+  for (let i = 0; i < targetTofu; i++) targetStages.push('TOFU');
+  for (let i = 0; i < targetMofu; i++) targetStages.push('MOFU');
+  for (let i = 0; i < targetBofu; i++) targetStages.push('BOFU');
+
+  const resultItems: any[] = [];
+
+  for (let idx = 0; idx < rawItems.length; idx++) {
+    const raw = rawItems[idx];
+    const itemNo = idx + 1;
+    const stageType = targetStages[idx] || normalizeFunnelStage(raw.jenis);
+
+    // Format funnel stage display text
+    const displayStage =
+      stageType === 'TOFU'
+        ? 'TOFU (Awareness)'
+        : stageType === 'MOFU'
+        ? 'MOFU (Consideration)'
+        : 'BOFU (Conversion)';
+
+    const itemValidation = validateItemAgainstFunnelStrategy({ ...raw, jenis: stageType }, funnelStrategy);
+    const finalCta = itemValidation.repairedCta || sanitizeCtaForFunnel(raw.cta, stageType);
+
+    resultItems.push({
+      ...raw,
+      no: itemNo,
+      project_id: targetProjectId,
+      projectId: targetProjectId,
+      content_item_id: raw.content_item_id || `${targetProjectId}_item_${itemNo}_${Date.now()}_${idx + 1}`,
+      jenis: displayStage,
+      cta: finalCta,
+    });
+  }
+
+  return resultItems;
+}

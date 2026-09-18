@@ -99,6 +99,9 @@ export default function HomePageClient() {
   const [reelsDuration, setReelsDuration] = useState<string>(DEFAULT_CALENDAR_SETTINGS.reelsDuration);
   const [ratio, setRatio] = useState(DEFAULT_CALENDAR_SETTINGS.ratio);
   const [hasUserFunnelOverride, setHasUserFunnelOverride] = useState(false);
+  const [hasUserCtaOverride, setHasUserCtaOverride] = useState(false);
+  const [hasUserHookOverride, setHasUserHookOverride] = useState(false);
+  const [hasUserFormulaOverride, setHasUserFormulaOverride] = useState(false);
   const [formatRatio, setFormatRatio] = useState<Record<string, number>>(DEFAULT_CALENDAR_SETTINGS.formatRatio);
   const [selectedVoices, setSelectedVoices] = useState<string[]>(DEFAULT_CALENDAR_SETTINGS.selectedVoices);
   const [hookMix, setHookMix] = useState<{ type: string; percentage?: number }[]>(DEFAULT_CALENDAR_SETTINGS.hookMix);
@@ -130,6 +133,9 @@ export default function HomePageClient() {
     setReelsDuration(s.reelsDuration || fallbackDefaults.reelsDuration);
     setRatio(s.ratio || fallbackDefaults.ratio);
     setHasUserFunnelOverride(Boolean(s.hasUserFunnelOverride));
+    setHasUserCtaOverride(Boolean(s.hasUserCtaOverride));
+    setHasUserHookOverride(Boolean(s.hasUserHookOverride));
+    setHasUserFormulaOverride(Boolean(s.hasUserFormulaOverride));
     setFormatRatio(s.formatRatio || fallbackDefaults.formatRatio);
     setSelectedVoices(Array.isArray(s.selectedVoices) && s.selectedVoices.length > 0 ? s.selectedVoices : fallbackDefaults.selectedVoices);
     setHookMix(Array.isArray(s.hookMix) && s.hookMix.length > 0 ? s.hookMix : fallbackDefaults.hookMix);
@@ -152,6 +158,9 @@ export default function HomePageClient() {
       reelsDuration,
       ratio,
       hasUserFunnelOverride,
+      hasUserCtaOverride,
+      hasUserHookOverride,
+      hasUserFormulaOverride,
       formatRatio,
       selectedVoices,
       hookMix,
@@ -331,6 +340,9 @@ export default function HomePageClient() {
       reelsDuration,
       ratio,
       hasUserFunnelOverride,
+      hasUserCtaOverride,
+      hasUserHookOverride,
+      hasUserFormulaOverride,
       formatRatio,
       selectedVoices,
       hookMix,
@@ -355,6 +367,9 @@ export default function HomePageClient() {
     reelsDuration,
     ratio,
     hasUserFunnelOverride,
+    hasUserCtaOverride,
+    hasUserHookOverride,
+    hasUserFormulaOverride,
     formatRatio,
     selectedVoices,
     hookMix,
@@ -444,19 +459,30 @@ export default function HomePageClient() {
       setStrategyBlueprint(newBlueprint);
       setSharedContext(newContext);
 
-      // If project has saved settings, keep them, but update coreTopic if it was default or empty
+      // Refresh derived calendar settings while strictly preserving explicit user overrides
       const existingSettings = getProjectCalendarSettings(finalProjectId);
+      const freshDerived = getDefaultCalendarSettings(newBlueprint);
       if (!existingSettings) {
-        const freshSettings = getDefaultCalendarSettings(newBlueprint);
-        saveProjectCalendarSettings(finalProjectId, freshSettings);
-        applyCalendarSettings(freshSettings, newBlueprint);
-      } else if (newBlueprint.brand_identity?.brand_name && (!existingSettings.coreTopic || existingSettings.coreTopic === 'Content Campaign' || existingSettings.coreTopic === 'Digital Course Launch Strategy')) {
-        const updated = {
+        saveProjectCalendarSettings(finalProjectId, freshDerived);
+        applyCalendarSettings(freshDerived, newBlueprint);
+      } else {
+        const merged: CalendarSettings = {
+          ...freshDerived,
           ...existingSettings,
-          coreTopic: `${newBlueprint.brand_identity.brand_name} Campaign`
+          ratio: existingSettings.hasUserFunnelOverride ? existingSettings.ratio : freshDerived.ratio,
+          hasUserFunnelOverride: Boolean(existingSettings.hasUserFunnelOverride),
+          selectedCTAs: existingSettings.hasUserCtaOverride ? existingSettings.selectedCTAs : freshDerived.selectedCTAs,
+          hasUserCtaOverride: Boolean(existingSettings.hasUserCtaOverride),
+          hookMix: existingSettings.hasUserHookOverride ? existingSettings.hookMix : freshDerived.hookMix,
+          hasUserHookOverride: Boolean(existingSettings.hasUserHookOverride),
+          selectedFormula: existingSettings.hasUserFormulaOverride ? existingSettings.selectedFormula : freshDerived.selectedFormula,
+          hasUserFormulaOverride: Boolean(existingSettings.hasUserFormulaOverride),
+          coreTopic: existingSettings.coreTopic && existingSettings.coreTopic !== 'Content Campaign' && existingSettings.coreTopic !== 'Digital Course Launch Strategy'
+            ? existingSettings.coreTopic
+            : freshDerived.coreTopic,
         };
-        saveProjectCalendarSettings(finalProjectId, updated);
-        setCoreTopic(updated.coreTopic);
+        saveProjectCalendarSettings(finalProjectId, merged);
+        applyCalendarSettings(merged, newBlueprint);
       }
 
       showToast('Strategy Blueprint berhasil diperbarui!');
@@ -548,14 +574,17 @@ export default function HomePageClient() {
           ageRange,
           ratio: hasUserFunnelOverride ? ratio : undefined,
           hasUserFunnelOverride,
+          hasUserCtaOverride,
+          hasUserHookOverride,
+          hasUserFormulaOverride,
           userOverrides: hasUserFunnelOverride ? { tofu: ratio.tofu, mofu: ratio.mofu, bofu: ratio.bofu } : undefined,
           formats,
           carouselSlides,
           reelsDuration,
           selectedVoices,
-          selectedFormula,
-          selectedCTAs,
-          hookMix,
+          selectedFormula: hasUserFormulaOverride ? selectedFormula : undefined,
+          selectedCTAs: hasUserCtaOverride ? selectedCTAs : undefined,
+          hookMix: hasUserHookOverride ? hookMix : undefined,
           referenceType,
           isFastMode,
           strategyBlueprint,
@@ -702,6 +731,12 @@ export default function HomePageClient() {
     showToast(`Merevisi Post #${itemNo}...`);
 
     try {
+      const activeFunnel = sharedContext ? buildFunnelStrategyFromContext(sharedContext, {
+        totalPosts: items.length || 14,
+        campaignGoal: coreTopic,
+        userOverrides: hasUserFunnelOverride ? { tofu: ratio.tofu, mofu: ratio.mofu, bofu: ratio.bofu } : undefined,
+      }) : undefined;
+
       const res = await fetch('/api/gemini/regenerate-item', {
         method: 'POST',
         headers: buildGeminiRequestHeaders({ 'Content-Type': 'application/json' }),
@@ -709,7 +744,8 @@ export default function HomePageClient() {
           item: target,
           instruction,
           coreTopic,
-          sharedContentContext: sharedContext
+          sharedContentContext: sharedContext,
+          funnelStrategy: activeFunnel
         })
       });
 
@@ -1143,6 +1179,9 @@ export default function HomePageClient() {
                 reelsDuration, setReelsDuration,
                 ratio, setRatio,
                 hasUserFunnelOverride, setHasUserFunnelOverride,
+                hasUserCtaOverride, setHasUserCtaOverride,
+                hasUserHookOverride, setHasUserHookOverride,
+                hasUserFormulaOverride, setHasUserFormulaOverride,
                 formatRatio, setFormatRatio,
                 selectedVoices, setSelectedVoices, toggleVoice,
                 hookMix, setHookMix, updateHookMix,

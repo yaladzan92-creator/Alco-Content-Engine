@@ -46,6 +46,12 @@ export interface ConfigDataProps {
   setRatio: (val: { tofu: number; mofu: number; bofu: number } | ((prev: { tofu: number; mofu: number; bofu: number }) => { tofu: number; mofu: number; bofu: number })) => void;
   hasUserFunnelOverride?: boolean;
   setHasUserFunnelOverride?: (val: boolean) => void;
+  hasUserCtaOverride?: boolean;
+  setHasUserCtaOverride?: (val: boolean) => void;
+  hasUserHookOverride?: boolean;
+  setHasUserHookOverride?: (val: boolean) => void;
+  hasUserFormulaOverride?: boolean;
+  setHasUserFormulaOverride?: (val: boolean) => void;
   formatRatio: Record<string, number>;
   setFormatRatio: (val: Record<string, number> | ((prev: Record<string, number>) => Record<string, number>)) => void;
   selectedVoices: string[];

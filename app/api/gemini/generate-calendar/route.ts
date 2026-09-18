@@ -39,7 +39,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const bodyData = await req.json() as GenerateCalendarRequest;
+    const bodyData = await req.json() as GenerateCalendarRequest & {
+      hasUserCtaOverride?: boolean;
+      hasUserHookOverride?: boolean;
+      hasUserFormulaOverride?: boolean;
+      totalPosts?: number;
+    };
     const {
       coreTopic = "Brand Strategy Launch Campaign",
       startDate = new Date().toISOString().split('T')[0],
@@ -48,6 +53,9 @@ export async function POST(req: NextRequest) {
       ageRange = [18, 45],
       ratio,
       hasUserFunnelOverride = false,
+      hasUserCtaOverride = false,
+      hasUserHookOverride = false,
+      hasUserFormulaOverride = false,
       userOverrides,
       formats = ["Single", "Carousel", "Reels"],
       carouselSlides = 5,
@@ -104,16 +112,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const normalizedHorizon = inferPlanningHorizon(planningHorizon);
-    const explicitOverrides = (hasUserFunnelOverride || userOverrides)
+    // Single source of authority for total posts and funnel strategy
+    const isFunnelOverridden = Boolean(hasUserFunnelOverride || userOverrides);
+    const explicitOverrides = isFunnelOverridden
       ? (userOverrides || ratio)
       : undefined;
 
-    const ratioTotal = explicitOverrides
+    const explicitOverrideTotal = explicitOverrides
       ? ((explicitOverrides.tofu || 0) + (explicitOverrides.mofu || 0) + (explicitOverrides.bofu || 0))
-      : (ratio ? ((ratio.tofu || 0) + (ratio.mofu || 0) + (ratio.bofu || 0)) : 0);
+      : 0;
 
-    const totalPosts = ratioTotal > 0 ? ratioTotal : horizonToCount[normalizedHorizon];
+    const requestedTotalPosts = bodyData.totalPosts || (ratio ? ((ratio.tofu || 0) + (ratio.mofu || 0) + (ratio.bofu || 0)) : 0) || 14;
+    const baseTotalPosts = explicitOverrideTotal > 0 ? explicitOverrideTotal : requestedTotalPosts;
 
     // Establish authoritative FunnelStrategy for the active project
     let activeFunnelStrategy: FunnelStrategy;
@@ -131,7 +141,7 @@ export async function POST(req: NextRequest) {
       activeFunnelStrategy = providedFunnelStrategy;
     } else {
       activeFunnelStrategy = buildFunnelStrategyFromContext(context, {
-        totalPosts,
+        totalPosts: baseTotalPosts,
         campaignGoal: coreTopic,
         userOverrides: explicitOverrides ? {
           tofu: explicitOverrides.tofu,
@@ -141,9 +151,15 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const resolvedFormula = selectedFormula || (context.strategy_context?.positioning
-      ? `Framework: ${context.strategy_context.positioning.slice(0, 40)}`
-      : 'Problem-Solution Value Architecture');
+    // Synchronize totalPosts with the authoritative FunnelStrategy
+    const totalPosts = activeFunnelStrategy.distribution.total_posts;
+
+    // Distinguish explicit user overrides from derived context recommendations
+    const resolvedFormula = (hasUserFormulaOverride && selectedFormula)
+      ? selectedFormula
+      : (context.strategy_context?.positioning
+          ? `Framework: ${context.strategy_context.positioning.slice(0, 40)}`
+          : 'Problem-Solution Value Architecture');
 
     const visualCtx = context.brand_visual_context;
     const visualContextBlock = visualCtx ? `
@@ -155,9 +171,13 @@ export async function POST(req: NextRequest) {
 - Design Mood: ${visualCtx.design_mood || '-'}
 ` : '';
 
-    const hookMixText = Array.isArray(hookMix) && hookMix.length > 0
+    const hookMixText = (hasUserHookOverride && Array.isArray(hookMix) && hookMix.length > 0)
       ? hookMix.map((h: any) => `${h.type || h} (${h.percentage || 0}%)`).join(', ')
       : `${activeFunnelStrategy.tofu.hook_direction} (40%), ${activeFunnelStrategy.mofu.hook_direction} (35%), ${activeFunnelStrategy.bofu.hook_direction} (25%)`;
+
+    const ctaConstraintLine = (hasUserCtaOverride && Array.isArray(selectedCTAs) && selectedCTAs.length > 0)
+      ? `\n- Primary CTAs Allowed (Explicit User Preference): ${selectedCTAs.join(', ')}`
+      : '';
 
     const prompt = `Act as an Elite Brand Content Director for ALCO Content Engine.
 
@@ -185,9 +205,9 @@ ${buildFunnelStrategyPromptBlock(activeFunnelStrategy)}
 - Start Date: ${startDate}
 - Skip Days of Week: ${skipDays.join(', ') || 'None'}
 - Target Channels: ${channels.join(', ')}
-- Target Funnel Allocation: ${activeFunnelStrategy.distribution.tofu} TOFU, ${activeFunnelStrategy.distribution.mofu} MOFU, ${activeFunnelStrategy.distribution.bofu} BOFU
+- Target Funnel Allocation: ${activeFunnelStrategy.distribution.tofu} TOFU, ${activeFunnelStrategy.distribution.mofu} MOFU, ${activeFunnelStrategy.distribution.bofu} BOFU (Total: ${totalPosts} posts)
 - Allowed Formats: ${formats.join(', ')} (Carousel slides: ${carouselSlides}, Reels duration: ${reelsDuration})
-- Primary Formula / Angle: ${resolvedFormula}${Array.isArray(selectedCTAs) && selectedCTAs.length > 0 ? `\n- Primary CTAs Allowed: ${selectedCTAs.join(', ')}` : ''}
+- Primary Formula / Angle: ${resolvedFormula}${ctaConstraintLine}
 - Hook Mix Strategy: ${hookMixText}
 - Reference Logic: ${referenceType}
 
@@ -312,32 +332,36 @@ Return ONLY the JSON matching the specified schema.`;
     });
 
     const parsed = JSON.parse(response.text || '{"items":[]}');
-    const sanitizedItems = (parsed.items || []).map((item: any, idx: number) => {
-      const itemNo = item.no !== undefined && item.no !== null ? item.no : (idx + 1);
-      const validation = validateItemAgainstFunnelStrategy(item, activeFunnelStrategy);
-      const finalCta = validation.repairedCta || sanitizeCtaForFunnel(item.cta, item.jenis);
-      return {
-        ...item,
-        no: itemNo,
-        project_id: resolvedProjectId,
-        projectId: resolvedProjectId,
-        content_item_id: item.content_item_id || `${resolvedProjectId}_item_${itemNo}_${Date.now()}_${idx + 1}`,
-        cta: finalCta,
-      };
-    });
-    const sanitizedGrowthItems = (parsed.growthItems || []).map((item: any, idx: number) => {
-      const itemNo = item.no !== undefined && item.no !== null ? item.no : (idx + 1);
-      const validation = validateItemAgainstFunnelStrategy(item, activeFunnelStrategy);
-      const finalCta = validation.repairedCta || sanitizeCtaForFunnel(item.cta, item.jenis);
-      return {
-        ...item,
-        no: itemNo,
-        project_id: resolvedProjectId,
-        projectId: resolvedProjectId,
-        content_item_id: item.content_item_id || `${resolvedProjectId}_growth_${itemNo}_${Date.now()}_${idx + 1}`,
-        cta: finalCta,
-      };
-    });
+    if (!parsed.items || !Array.isArray(parsed.items) || parsed.items.length === 0) {
+      return NextResponse.json(
+        {
+          error: "AI tidak menghasilkan item kalender yang valid. Silakan coba kembali.",
+        },
+        { status: 500 }
+      );
+    }
+
+    const sanitizedItems = normalizeCalendarToFunnelDistribution(
+      parsed.items,
+      activeFunnelStrategy,
+      resolvedProjectId
+    );
+
+    const sanitizedGrowthItems = Array.isArray(parsed.growthItems)
+      ? parsed.growthItems.map((item: any, idx: number) => {
+          const itemNo = item.no !== undefined && item.no !== null ? item.no : (idx + 1);
+          const validation = validateItemAgainstFunnelStrategy(item, activeFunnelStrategy);
+          const finalCta = validation.repairedCta || sanitizeCtaForFunnel(item.cta, item.jenis);
+          return {
+            ...item,
+            no: itemNo,
+            project_id: resolvedProjectId,
+            projectId: resolvedProjectId,
+            content_item_id: item.content_item_id || `${resolvedProjectId}_growth_${itemNo}_${Date.now()}_${idx + 1}`,
+            cta: finalCta,
+          };
+        })
+      : [];
 
     return NextResponse.json({
       items: sanitizedItems,
